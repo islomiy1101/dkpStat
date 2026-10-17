@@ -1,0 +1,1244 @@
+/* Auto-scoped from dkpPayment/style.css — scope .sec-payment */
+.sec-payment {
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --bg-page: #f8fafc;
+  --surface: #ffffff;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  
+  --primary: #3b82f6;
+  --primary-light: #eff6ff;
+
+  --dxm-color: #2563eb;
+  --dxm-bg: #dbeafe;
+  --yaidxp-color: #0d9488;
+  --yaidxp-bg: #ccfbf1;
+  --notarius-color: #d97706;
+  --notarius-bg: #fef3c7;
+  --agro-color: #16a34a;
+  --agro-bg: #dcfce7;
+}
+
+:where(.sec-payment *) {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-family);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sec-payment {
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  padding: 16px 24px;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+
+.sec-payment .dashboard-wrapper {
+  max-width: 1440px;
+  margin: 0 auto;
+}
+
+/* =========================================
+   HEADER VA JONLI SOAT VIDJETI
+========================================= */
+.sec-payment .dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.sec-payment .dashboard-header h1 {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.02em;
+}
+
+.sec-payment .subtitle {
+  color: var(--text-muted);
+  font-size: 13.5px;
+  margin-top: 2px;
+}
+
+.sec-payment .header-right-panel {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sec-payment .live-clock-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 7px 14px;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+}
+
+.sec-payment .clock-date {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border);
+  padding-right: 10px;
+}
+
+.sec-payment .clock-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-main);
+  font-family: monospace;
+}
+
+.sec-payment .live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  animation: pm-pulse-dot 1.8s infinite;
+}
+
+@keyframes pm-pulse-dot {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.sec-payment .refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  transition: all 0.2s ease;
+}
+
+.sec-payment .refresh-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+/* =========================================
+   EKSPORT (PDF / JPG) TUGMALARI
+========================================= */
+.sec-payment .export-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.sec-payment .action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  padding: 6px 11px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-muted);
+}
+
+.sec-payment .action-btn.btn-jpg:hover { background: #f0fdf4; color: #16a34a; }
+.sec-payment .action-btn.btn-pdf:hover { background: #fef2f2; color: #dc2626; }
+.sec-payment .action-btn:active { transform: scale(0.96); }
+.sec-payment .action-btn.exporting { opacity: 0.6; pointer-events: none; }
+
+/* =========================================
+   1-VA 2-QATOR STATISTIKA KARTALARI
+========================================= */
+.sec-payment .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.sec-payment .period-grid {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.sec-payment .stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.sec-payment .stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px -4px rgba(0, 0, 0, 0.06);
+}
+
+.sec-payment .stat-card.active {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -4px rgba(0, 0, 0, 0.08);
+}
+
+.sec-payment .stat-card::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  transition: background-color 0.25s ease;
+}
+
+.sec-payment .stat-card.card-total.active::after { background: #334155; }
+.sec-payment .stat-card.card-dxm.active::after { background: var(--dxm-color); }
+.sec-payment .stat-card.card-yaidxp.active::after { background: var(--yaidxp-color); }
+.sec-payment .stat-card.card-notarius.active::after { background: var(--notarius-color); }
+.sec-payment .stat-card.card-agro.active::after { background: var(--agro-color); }
+
+.sec-payment .card-p1 .period-icon { background: #dcfce7; color: #16a34a; }
+.sec-payment .card-p1.active::after { background: #16a34a; }
+
+.sec-payment .card-p2 .period-icon { background: #fef9c3; color: #ca8a04; }
+.sec-payment .card-p2.active::after { background: #ca8a04; }
+
+.sec-payment .card-p3 .period-icon { background: #ffedd5; color: #ea580c; }
+.sec-payment .card-p3.active::after { background: #ea580c; }
+
+.sec-payment .card-p4 .period-icon { background: #fee2e2; color: #dc2626; }
+.sec-payment .card-p4.active::after { background: #dc2626; }
+
+.sec-payment .card-p5 .period-icon { background: #ffe4e6; color: #9f1239; }
+.sec-payment .card-p5.active::after { background: #9f1239; }
+
+.sec-payment .stats-grid.has-filter .stat-card:not(.active),
+.sec-payment .period-grid.has-filter .stat-card:not(.active) {
+  opacity: 0.5;
+}
+
+.sec-payment .stat-icon-wrapper {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sec-payment .stat-icon-wrapper svg {
+  width: 20px;
+  height: 20px;
+}
+
+.sec-payment .card-total .stat-icon-wrapper { background: #f1f5f9; color: #334155; }
+.sec-payment .card-dxm .stat-icon-wrapper { background: var(--dxm-bg); color: var(--dxm-color); }
+.sec-payment .card-yaidxp .stat-icon-wrapper { background: var(--yaidxp-bg); color: var(--yaidxp-color); }
+.sec-payment .card-notarius .stat-icon-wrapper { background: var(--notarius-bg); color: var(--notarius-color); }
+.sec-payment .card-agro .stat-icon-wrapper { background: var(--agro-bg); color: var(--agro-color); }
+
+.sec-payment .stat-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.sec-payment .stat-val {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 1px;
+}
+
+/* =========================================
+   ASOSIY JADVAL
+========================================= */
+.sec-payment .dashboard-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 4px 18px -2px rgba(0,0,0,0.05);
+  position: relative;
+  overflow: hidden;
+}
+
+.sec-payment .table-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sec-payment .table-container::-webkit-scrollbar {
+  height: 5px;
+}
+.sec-payment .table-container::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+.sec-payment .table-container::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+.sec-payment .table-container::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.sec-payment .mobile-cards-container {
+  display: none;
+}
+
+.sec-payment .modern-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: separate;
+  border-spacing: 0;
+  text-align: center;
+  font-size: 14.5px;
+}
+
+.sec-payment .modern-table thead {
+  background-color: #f8fafc;
+}
+
+.sec-payment .modern-table th {
+  padding: 10px 14px;
+  font-weight: 600;
+  color: #334155;
+  border-bottom: 2px solid var(--border);
+  border-right: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.sec-payment .modern-table th:last-child {
+  border-right: none;
+}
+
+/* ==============================================================
+   1. STICKY COLUMN
+============================================================== */
+.sec-payment .modern-table th:first-child,
+.sec-payment .modern-table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 5;
+  box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.08);
+  border-right: 2px solid var(--border) !important;
+}
+
+.sec-payment .modern-table thead th:first-child {
+  z-index: 10;
+  background-color: #f8fafc;
+}
+
+.sec-payment .grand-total-row td:first-child { background-color: #f1f5f9; }
+.sec-payment .district-row td:first-child { background-color: #ffffff; }
+.sec-payment .district-row:hover td:first-child { background-color: #f8fafc; }
+.sec-payment .district-row.expanded td:first-child { background-color: #f1f5f9; }
+.sec-payment .engineer-row td:first-child { background-color: #ffffff; }
+.sec-payment .engineer-row:hover td:first-child { background-color: #f1f5f9; }
+
+.sec-payment .th-name {
+  text-align: left;
+  padding-left: 18px !important;
+  min-width: 250px;
+}
+
+.sec-payment .th-num { min-width: 80px; }
+.sec-payment .th-total { background: #f1f5f9; color: #0f172a; }
+
+.sec-payment .th-group,
+.sec-payment .th-shundan-group {
+  padding: 3px 6px !important;
+  font-size: 11px !important;
+  line-height: 1.15;
+  height: 22px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.sec-payment .sub-headers th {
+  padding: 4px 6px !important;
+  line-height: 1.15;
+  height: 28px;
+}
+
+.sec-payment .badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sec-payment .badge-dxm { background: var(--dxm-bg); color: var(--dxm-color); }
+.sec-payment .badge-yaidxp { background: var(--yaidxp-bg); color: var(--yaidxp-color); }
+.sec-payment .badge-notarius { background: var(--notarius-bg); color: var(--notarius-color); }
+.sec-payment .badge-agro { background: var(--agro-bg); color: var(--agro-color); }
+
+.sec-payment .modern-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border-light);
+  color: #334155;
+  white-space: nowrap;
+}
+
+.sec-payment .modern-table td:last-child { border-right: none; }
+
+.sec-payment .grand-total-row {
+  background: #f1f5f9;
+  font-weight: 700;
+}
+
+.sec-payment .grand-total-row td {
+  color: #0f172a;
+  font-size: 15px;
+  padding-top: 11px;
+  padding-bottom: 11px;
+  border-bottom: 2px solid #cbd5e1;
+}
+
+.sec-payment .grand-total-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-left: 10px;
+}
+
+.sec-payment .district-row {
+  cursor: pointer;
+  font-weight: 600;
+  background: var(--surface);
+  transition: background-color 0.15s ease;
+}
+
+.sec-payment .district-row:hover { background-color: #f8fafc; }
+.sec-payment .district-row.expanded { background-color: #f1f5f9; }
+
+.sec-payment .district-name-cell {
+  text-align: left !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-main);
+  padding-left: 16px !important;
+}
+
+.sec-payment .chevron-icon {
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border-radius: 6px;
+  color: #475569;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.sec-payment .district-row.expanded .chevron-icon {
+  transform: rotate(90deg);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.sec-payment .district-icon { 
+  width: 16px;
+  height: 16px;
+  color: #64748b; 
+  flex-shrink: 0;
+}
+
+.sec-payment .engineer-row {
+  background: #ffffff;
+  display: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.sec-payment .engineer-row.show {
+  display: table-row;
+  animation: pm-fadeIn 0.2s ease-in-out;
+}
+
+.sec-payment .engineer-row:hover { background-color: #f1f5f9 !important; }
+
+.sec-payment .engineer-name-cell {
+  text-align: left !important;
+  padding-left: 50px !important;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sec-payment .engineer-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.sec-payment .engineer-name-cell .hint-text {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.sec-payment .engineer-row:hover .engineer-name-cell .hint-text { opacity: 1; }
+
+.sec-payment .engineer-row .income-clickable {
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.sec-payment .engineer-row .income-clickable:hover {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  text-decoration: underline;
+}
+
+.sec-payment .col-bold { font-weight: 700; color: var(--text-main); }
+
+.sec-payment .num-pill {
+  display: inline-block;
+  min-width: 24px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.sec-payment .district-row .num-pill { font-weight: 700; }
+.sec-payment .col-dimmed { opacity: 0.35; }
+
+/* ==============================================================
+   2. REJA VA TO'LANGAN BO'LIM
+============================================================== */
+.sec-payment .section-divider-left {
+  border-left: 3px solid #3b82f6 !important;
+}
+
+.sec-payment .plan-th {
+  white-space: normal !important;
+  line-height: 1.25;
+  min-width: 115px;
+  max-width: 130px;
+  padding: 8px 6px !important;
+  font-size: 12.5px;
+  vertical-align: middle;
+}
+
+.sec-payment .plan-cell {
+  font-weight: 600;
+  color: #334155;
+  background-color: #fbfcfe;
+}
+
+/* ==============================================================
+   3. OYLIK UNDIRILGAN USTUNLAR
+============================================================== */
+.sec-payment .month-col-th {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: normal !important;
+  line-height: 1.25;
+  min-width: 110px;
+  max-width: 130px;
+  padding: 8px 6px !important;
+  vertical-align: middle;
+}
+
+.sec-payment .month-col-th.open {
+  background-color: #eff6ff !important;
+  border-top: 3px solid #2563eb !important;
+  border-bottom: 2px solid #bfdbfe !important;
+}
+
+.sec-payment .month-col-th.open .month-clean-header span {
+  color: #1d4ed8 !important;
+  font-weight: 700;
+}
+
+.sec-payment .month-col-th:hover {
+  background-color: #e2e8f0 !important;
+  box-shadow: inset 0 -2px 0 0 #3b82f6;
+  transform: translateY(-1px);
+}
+
+.sec-payment .month-col-th:active { transform: translateY(0); }
+
+.sec-payment .month-clean-header {
+  font-weight: 700;
+  text-align: center;
+  font-size: 13px;
+  color: #0f172a;
+}
+
+.sec-payment .col-total-style {
+  background-color: #f8fafc;
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.sec-payment .grand-total-row .col-total-style { background-color: #edf2f7; }
+.sec-payment .district-row:hover .col-total-style { background-color: #f1f5f9; }
+.sec-payment .income-cell { font-weight: 700; color: #0f172a; }
+
+.sec-payment .th-shundan-group {
+  background-color: #f8fafc !important;
+  color: var(--text-muted) !important;
+}
+
+/* ==============================================================
+   SHUNDAN USTUNLARI
+============================================================== */
+.sec-payment .col-shundan-detail { display: none !important; }
+.sec-payment .col-shundan-detail.open { display: table-cell !important; opacity: 1 !important; }
+
+.sec-payment .badge-kadastr { background-color: #e0e7ff; color: #312e81 !important; font-weight: 700; }
+.sec-payment .badge-registratsiya { background-color: #ccfbf1; color: #044e46 !important; font-weight: 700; }
+.sec-payment .badge-manzil { background-color: #ffedd5; color: #9a3412 !important; font-weight: 700; }
+
+.sec-payment .col-shundan-kadastr,
+.sec-payment .col-shundan-registratsiya,
+.sec-payment .col-shundan-manzil {
+  background-color: #f8fafc;
+  color: #0f172a !important;
+  font-weight: 600;
+}
+
+.sec-payment .grand-total-row .col-shundan-detail { font-weight: 700 !important; color: #0f172a !important; }
+
+.sec-payment .sub-th-kadastr { background-color: #eef2ff !important; color: #3730a3 !important; font-size: 11.5px; white-space: normal !important; line-height: 1.2; min-width: 95px; }
+.sec-payment .sub-th-registratsiya { background-color: #ecfdf5 !important; color: #065f46 !important; font-size: 11.5px; white-space: normal !important; line-height: 1.2; min-width: 95px; }
+.sec-payment .sub-th-manzil { background-color: #fff7ed !important; color: #9a3412 !important; font-size: 11.5px; white-space: normal !important; line-height: 1.2; min-width: 85px; }
+
+/* ==============================================================
+   5. 3 RANGLI SVETOFOR GRADIENTI (% BADGE)
+============================================================== */
+.sec-payment .percent-badge {
+  display: inline-block;
+  min-width: 48px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 12.5px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.sec-payment .percent-badge.p-red { background-color: #fecaca; color: #991b1b; border: 1px solid #f87171; }
+.sec-payment .percent-badge.p-yellow { background-color: #fef08a; color: #854d0e; border: 1px solid #facc15; }
+.sec-payment .percent-badge.p-green { background-color: #15803d; color: #ffffff; border: 1px solid #166534; }
+
+/* =========================================
+   MODAL OYNA VA TAFSILOTLAR
+========================================= */
+.sec-payment .modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+
+.sec-payment .modal-backdrop.open { display: flex; opacity: 1; }
+
+.sec-payment .modal-card {
+  background: #ffffff;
+  width: 100%;
+  max-width: 950px;
+  max-height: 85vh;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  transform: scale(0.96);
+  transition: transform 0.25s ease;
+  overflow: hidden;
+}
+
+.sec-payment .modal-backdrop.open .modal-card { transform: scale(1); }
+
+.sec-payment .modal-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sec-payment .modal-user-info { display: flex; align-items: center; gap: 12px; }
+
+.sec-payment .modal-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sec-payment .modal-header h3 { font-size: 17px; font-weight: 700; color: var(--text-main); }
+.sec-payment .modal-sub { font-size: 13px; color: var(--text-muted); margin-top: 1px; }
+.sec-payment .modal-header-actions { display: flex; align-items: center; gap: 10px; }
+
+.sec-payment .modal-type-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.sec-payment .badge-mode-waiting { background: #fef3c7; color: #92400e; }
+.sec-payment .badge-mode-paid { background: #dcfce7; color: #166534; }
+
+.sec-payment .btn-excel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #107c41;
+  color: #ffffff;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(16, 124, 65, 0.25);
+  transition: all 0.2s ease;
+}
+
+.sec-payment .btn-excel:hover { background: #0d6535; transform: translateY(-1px); }
+
+.sec-payment .modal-close-btn {
+  background: #f1f5f9;
+  border: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  font-size: 20px;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sec-payment .modal-close-btn:hover { background: #e2e8f0; color: #0f172a; }
+
+.sec-payment .modal-search-box {
+  padding: 12px 20px;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sec-payment .modal-search-box svg { color: #94a3b8; }
+.sec-payment .modal-search-box input {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 13.5px;
+  color: var(--text-main);
+}
+
+.sec-payment .modal-body {
+  padding: 0;
+  overflow-y: auto;
+  max-height: calc(85vh - 140px);
+  position: relative;
+}
+
+.sec-payment .modal-table-wrapper { 
+  width: 100%; 
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sec-payment .modal-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.sec-payment .modal-table thead {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 10;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.sec-payment .modal-table th {
+  padding: 10px 14px;
+  font-weight: 600;
+  color: #475569;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.sec-payment .modal-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-light);
+  color: #334155;
+  white-space: nowrap;
+}
+
+.sec-payment .modal-table tbody tr:hover { background-color: #fbfcfe; }
+.sec-payment .client-name { font-weight: 600; color: #1e293b; }
+
+.sec-payment .app-num-code, .sec-payment .trx-code {
+  font-family: monospace;
+  font-weight: 600;
+  background: #f1f5f9;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #0f172a;
+  display: inline-block;
+}
+
+.sec-payment .date-tag {
+  font-family: monospace;
+  font-size: 12px;
+  color: #475569;
+  background: #f8fafc;
+  padding: 3px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  display: inline-block;
+}
+
+.sec-payment .paid-amount-tag {
+  font-family: monospace;
+  font-weight: 700;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 3px 6px;
+  border-radius: 5px;
+  font-size: 12px;
+  display: inline-block;
+}
+
+/* PHONE COPY */
+.sec-payment .phone-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #334155;
+  font-family: monospace;
+  font-size: 12.5px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.sec-payment .phone-copy-btn:hover { background: #e2e8f0; color: #0f172a; }
+.sec-payment .phone-copy-btn .copy-icon { width: 13px; height: 13px; opacity: 0.5; }
+.sec-payment .phone-copy-btn:hover .copy-icon { opacity: 1; }
+.sec-payment .phone-copy-btn.copied {
+  background: #dcfce7;
+  color: #15803d;
+  border-color: #86efac;
+}
+
+/* LOADER */
+.sec-payment .loader-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(2px);
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  z-index: 20;
+}
+
+.sec-payment .loader-overlay.active { display: flex; }
+.sec-payment .spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: pm-spin 0.7s linear infinite;
+}
+
+.sec-payment .spinning { animation: pm-spin 0.8s linear infinite; }
+@keyframes pm-spin { to { transform: rotate(360deg); } }
+@keyframes pm-fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ==============================================================
+   MEDIA QUERIES: MOBIL TELEFONLAR UCHUN TUMAN KARTALARI (CARD VIEW)
+============================================================== */
+@media (max-width: 1200px) {
+  .sec-payment .stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .sec-payment { padding: 10px 12px; }
+
+  .sec-payment .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sec-payment .dashboard-header h1 { font-size: 17.5px; line-height: 1.3; }
+  .sec-payment .subtitle { font-size: 12px; }
+
+  .sec-payment .header-right-panel {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .sec-payment .live-clock-card { justify-content: space-between; width: 100%; }
+  .sec-payment .export-actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .sec-payment .action-btn { justify-content: center; }
+  .sec-payment .refresh-btn { justify-content: center; width: 100%; }
+
+  .sec-payment .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .sec-payment .stat-card { padding: 10px; gap: 8px; }
+  .sec-payment .stat-icon-wrapper { width: 34px; height: 34px; }
+  .sec-payment .stat-label { font-size: 10px; }
+  .sec-payment .stat-val { font-size: 15.5px; }
+  .sec-payment .stats-grid .stat-card:last-child { grid-column: span 2; }
+
+  /* KOMPYUTER JADVALINI YASHIRIB, MOBIL KARTALARNI YOQAMIZ */
+  .sec-payment .desktop-table-view { display: none !important; }
+
+  .sec-payment .dashboard-card {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .sec-payment .mobile-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* TUMAN KARTASI */
+  .sec-payment .m-district-card {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+  }
+
+  .sec-payment .m-grand-card {
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 2px solid #cbd5e1;
+  }
+
+  .sec-payment .m-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-light);
+    margin-bottom: 10px;
+  }
+
+  .sec-payment .m-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 15.5px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .sec-payment .m-card-total-badge {
+    background: #0f172a;
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 8px;
+  }
+
+  .sec-payment .m-sources-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .sec-payment .m-src-item {
+    background: #f8fafc;
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+    padding: 6px 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sec-payment .m-src-item .badge { font-size: 10px; padding: 2px 5px; }
+  .sec-payment .m-src-item b { font-size: 13.5px; color: var(--text-main); }
+
+  .sec-payment .m-plan-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: #1e3a8a;
+    margin-bottom: 8px;
+  }
+
+  .sec-payment .m-finance-box {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 8px;
+  }
+
+  .sec-payment .m-finance-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+
+  .sec-payment .m-month-title { font-size: 13px; color: #334155; }
+  .sec-payment .m-month-title b { color: #0f172a; font-size: 14px; }
+
+  .sec-payment .m-shundan-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+
+  .sec-payment .m-sh-item {
+    padding: 6px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 11px;
+  }
+
+  .sec-payment .m-sh-item b { font-size: 12.5px; margin-top: 2px; }
+  .sec-payment .m-sh-item.kadastr { background: #eef2ff; color: #312e81; }
+  .sec-payment .m-sh-item.reg { background: #ecfdf5; color: #064e3b; }
+  .sec-payment .m-sh-item.manzil { background: #fff7ed; color: #7c2d12; }
+
+  .sec-payment .m-eng-toggle-btn {
+    width: 100%;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    padding: 9px 12px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: #334155;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+
+  .sec-payment .m-eng-arrow { font-size: 10px; transition: transform 0.2s ease; }
+  .sec-payment .m-district-card.eng-open .m-eng-arrow { transform: rotate(180deg); }
+
+  .sec-payment .m-eng-list {
+    display: none;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .sec-payment .m-district-card.eng-open .m-eng-list { display: flex; }
+
+  .sec-payment .m-eng-item {
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .sec-payment .m-eng-info { display: flex; align-items: center; gap: 8px; }
+  .sec-payment .m-eng-name { font-size: 13px; font-weight: 600; color: #1e293b; }
+  .sec-payment .m-eng-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
+  .sec-payment .m-eng-wait-btn {
+    flex: 1;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #334155;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  .sec-payment .m-eng-paid-btn {
+    flex: 1;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #166534;
+    cursor: pointer;
+    text-align: center;
+  }
+
+  /* MODAL OYNA TELEFONDA */
+  .sec-payment .modal-backdrop { padding: 0; align-items: flex-end; }
+  .sec-payment .modal-card { max-height: 92vh; border-radius: 18px 18px 0 0; }
+  .sec-payment .modal-header { padding: 14px 16px 12px; flex-direction: column; align-items: stretch; gap: 10px; position: relative; }
+  .sec-payment .modal-user-info { padding-right: 38px; align-items: flex-start; }
+  .sec-payment .modal-header h3 { font-size: 15px; line-height: 1.3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .sec-payment .modal-close-btn { position: absolute; top: 12px; right: 12px; width: 32px; height: 32px; }
+  .sec-payment .modal-header-actions { width: 100%; }
+  .sec-payment .btn-excel { width: 100%; justify-content: center; padding: 10px 14px; border-radius: 10px; }
+
+  .sec-payment .modal-body { max-height: calc(92vh - 175px); background: #f1f5f9; padding: 10px; }
+  .sec-payment .modal-table, .sec-payment .modal-table tbody { display: block; width: 100%; min-width: unset !important; }
+  .sec-payment .modal-table thead { display: none; }
+
+  .sec-payment .modal-table tbody tr {
+    display: block;
+    background: #ffffff;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
+  }
+
+  .sec-payment .modal-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dashed #e2e8f0;
+    font-size: 12.5px;
+    text-align: right;
+    white-space: normal;
+    gap: 10px;
+  }
+
+  .sec-payment .modal-table td:last-child { border-bottom: none; }
+  .sec-payment .modal-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #64748b;
+    font-size: 11.5px;
+    text-align: left;
+    flex-shrink: 0;
+  }
+}

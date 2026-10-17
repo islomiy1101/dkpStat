@@ -1,0 +1,58 @@
+[
+ {
+  "branch": "Viloyat boshqarmasi",
+  "fullName": "Sayfiddinov Bexruz",
+  "department": "IT bo'limi",
+  "login": "admin",
+  "password": "admin123",
+  "role": "admin"
+ },
+ {
+  "branch": "Chust tumani filiali",
+  "fullName": "Yusupova Malika",
+  "department": "Qabulxona",
+  "login": "chust",
+  "password": "chust123",
+  "role": "user"
+ },
+ {
+  "branch": "Pop tumani filiali",
+  "fullName": "Karimov Dilshod",
+  "department": "Ro'yxatga olish",
+  "login": "pop",
+  "password": "pop123",
+  "role": "user"
+ },
+ {
+  "branch": "Namangan shahar filiali",
+  "fullName": "Rahimov Akmal",
+  "department": "Kadastr",
+  "login": "nshahar",
+  "password": "x",
+  "role": "user"
+ },
+ {
+  "branch": "Uychi tumani filiali",
+  "fullName": "Ergasheva Nodira",
+  "department": "Qabulxona",
+  "login": "uychi",
+  "password": "x",
+  "role": "user"
+ },
+ {
+  "branch": "Viloyat boshqarmasi",
+  "fullName": "Qodirov Sardor",
+  "department": "Monitoring",
+  "login": "monitor",
+  "password": "x",
+  "role": "admin"
+ },
+ {
+  "branch": "Kosonsoy tumani filiali",
+  "fullName": "Toshmatov Jasur",
+  "department": "Kadastr",
+  "login": "kosonsoy",
+  "password": "x",
+  "role": "user"
+ }
+]

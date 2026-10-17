@@ -1,0 +1,262 @@
+/* =========================================================
+   ILOVA QOBIG'I (sidebar + kontent). Bo'limlarning o'z stillari
+   styles/*.css da .sec-* klassi ichida scope qilingan.
+   ========================================================= */
+:root {
+  --sb-w: 264px;
+  --sb-w-collapsed: 72px;
+  --sb-bg: #0f172a;
+  --sb-bg-2: #1e293b;
+  --sb-text: #cbd5e1;
+  --sb-muted: #64748b;
+  --sb-accent: #38bdf8;
+  --topbar-h: 0px;
+}
+html[data-sidebar="collapsed"] { --sb-w: var(--sb-w-collapsed); }
+
+html, body { margin: 0; padding: 0; }
+body { background: #f1f5f9; }
+
+.app-shell { min-height: 100vh; }
+.app-main {
+  margin-left: var(--sb-w);
+  min-height: 100vh;
+  transition: margin-left 0.2s ease;
+  position: relative;
+}
+
+/* ---------- Sidebar ---------- */
+.app-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: var(--sb-w);
+  background: var(--sb-bg);
+  color: var(--sb-text);
+  display: flex;
+  flex-direction: column;
+  z-index: 900;
+  transition: width 0.2s ease, transform 0.2s ease;
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  border-right: 1px solid #1e293b;
+  overflow: hidden;
+}
+.app-sidebar * { box-sizing: border-box; }
+
+.sb-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 14px 14px 18px;
+  border-bottom: 1px solid var(--sb-bg-2);
+  min-height: 68px;
+}
+.sb-brand img { border-radius: 10px; flex-shrink: 0; object-fit: cover; background: #fff; }
+.sb-brand-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.sb-brand-text strong { color: #fff; font-size: 14px; font-weight: 700; white-space: nowrap; }
+.sb-brand-text span { color: var(--sb-muted); font-size: 11px; white-space: nowrap; }
+.sb-collapse {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 8px; border: 1px solid var(--sb-bg-2);
+  background: transparent; color: var(--sb-muted); cursor: pointer;
+}
+.sb-collapse:hover { color: #fff; background: var(--sb-bg-2); }
+
+.sb-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--sb-muted); padding: 18px 20px 8px; white-space: nowrap;
+}
+.sb-nav { display: flex; flex-direction: column; gap: 4px; padding: 0 10px; flex: 1; overflow-y: auto; }
+.sb-item {
+  position: relative;
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 10px; border-radius: 10px;
+  color: var(--sb-text); text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+}
+.sb-item:hover { background: var(--sb-bg-2); color: #fff; }
+.sb-item.active { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff; box-shadow: 0 6px 16px -6px rgba(2, 132, 199, 0.6); }
+.sb-icon {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(148, 163, 184, 0.12); font-size: 14px;
+}
+.sb-item.active .sb-icon { background: rgba(255, 255, 255, 0.18); }
+.sb-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.sb-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-sub { font-size: 11px; color: var(--sb-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item.active .sb-sub { color: rgba(255, 255, 255, 0.75); }
+
+/* Har bir bo'limning yuklanish holati (parallel yuklanishni ko'rsatadi) */
+.sb-status {
+  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  background: #475569; display: inline-flex; align-items: center; justify-content: center;
+}
+.sb-status.st-ready { background: #10b981; box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18); }
+.sb-status.st-error { background: #ef4444; box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); }
+.sb-status.st-loading, .sb-status.is-refreshing {
+  width: 12px; height: 12px; background: transparent;
+  border: 2px solid rgba(148, 163, 184, 0.35); border-top-color: var(--sb-accent);
+  animation: sb-spin 0.8s linear infinite; box-shadow: none;
+}
+.sb-status.st-locked { width: auto; height: auto; background: transparent; color: #f59e0b; font-size: 11px; box-shadow: none; }
+@keyframes sb-spin { to { transform: rotate(360deg); } }
+
+.sb-footer { padding: 12px 10px 14px; border-top: 1px solid var(--sb-bg-2); }
+.sb-refresh {
+  width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 9px 12px; border-radius: 9px; border: 1px solid #334155;
+  background: var(--sb-bg-2); color: #e2e8f0; font-size: 12px; font-weight: 600; cursor: pointer;
+  font-family: inherit; white-space: nowrap;
+}
+.sb-refresh:hover:not(:disabled) { border-color: var(--sb-accent); color: #fff; }
+.sb-refresh:disabled { opacity: 0.7; cursor: default; }
+.sb-meta { margin-top: 10px; display: flex; flex-direction: column; gap: 3px; padding: 0 4px; }
+.sb-meta-row { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--sb-muted); white-space: nowrap; gap: 8px; }
+.sb-meta-row span:first-child { overflow: hidden; text-overflow: ellipsis; }
+
+/* Yig'ilgan holat */
+html[data-sidebar="collapsed"] .sb-brand { flex-direction: column; padding: 14px 8px; gap: 8px; }
+html[data-sidebar="collapsed"] .sb-brand-text,
+html[data-sidebar="collapsed"] .sb-text,
+html[data-sidebar="collapsed"] .sb-label,
+html[data-sidebar="collapsed"] .sb-refresh span,
+html[data-sidebar="collapsed"] .sb-meta { display: none; }
+html[data-sidebar="collapsed"] .sb-item { justify-content: center; padding: 10px 0; }
+html[data-sidebar="collapsed"] .sb-status { position: absolute; top: 6px; right: 10px; }
+html[data-sidebar="collapsed"] .sb-nav { padding-top: 12px; }
+
+/* Mobil topbar */
+.app-topbar { display: none; }
+.app-scrim { display: none; }
+
+@media (max-width: 900px) {
+  :root { --topbar-h: 48px; }
+  html[data-sidebar] { --sb-w: 0px; }
+  .app-topbar {
+    display: flex; align-items: center; gap: 10px;
+    position: sticky; top: 0; z-index: 800;
+    height: var(--topbar-h); padding: 0 12px;
+    background: var(--sb-bg); color: #fff;
+    font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  }
+  .app-burger { width: 34px; height: 34px; border-radius: 8px; border: 1px solid #334155; background: var(--sb-bg-2); color: #fff; cursor: pointer; }
+  .app-topbar-title { font-size: 14px; font-weight: 600; }
+  .app-sidebar { width: 272px; transform: translateX(-100%); }
+  .app-sidebar.mobile-open { transform: translateX(0); box-shadow: 8px 0 30px rgba(0, 0, 0, 0.35); }
+  .app-scrim { display: block; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 850; }
+  .sb-collapse { display: none; }
+  html[data-sidebar="collapsed"] .sb-brand { flex-direction: row; padding: 16px 14px 14px 18px; }
+  html[data-sidebar="collapsed"] .sb-brand-text,
+  html[data-sidebar="collapsed"] .sb-text,
+  html[data-sidebar="collapsed"] .sb-label,
+  html[data-sidebar="collapsed"] .sb-refresh span,
+  html[data-sidebar="collapsed"] .sb-meta { display: flex; }
+  html[data-sidebar="collapsed"] .sb-item { justify-content: flex-start; padding: 10px; }
+  html[data-sidebar="collapsed"] .sb-status { position: static; }
+}
+
+/* ---------- Bo'limlarni qobiqqa moslash (ko'rinish o'zgarmaydi) ---------- */
+/* Original "*" qoidasi body'ga ham border-box berardi — wrapper'ga ham beramiz */
+.sec-deadline, .sec-payment, .sec-advice { box-sizing: border-box; }
+/* Deadline: original body = 100vh, overflow hidden */
+.sec-deadline { height: calc(100vh - var(--topbar-h)) !important; }
+/* Advice: login oynasi originalda butun ekran markazida — endi kontent maydoni markazida */
+.sec-advice #login-page { left: calc(50% + var(--sb-w) / 2) !important; }
+@media (max-width: 900px) {
+  .sec-advice #login-page { left: 50% !important; }
+}
+/* Deadline'ning to'liq ekranli yuklagichi sidebar ustini yopmasin */
+.sec-deadline #main-loader { left: var(--sb-w) !important; width: auto !important; right: 0; }
+
+/* Advice jadvali: table-layout:fixed sababli tor kenglikda "Kelishdan Maqsad" ustuni 0 ga
+   tushib qolardi (originalda ham ~1340px dan tor ekranda shunday edi). Endi minimal kenglik
+   beriladi va kerak bo'lsa gorizontal scroll paydo bo'ladi. Keng ekranda ko'rinish o'zgarmaydi. */
+.sec-advice .table-wrapper { overflow-x: auto !important; }
+.sec-advice #murojaat-table { min-width: 900px; }
+.sec-advice #murojaat-table.is-admin { min-width: 1180px; }
+
+/* =========================================================
+   LOGIN SAHIFASI
+   ========================================================= */
+.auth-page {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(14, 165, 233, 0.18), transparent 60%),
+    radial-gradient(900px 500px at 110% 110%, rgba(2, 132, 199, 0.16), transparent 60%),
+    #0f172a;
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+}
+.auth-page * { box-sizing: border-box; }
+.auth-card {
+  width: 100%; max-width: 400px; background: #fff; border-radius: 18px;
+  padding: 32px 28px 24px; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.5);
+}
+.auth-brand { text-align: center; margin-bottom: 22px; }
+.auth-brand img { border-radius: 50%; box-shadow: 0 6px 18px rgba(15, 23, 42, 0.15); }
+.auth-brand h1 { margin: 12px 0 2px; font-size: 20px; color: #0f172a; font-weight: 700; }
+.auth-brand p { margin: 0; font-size: 13px; color: #64748b; }
+.auth-alert {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; margin-bottom: 16px;
+  border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 13px; line-height: 1.45;
+}
+.auth-alert i { margin-top: 2px; }
+.auth-link { display: block; margin-top: 4px; padding: 0; border: 0; background: none; color: #0369a1; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+.auth-form { display: flex; flex-direction: column; }
+.auth-form label { font-size: 12.5px; font-weight: 600; color: #334155; margin: 0 0 6px; }
+.auth-input {
+  display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 12px; margin-bottom: 14px;
+  border: 1px solid #cbd5e1; border-radius: 10px; background: #f8fafc; transition: border-color 0.15s, box-shadow 0.15s;
+}
+.auth-input:focus-within { border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15); background: #fff; }
+.auth-input > i { color: #94a3b8; width: 16px; text-align: center; }
+.auth-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: #0f172a; }
+.auth-eye { border: 0; background: none; color: #94a3b8; cursor: pointer; padding: 4px; }
+.auth-eye:hover { color: #0f172a; }
+.auth-submit {
+  height: 46px; margin-top: 6px; border: 0; border-radius: 10px; cursor: pointer; width: 100%;
+  background: linear-gradient(135deg, #0ea5e9, #0284c7); color: #fff; font: inherit; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 8px 18px -8px rgba(2, 132, 199, 0.7);
+}
+.auth-submit:disabled { opacity: 0.75; cursor: default; }
+.auth-note { margin: 16px 0 0; font-size: 11.5px; color: #64748b; line-height: 1.5; text-align: center; }
+.auth-note i { color: #0284c7; margin-right: 3px; }
+.auth-modal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+.auth-modal-card { width: 100%; max-width: 440px; background: #fff; border-radius: 14px; padding: 20px; font-size: 13.5px; color: #334155; line-height: 1.6; }
+.auth-modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.auth-modal-head h3 { margin: 0; font-size: 15px; color: #0f172a; }
+.auth-modal-head h3 i { color: #0284c7; }
+.auth-modal-head button { border: 0; background: none; font-size: 18px; color: #64748b; cursor: pointer; }
+.auth-modal-sub { margin: 10px 0 4px; font-weight: 600; color: #0f172a; }
+.auth-modal-card ol { margin: 0 0 6px; padding-left: 20px; }
+
+/* =========================================================
+   SIDEBAR: foydalanuvchi bloki
+   ========================================================= */
+.sb-user {
+  margin: 14px 10px 0; padding: 12px; border-radius: 12px;
+  background: var(--sb-bg-2); border: 1px solid #334155;
+  display: flex; align-items: flex-start; gap: 10px; min-width: 0;
+}
+.sb-avatar {
+  width: 36px; height: 36px; flex-shrink: 0; border-radius: 10px;
+  background: linear-gradient(135deg, #0ea5e9, #6366f1); color: #fff;
+  display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700;
+}
+.sb-user-info { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.sb-user-name { color: #fff; font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-user-branch { color: var(--sb-text); font-size: 11.5px; line-height: 1.35; margin-top: 2px; overflow-wrap: anywhere; }
+.sb-user-branch i { font-size: 10px; color: var(--sb-accent); margin-right: 2px; }
+.sb-user-dept { color: var(--sb-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-role { align-self: flex-start; margin-top: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+.sb-logout {
+  width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; border: 1px solid #334155;
+  background: transparent; color: var(--sb-muted); cursor: pointer;
+}
+.sb-logout:hover { color: #fca5a5; border-color: #7f1d1d; background: rgba(127, 29, 29, 0.25); }
+.sb-divider { height: 1px; background: var(--sb-bg-2); margin: 10px 6px; }
+html[data-sidebar="collapsed"] .sb-user { flex-direction: column; padding: 8px 0; margin: 12px 10px 0; background: transparent; border-color: transparent; }
+html[data-sidebar="collapsed"] .sb-user-info { display: none; }
+@media (max-width: 900px) {
+  html[data-sidebar="collapsed"] .sb-user { flex-direction: row; padding: 12px; background: var(--sb-bg-2); border-color: #334155; }
+  html[data-sidebar="collapsed"] .sb-user-info { display: flex; }
+}

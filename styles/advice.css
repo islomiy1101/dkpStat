@@ -1,0 +1,1007 @@
+/* Auto-scoped from dkpadvice/style.css — scope .sec-advice */
+/**
+ * Loyiha: Kadastr Maslahat Burchagi - Murojaatlar Monitoringi
+ * Fayl: style.css (To'liq adaptiv va zamonaviy UI)
+ */
+
+ .sec-advice {
+  --primary-color: #2b579a;
+  --primary-hover: #1e3d6b;
+  --secondary-color: #e8f1f5;
+  --success-color: #2bc155;
+  --danger-color: #f33c3c;
+  --danger-hover: #dc2626;
+  --dark-color: #1f2937;
+  --gray-border: #d1d5db;
+  --card-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+:where(.sec-advice *), :where(.sec-advice *)::before, :where(.sec-advice *)::after { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+  font-family: 'Segoe UI', system-ui, -apple-system, BlinkMacSystemFont, Roboto, sans-serif; 
+  -webkit-tap-highlight-color: transparent;
+}
+
+.sec-advice {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.sec-advice { 
+  background-color: #f1f5f9; 
+  color: var(--dark-color); 
+  padding: 14px; 
+  min-height: 100vh;
+}
+
+.sec-advice .container { 
+  width: 100%;
+  max-width: 1540px; 
+  margin: 0 auto; 
+  padding: 0 8px;
+}
+
+/* ==================== 1. LOGIN SAHIFA ==================== */
+.sec-advice #login-page { 
+  width: 100%;
+  max-width: 400px; 
+  background: #ffffff; 
+  padding: 36px 28px; 
+  border-radius: 16px; 
+  box-shadow: 0 12px 32px rgba(43, 87, 154, 0.12); 
+  text-align: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+}
+
+.sec-advice .login-logo-wrapper {
+  width: 90px;
+  height: 90px;
+  margin: 0 auto 16px auto;
+  border-radius: 50%;
+  background: #fff;
+  padding: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sec-advice .login-logo-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.sec-advice #login-page h2 { 
+  font-size: 22px; 
+  font-weight: 700; 
+  margin-bottom: 20px; 
+  color: var(--primary-color); 
+}
+
+.sec-advice .form-group { 
+  margin-bottom: 16px; 
+  text-align: left; 
+}
+
+.sec-advice .form-group label { 
+  display: block; 
+  margin-bottom: 6px; 
+  font-weight: 600; 
+  font-size: 13px; 
+  color: #4b5563; 
+}
+
+.sec-advice .form-control { 
+  width: 100%; 
+  padding: 11px 14px; 
+  border: 1.5px solid var(--gray-border); 
+  border-radius: 8px; 
+  font-size: 14px; 
+  outline: none; 
+  background: #ffffff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.sec-advice .form-control:focus { 
+  border-color: var(--primary-color); 
+  box-shadow: 0 0 0 3px rgba(43, 87, 154, 0.12);
+}
+
+.sec-advice select.form-control { 
+  height: 44px; 
+  cursor: pointer; 
+}
+
+.sec-advice .password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.sec-advice .password-wrapper .form-control {
+  padding-right: 44px; 
+}
+
+.sec-advice .password-toggle {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+
+.sec-advice .password-toggle:hover { color: var(--primary-color); }
+.sec-advice .password-toggle svg { width: 20px; height: 20px; }
+
+.sec-advice .btn { 
+  width: 100%; 
+  padding: 12px; 
+  border: none; 
+  border-radius: 8px; 
+  font-weight: 600; 
+  cursor: pointer; 
+  transition: all 0.2s; 
+  font-size: 14px; 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.sec-advice .btn-primary { 
+  background-color: var(--primary-color); 
+  color: white; 
+  box-shadow: 0 3px 8px rgba(43, 87, 154, 0.2); 
+}
+
+.sec-advice .btn-primary:active { 
+  background-color: var(--primary-hover); 
+  transform: scale(0.98); 
+}
+
+.sec-advice .btn-danger { 
+  background-color: var(--danger-color); 
+  color: white; 
+}
+
+.sec-advice .btn-danger:active {
+  background-color: var(--danger-hover);
+  transform: scale(0.98);
+}
+
+.sec-advice .btn-success { 
+  background-color: var(--success-color); 
+  color: white; 
+  width: auto; 
+  padding: 6px 14px; 
+  font-size: 12.5px; 
+  border-radius: 6px;
+}
+
+.sec-advice .btn-disabled { 
+  background-color: #cbd5e1 !important; 
+  color: #64748b !important; 
+  cursor: not-allowed; 
+}
+
+.sec-advice .spinner { 
+  display: inline-block; 
+  width: 16px; 
+  height: 16px; 
+  border: 2px solid rgba(255,255,255,.3); 
+  border-radius: 50%; 
+  border-top-color: #fff; 
+  animation: ad-spin 0.8s linear infinite; 
+}
+
+@keyframes ad-spin { to { transform: rotate(360deg); } }
+
+.sec-advice .alert { 
+  padding: 12px; 
+  margin-bottom: 14px; 
+  border-radius: 8px; 
+  display: none; 
+  font-size: 13px; 
+  font-weight: 500; 
+}
+
+.sec-advice .alert-success { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.sec-advice .alert-danger { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+.sec-advice .table-alert { 
+  padding: 10px; 
+  margin-bottom: 10px; 
+  border-radius: 6px; 
+  display: none; 
+  font-size: 13px; 
+  font-weight: 600; 
+  text-align: center; 
+}
+
+.sec-advice #main-dashboard { 
+  display: none; 
+  width: 100%;
+}
+
+/* ==================== 2. HEADER PANEL ==================== */
+.sec-advice .header-panel { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  background: #ffffff; 
+  padding: 16px 20px; 
+  border-radius: 12px; 
+  margin-bottom: 16px; 
+  box-shadow: var(--card-shadow); 
+  gap: 12px;
+  width: 100%;
+}
+
+.sec-advice .status-container { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  flex-wrap: wrap;
+}
+
+.sec-advice .btn-sync { 
+  background-color: #1e293b; 
+  color: white; 
+  padding: 8px 14px; 
+  border-radius: 20px; 
+  border: none; 
+  font-weight: 600; 
+  cursor: pointer; 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  font-size: 12.5px; 
+  transition: all 0.2s; 
+}
+
+.sec-advice .btn-sync:active { transform: scale(0.96); }
+.sec-advice .btn-sync svg { width: 14px; height: 14px; fill: currentColor; }
+.sec-advice .btn-sync.spinning svg { animation: ad-spin 1s linear infinite; }
+
+.sec-advice .realtime-indicator { 
+  display: inline-flex; 
+  align-items: center; 
+  gap: 6px; 
+  font-size: 12px; 
+  font-weight: 600; 
+  color: #374151; 
+  background: #f1f5f9;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.sec-advice .dot { 
+  width: 7px; 
+  height: 7px; 
+  background-color: #10b981; 
+  border-radius: 50%; 
+  display: inline-block; 
+}
+
+.sec-advice .live-clock { 
+  background-color: #f8fafc; 
+  padding: 6px 12px; 
+  border-radius: 20px; 
+  font-size: 12px; 
+  font-weight: 600; 
+  color: #334155; 
+  border: 1px solid #e2e8f0; 
+}
+
+/* ==================== 3. DASHBOARD GRID ==================== */
+.sec-advice .dashboard-grid { 
+  display: grid; 
+  grid-template-columns: 310px 1fr; 
+  gap: 18px; 
+  width: 100%;
+  align-items: start;
+}
+
+.sec-advice .card { 
+  background: #ffffff; 
+  padding: 20px; 
+  border-radius: 12px; 
+  box-shadow: var(--card-shadow); 
+  height: fit-content; 
+  width: 100%;
+  min-width: 0;
+}
+
+.sec-advice .card h3 { 
+  margin-bottom: 14px; 
+  padding-bottom: 8px; 
+  border-bottom: 2px solid var(--secondary-color); 
+  color: var(--primary-color); 
+  font-size: 16.5px; 
+}
+
+/* ==================== 4. STATISTIKA KARTALARI ==================== */
+.sec-advice .stats-mini-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.sec-advice .stat-box {
+  padding: 12px 8px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+              box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.25s ease;
+  will-change: transform;
+}
+
+.sec-advice .stat-box:hover {
+  transform: translateY(-5px) scale(1.02);
+}
+
+.sec-advice .stat-box:active {
+  transform: translateY(-2px) scale(0.99);
+}
+
+.sec-advice .stat-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sec-advice .stat-count {
+  font-size: 20px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.sec-advice .stat-total { background-color: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; }
+.sec-advice .stat-ijobiy { background-color: #dcfce7; color: #166534; border: 1px solid #86efac; }
+.sec-advice .stat-filial { background-color: #fef9c3; color: #854d0e; border: 1px solid #fde047; }
+.sec-advice .stat-vakolat { background-color: #ffedd5; color: #9a3412; border: 1px solid #fed7aa; }
+
+.sec-advice .stat-total:hover { box-shadow: 0 8px 20px rgba(100, 116, 139, 0.25); border-color: #94a3b8; }
+.sec-advice .stat-ijobiy:hover { box-shadow: 0 8px 20px rgba(34, 197, 94, 0.28); border-color: #4ade80; }
+.sec-advice .stat-filial:hover { box-shadow: 0 8px 20px rgba(234, 179, 8, 0.3); border-color: #facc15; }
+.sec-advice .stat-vakolat:hover { box-shadow: 0 8px 20px rgba(249, 115, 22, 0.28); border-color: #fb923c; }
+
+.sec-advice .stat-box.active-filter {
+  transform: translateY(-4px);
+  box-shadow: 0 0 0 3px var(--primary-color), 0 8px 16px rgba(0,0,0,0.12) !important;
+  position: relative;
+}
+
+.sec-advice .stat-box.active-filter::after {
+  content: "✓";
+  position: absolute;
+  top: 4px;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--primary-color);
+}
+
+.sec-advice .progress-stats-container {
+  background-color: #0f172a;
+  border-radius: 12px;
+  padding: 16px 14px;
+  margin-top: 14px;
+}
+
+.sec-advice .progress-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 6px;
+}
+
+.sec-advice .progress-stats-header h4 {
+  font-size: 13px;
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.sec-advice .progress-bars-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 440px;
+  overflow-y: auto;
+  padding-right: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #1e293b;
+}
+
+.sec-advice .progress-bars-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sec-advice .progress-bars-list::-webkit-scrollbar-track {
+  background: #1e293b;
+  border-radius: 8px;
+}
+
+.sec-advice .progress-bars-list::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 8px;
+}
+
+.sec-advice .progress-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.sec-advice .progress-item-name { color: #f1f5f9; font-weight: 600; }
+.sec-advice .progress-item-info { color: #94a3b8; font-size: 11px; }
+.sec-advice .progress-item-count { color: #38bdf8; font-weight: 700; }
+
+.sec-advice .progress-track {
+  width: 100%;
+  height: 6px;
+  background-color: #1e293b;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.sec-advice .progress-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+/* ==================== 5. JADVAL KARTASI VA HISOBOT TUGMALARI ==================== */
+.sec-advice #table-card { 
+  position: relative; 
+  min-height: 480px; 
+}
+
+.sec-advice .table-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--secondary-color);
+}
+
+.sec-advice .table-card-header h3 {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+  border-bottom: none !important;
+}
+
+.sec-advice .table-actions-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Excel tugmalari */
+.sec-advice .btn-excel {
+  background-color: #107c41;
+  color: white;
+  border: none;
+  padding: 8px 13px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sec-advice .btn-excel:hover { background-color: #0b5c30; }
+
+.sec-advice .btn-excel-date {
+  background-color: #0284c7;
+  color: white;
+  border: none;
+  padding: 8px 13px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sec-advice .btn-excel-date:hover { background-color: #0369a1; }
+
+.sec-advice .btn-excel-summary {
+  background-color: #7c3aed;
+  color: white;
+  border: none;
+  padding: 8px 13px;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.sec-advice .btn-excel-summary:hover { background-color: #6d28d9; }
+
+.sec-advice .search-container {
+  position: relative;
+  width: 240px;
+}
+
+.sec-advice .search-input {
+  width: 100%;
+  padding: 8px 12px 8px 34px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1.5px solid var(--gray-border);
+  border-radius: 20px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.sec-advice .search-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(43, 87, 154, 0.1);
+}
+
+.sec-advice .search-icon {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+
+.sec-advice .table-wrapper { 
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden; 
+  background: #ffffff; 
+  border-radius: 8px; 
+  border: 1px solid #e2e8f0;
+  position: relative; 
+  min-height: 280px; 
+}
+
+.sec-advice .table-wrapper::-webkit-scrollbar {
+  height: 6px;
+}
+.sec-advice .table-wrapper::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+.sec-advice .table-wrapper::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 6px;
+}
+
+.sec-advice table { 
+  width: 100%; 
+  border-collapse: collapse; 
+  text-align: left; 
+  font-size: 13px; 
+  table-layout: fixed; /* Ustunlar qat'iy o'z o'rnida turadi */
+}
+
+.sec-advice th, .sec-advice td { 
+  padding: 10px 8px; 
+  border-bottom: 1px solid #edf2f7; 
+  vertical-align: middle; 
+  white-space: nowrap; 
+  overflow: hidden; /* Matn qo'shni ustunga o'tib ketishini to'xtatadi */
+  text-overflow: ellipsis; /* Sig'may qolgan juda uzun so'zlar uch nuqta bilan tugaydi */
+}
+
+/* F.I.O ustuni uchun maxsus: uzun ismlar sig'ishi uchun */
+.sec-advice td:nth-child(4), .sec-advice th:nth-child(4) {
+  white-space: normal !important;
+  word-break: break-word !important;
+  line-height: 1.3;
+}
+
+/* Filial ustuni uchun */
+.sec-advice td:nth-child(3), .sec-advice th:nth-child(3) {
+  white-space: normal !important;
+  line-height: 1.25;
+}
+
+/* 7-ustun: Kelishdan Maqsad (Uzun matnlar pastga chiroyli tushishi uchun) */
+.sec-advice td:nth-child(7), .sec-advice th:nth-child(7) {
+  white-space: normal !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+  line-height: 1.35;
+  font-size: 12.5px;
+}
+
+.sec-advice th { 
+  background-color: var(--primary-color); 
+  color: white; 
+  font-weight: 600; 
+  white-space: nowrap; 
+}
+
+.sec-advice tr:hover { background-color: #f8fafc; }
+
+.sec-advice .pagination-wrapper { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-top: 14px; 
+  padding-top: 10px; 
+  border-top: 1px solid #edf2f7; 
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sec-advice .pagination-info { font-size: 12.5px; color: #64748b; font-weight: 500; }
+.sec-advice .pagination-buttons { display: flex; gap: 4px; }
+
+.sec-advice .page-btn { 
+  padding: 5px 10px; 
+  border: 1px solid #cbd5e1; 
+  background: white; 
+  cursor: pointer; 
+  border-radius: 6px; 
+  font-size: 12px; 
+  font-weight: 600; 
+}
+
+.sec-advice .page-btn.active { 
+  background-color: var(--primary-color); 
+  color: white; 
+  border-color: var(--primary-color); 
+}
+
+.sec-advice .table-loader-overlay { 
+  position: absolute; 
+  top: 90px; 
+  left: 0; 
+  width: 100%; 
+  height: calc(100% - 90px); 
+  background-color: rgba(255, 255, 255, 0.88); 
+  border-radius: 0 0 8px 8px; 
+  z-index: 99; 
+  display: none; 
+  flex-direction: column; 
+  justify-content: center; 
+  align-items: center; 
+  gap: 12px; 
+}
+
+.sec-advice .table-loader-circle { 
+  width: 36px; 
+  height: 36px; 
+  border: 3px solid rgba(43, 87, 154, 0.15); 
+  border-radius: 50%; 
+  border-top-color: var(--primary-color); 
+  animation: ad-spin 0.8s linear infinite; 
+}
+
+.sec-advice .table-loader-text { color: var(--primary-color); font-size: 13px; font-weight: 700; }
+
+/* Chora selectining o'lchamini ixcham va qat'iy qilish */
+.sec-advice .chora-select {
+  padding: 6px 8px;
+  width: 100%;
+  max-width: 165px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 6px;
+  outline: none;
+  border: 1.5px solid var(--gray-border);
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.sec-advice .chora-ijobiy { background-color: #d1fae5 !important; color: #065f46 !important; border-color: #10b981 !important; }
+.sec-advice .chora-filial { background-color: #fef3c7 !important; color: #92400e !important; border-color: #f59e0b !important; }
+.sec-advice .chora-vakolatsiz { background-color: #ffedd5 !important; color: #9a3412 !important; border-color: #f97316 !important; }
+
+/* ==================== 6. MODAL OYNALAR ==================== */
+.sec-advice .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.sec-advice .modal-card {
+  background: white;
+  padding: 24px;
+  border-radius: 14px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+  width: 100%;
+  max-width: 360px;
+  text-align: center;
+}
+
+.sec-advice .modal-icon { font-size: 34px; margin-bottom: 10px; }
+.sec-advice .modal-card h4 { font-size: 17px; color: var(--primary-color); margin-bottom: 8px; font-weight: 700; }
+.sec-advice .modal-card p { font-size: 13.5px; color: #4b5563; margin-bottom: 20px; line-height: 1.5; }
+.sec-advice .modal-buttons { display: flex; gap: 10px; justify-content: center; }
+
+.sec-advice .modal-buttons button {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sec-advice .btn-modal-yes { background-color: var(--danger-color); color: white; }
+.sec-advice .btn-modal-no { background-color: #f3f4f6; color: #1f2937; }
+
+/* ==================== 7. MOBIL KARTALAR ==================== */
+.sec-advice .mobile-cards-wrapper {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.sec-advice .mobile-record-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.sec-advice .m-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+.sec-advice .m-badge-id {
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 700;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.sec-advice .m-card-date {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.sec-advice .m-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.sec-advice .m-card-phone {
+  font-size: 13.5px;
+  color: #3b82f6;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.sec-advice .m-card-phone a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.sec-advice .m-card-tuman {
+  font-size: 12.5px;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.sec-advice .m-card-time-row {
+  display: flex;
+  gap: 15px;
+  background: #f8fafc;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #334155;
+  margin-bottom: 10px;
+}
+
+.sec-advice .m-card-purpose {
+  margin-bottom: 10px;
+}
+
+.sec-advice .m-card-purpose label,
+.sec-advice .m-card-actions label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.sec-advice .m-card-purpose p {
+  font-size: 13px;
+  color: #334155;
+  line-height: 1.4;
+  background: #fdfdfd;
+  border-left: 3px solid #cbd5e1;
+  padding-left: 8px;
+}
+
+.sec-advice .m-card-actions {
+  margin-bottom: 12px;
+}
+
+.sec-advice .m-card-actions .chora-select {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.sec-advice .m-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+}
+
+/* ==================== 8. MEDIA SO'ROVLAR ==================== */
+@media (max-width: 992px) {
+  .sec-advice .dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .sec-advice {
+    padding: 10px 8px;
+  }
+
+  .sec-advice .header-panel {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 12px;
+    gap: 12px;
+  }
+  .sec-advice .table-wrapper { 
+    overflow-x: auto; 
+    display: none !important;
+  }
+  .sec-advice #user-title { font-size: 17px !important; }
+  .sec-advice #tuman-badge { font-size: 12.5px !important; }
+
+  .sec-advice .status-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    gap: 6px;
+  }
+
+  .sec-advice .btn-sync {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+
+  .sec-advice .realtime-indicator {
+    padding: 6px 8px;
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
+  .sec-advice .live-clock { display: none; }
+
+  .sec-advice .status-container .btn-danger {
+    padding: 8px 14px !important;
+    font-size: 12px !important;
+    width: auto !important;
+  }
+
+  .sec-advice .card {
+    padding: 16px 12px;
+    border-radius: 12px;
+  }
+
+  .sec-advice .table-card-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .sec-advice .table-actions-wrapper {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .sec-advice .btn-excel, .sec-advice .btn-excel-date, .sec-advice .btn-excel-summary {
+    width: 100%;
+    justify-content: center;
+    padding: 10px;
+    font-size: 13px;
+  }
+
+  .sec-advice .search-container { width: 100%; }
+  .sec-advice .search-input { width: 100%; padding-top: 10px; padding-bottom: 10px; }
+
+  .sec-advice .table-wrapper { display: none !important; }
+  .sec-advice .mobile-cards-wrapper { display: flex !important; }
+
+  .sec-advice .pagination-wrapper {
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .sec-advice #login-page {
+    width: calc(100% - 32px);
+    max-width: 100%;
+    padding: 30px 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+}
+
+@media (max-width: 480px) {
+  .sec-advice { padding: 6px 4px; }
+  .sec-advice .stats-mini-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .sec-advice .stat-box { padding: 10px 4px; }
+  .sec-advice .stat-count { font-size: 17px; }
+  .sec-advice .stat-title { font-size: 10px; }
+}
