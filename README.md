@@ -45,6 +45,18 @@ Demo (`MOCK_DATA=1`) loginlari: `admin / admin123` (admin), `chust / chust123` (
 
 ## Ishga tushirish
 
+Netlify production konfiguratsiyasini loyiha sozlamalaridagi **Environment variables** orqali
+kiriting. `.env.local` faqat lokal ishlab chiqish uchun; haqiqiy URL, sheet ID va maxfiy kalitlarni
+repozitoriyga yoki `NEXT_PUBLIC_` o'zgaruvchilariga joylamang. `.env.example` faqat bo'sh maydonlar
+va maxfiy bo'lmagan sozlamalarni saqlaydi.
+
+Netlify secrets scanning yoqilgan holda qoldirildi. `netlify.toml` faqat ommaviy varaq nomlari
+bo'lgan `PAYMENT_SHEET_MAIN` va `PAYMENT_SHEET_PLAN` uchun istisno belgilaydi: bu nomlar kodda
+va hujjatlarda ham ishlatiladi. Sheet ID, Apps Script URL va maxfiy kalitlar tekshiruvdan chiqarilmagan.
+Agar deploy yana bloklansa, logdagi aniqlangan fayl yo'llari va o'zgaruvchi nomlarini tekshiring;
+maxfiy qiymatlarni logga chiqarmang va tekshiruvni butunlay o'chirmang. Oldin oshkor qilingan
+kalitlarni almashtiring; Git tarixini tozalash alohida muvofiqlashtirilishi kerak.
+
 ```bash
 cp .env.example .env.local     # ID va URL'larni to'ldiring
 npm install
