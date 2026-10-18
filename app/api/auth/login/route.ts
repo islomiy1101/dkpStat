@@ -3,7 +3,7 @@ import { loginWithSheet } from "@/lib/auth-server";
 import { setUser } from "@/lib/auth";
 import { isHttps } from "@/lib/session";
 import { invalidate } from "@/lib/cache";
-import { GEO_MAX_ACCURACY_M, mapsUrl } from "@/lib/geo";
+import { mapsUrl } from "@/lib/geo";
 
 export const dynamic = "force-dynamic";
 
@@ -19,15 +19,9 @@ export async function POST(req: Request) {
   const lat = Number(body.lat), lng = Number(body.lng), accuracy = Number(body.accuracy);
 
   if (!login || !password) return NextResponse.json({ success: false, message: "Login va parolni kiriting!" }, { status: 400 });
-  // Lokatsiya majburiy va aniq bo'lishi shart (frontend ham tekshiradi, server ham)
+  // Lokatsiya majburiy (istalgan joydan kirish mumkin, aniqlik bo'yicha cheklov yo'q — faqat jurnalga yoziladi)
   if (![lat, lng, accuracy].every(Number.isFinite) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || accuracy <= 0) {
     return NextResponse.json({ success: false, message: "Kirish uchun joylashuvga ruxsat berish shart!" }, { status: 400 });
-  }
-  if (accuracy > GEO_MAX_ACCURACY_M) {
-    return NextResponse.json(
-      { success: false, message: `Joylashuv aniqligi yetarli emas: ±${Math.round(accuracy)} m (talab: ±${GEO_MAX_ACCURACY_M} m gacha).` },
-      { status: 400 }
-    );
   }
   const location = mapsUrl({ lat, lng });
 

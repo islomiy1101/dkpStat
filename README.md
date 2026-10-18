@@ -51,11 +51,11 @@ Google Sheet'da, ikkita varaqda turadi:
 5. Sheet'ni "havola orqali" **ulashmang**. Unga faqat skript murojaat qiladi, parollar tashqariga chiqmaydi.
 
 **Qanday ishlaydi:**
-- Kirishda joylashuv **±50 m** aniqlikda aniqlanishi shart (`NEXT_PUBLIC_GEO_MAX_ACCURACY_M`). Brauzer 20 soniya
-  ichida eng aniq nuqtani qidiradi, tugmada jonli "±N m" ko'rinadi. Ruxsat berilmasa yoki aniqlik yetmasa,
-  kirish bloklanadi va yo'riqnoma ko'rsatiladi (server ham tekshiradi).
-  Kompyuterda GPS yo'q — aniqlik Wi-Fi'ga bog'liq, shuning uchun Wi-Fi yoqilgan bo'lishi kerak.
-  Brauzer koordinatasini soxtalashtirishdan to'liq himoya qilib bo'lmaydi; server faqat aniqlikni tekshiradi.
+- Kirishda brauzer joylashuvni so'raydi; ruxsat berilmasa kirish bloklanadi va yo'riqnoma ko'rsatiladi
+  (server ham tekshiradi). Kirish **istalgan joydan** mumkin — aniqlik bo'yicha cheklov yo'q.
+- Koordinata imkon qadar aniq olinadi: 20 soniyagacha GPS/Wi-Fi nuqtalari kuzatiladi va eng aniqi tanlanadi
+  (±15 m ga yetsa darhol), tugmada jonli "±N m" ko'rinadi. Kompyuterda GPS yo'q — aniqlik Wi-Fi'ga bog'liq.
+  Brauzer koordinatasini soxtalashtirishdan to'liq himoya qilib bo'lmaydi.
 - Muvaffaqiyatli kirishda `Logs` ga Branch, FullName, Department, Login, DateTime (Asia/Tashkent), Ip
   (`X-Forwarded-For`), Location (Google Maps havolasi) va Accuracy (metr) yoziladi.
   Eski `Logs` varag'iga `Accuracy` ustuni avtomatik qo'shiladi.
