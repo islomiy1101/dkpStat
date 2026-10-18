@@ -4,6 +4,7 @@ import "@/styles/deadline.css";
 import "@/styles/payment.css";
 import "@/styles/advice.css";
 import "@/styles/logs.css";
+import "@/styles/upload.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

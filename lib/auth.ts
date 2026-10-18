@@ -1,12 +1,14 @@
 import crypto from "node:crypto";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { config } from "./config";
+import { canSee, firstAllowedHref, parseRole, type AreaId, type Role } from "./roles";
 
 /**
  * Saytga kirish sessiyasi (Users varag'i). Imzolangan httpOnly cookie.
- * Advice bo'limining o'z sessiyasi (lib/session.ts) bundan alohida.
+ * Rol va ruxsatlar: lib/roles.ts.
  */
-export type Role = "admin" | "user";
+export type { Role };
 export type AppUser = {
   login: string;
   fullName: string;
@@ -36,7 +38,7 @@ export function decodeUser(raw: string | undefined): AppUser | null {
   try {
     const u = JSON.parse(Buffer.from(payload, "base64url").toString()) as AppUser;
     if (Date.now() - u.loginTime >= ttlMs()) return null;
-    return u;
+    return { ...u, role: parseRole(u.role) }; // eski cookie'dagi "admin"/"user" ham o'qiladi
   } catch {
     return null;
   }
@@ -69,4 +71,23 @@ export function authError() {
 }
 export function forbidden() {
   return Response.json({ error: "forbidden", message: "Ruxsat yo'q" }, { status: 403 });
+}
+
+/**
+ * API route'lar uchun: foydalanuvchi shu bo'limga kira oladimi.
+ * Natija Response bo'lsa — uni qaytarish kerak (401 yoki 403).
+ */
+export async function requireArea(id: AreaId): Promise<AppUser | Response> {
+  const u = await getUser();
+  if (!u) return authError();
+  if (!canSee(u.role, id)) return forbidden();
+  return u;
+}
+
+/** Sahifalar uchun: sessiya yo'q bo'lsa /login, ruxsat yo'q bo'lsa birinchi ruxsat etilgan bo'limga */
+export async function guardPage(id: AreaId) {
+  const u = await getUser();
+  if (!u) redirect("/login");
+  if (!canSee(u.role, id)) redirect(firstAllowedHref(u.role));
+  return u;
 }

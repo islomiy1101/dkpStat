@@ -7,7 +7,6 @@ export const TUMANLAR = [
 ];
 
 export const ITEMS_PER_PAGE = 7;
-export const SESSION_TIMEOUT = 10_800_000; // 3 soat
 
 export function normalizeName(str: unknown) {
   if (!str) return "";
@@ -78,5 +77,3 @@ export function getLatestDailyAppeals(list: Murojaat[], forExportOnly = false) {
   }
   return Array.from(map.values());
 }
-
-export { getUserLocation } from "@/lib/geo";

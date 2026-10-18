@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
-import { getUser, authError, forbidden } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { fetchLogs } from "@/lib/auth-server";
 import { cached } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
 
-/** Faqat admin: kirishlar tarixi (eng yangisi birinchi) */
+/** Faqat superadmin: kirishlar tarixi (eng yangisi birinchi) */
 export async function GET(req: Request) {
-  const u = await getUser();
-  if (!u) return authError();
-  if (u.role !== "admin") return forbidden();
+  const u = await requireArea("logs");
+  if (u instanceof Response) return u;
   const fresh = new URL(req.url).searchParams.has("fresh");
   try {
     const logs = await cached("auth:logs", 15_000, () => fetchLogs(), { fresh });

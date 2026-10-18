@@ -1,5 +1,7 @@
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
+import { SECTIONS } from "@/lib/sections";
+import { canSee } from "@/lib/roles";
 import Sidebar from "@/components/Sidebar";
 import { DataProvider } from "@/components/DataProvider";
 
@@ -8,9 +10,11 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const user = await getUser();
   if (!user) redirect("/login");
   const { login, fullName, branch, department, role } = user;
+  // Faqat ruxsat etilgan bo'limlar yuklanadi va sidebar'da ko'rinadi
+  const allowed = SECTIONS.filter((s) => canSee(role, s.id)).map((s) => s.id);
 
   return (
-    <DataProvider>
+    <DataProvider allowed={allowed}>
       <div className="app-shell">
         <Sidebar user={{ login, fullName, branch, department, role }} />
         <main className="app-main">{children}</main>

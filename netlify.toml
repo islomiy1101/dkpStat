@@ -2,4 +2,4 @@
   # Worksheet labels and the cache duration are non-sensitive configuration.
   # Their values also occur in source, documentation or the environment template.
   # Keep scanning enabled for sheet IDs, Apps Script URLs and all secrets.
-  SECRETS_SCAN_OMIT_KEYS = "PAYMENT_SHEET_MAIN,PAYMENT_SHEET_PLAN,CACHE_TTL_MS"
+  SECRETS_SCAN_OMIT_KEYS = "PAYMENT_SHEET_MAIN,PAYMENT_SHEET_PLAN,DEADLINE_SHEET_NAME,CACHE_TTL_MS"

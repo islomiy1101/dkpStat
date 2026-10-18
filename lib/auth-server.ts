@@ -2,12 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "./config";
 import { MOCK } from "./mock";
-import type { Role } from "./auth";
+import { parseRole, type Role } from "./roles";
 
 export type LoginUser = { login: string; fullName: string; branch: string; department: string; role: Role };
 export type LogRow = {
   branch: string; fullName: string; department: string; login: string;
-  dateTime: string; ip: string; location: string;
+  dateTime: string; ip: string; location: string; accuracy: string;
 };
 
 type ScriptRes<T> = { success: boolean; message?: string } & T;
@@ -23,7 +23,14 @@ async function callAuthScript<T>(payload: Record<string, unknown>): Promise<Scri
     body: JSON.stringify({ ...payload, secret: config.authApiSecret }),
     cache: "no-store",
   });
-  return (await res.json()) as ScriptRes<T>;
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as ScriptRes<T>;
+  } catch {
+    // JSON o'rniga HTML keldi — odatda deploy "Who has access: Anyone" emas yoki URL /exec emas
+    console.error("[auth] Apps Script JSON qaytarmadi:", res.status, text.slice(0, 300));
+    return { success: false, message: `Apps Script javobi noto'g'ri (HTTP ${res.status}). Deploy sozlamasini tekshiring.` } as ScriptRes<T>;
+  }
 }
 
 /* ---------- MOCK (MOCK_DATA=1) ---------- */
@@ -47,7 +54,7 @@ const nowStr = () => {
 };
 
 /* ---------- public ---------- */
-export async function loginWithSheet(login: string, password: string, ip: string, location: string) {
+export async function loginWithSheet(login: string, password: string, ip: string, location: string, accuracy: number) {
   if (MOCK) {
     const u = (await mockUsers()).find((x) => x.login.toLowerCase() === login.trim().toLowerCase() && x.password === password.trim());
     if (!u) return { success: false as const, message: "Login yoki parol noto'g'ri!" };
@@ -55,12 +62,15 @@ export async function loginWithSheet(login: string, password: string, ip: string
     void _p;
     const { role: _r, ...who } = user;
     void _r;
-    (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location });
-    return { success: true as const, user };
+    (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location, accuracy: String(accuracy) });
+    return { success: true as const, user: { ...user, role: parseRole(user.role) } };
   }
-  const r = await callAuthScript<{ user?: LoginUser }>({ action: "login", login, password, ip, location });
-  if (!r.success || !r.user) return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
-  return { success: true as const, user: r.user };
+  const r = await callAuthScript<{ user?: LoginUser }>({ action: "login", login, password, ip, location, accuracy });
+  if (!r.success || !r.user) {
+    if (r.message && r.message.startsWith("Forbidden")) console.error("[auth]", r.message);
+    return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
+  }
+  return { success: true as const, user: { ...r.user, role: parseRole(r.user.role) } };
 }
 
 export async function fetchLogs(limit = 5000): Promise<LogRow[]> {
@@ -68,4 +78,20 @@ export async function fetchLogs(limit = 5000): Promise<LogRow[]> {
   const r = await callAuthScript<{ logs?: LogRow[] }>({ action: "getLogs", limit });
   if (!r.success) throw new Error(r.message || "Loglarni olishda xatolik");
   return r.logs || [];
+}
+
+/**
+ * Bazaga yuklash: varaqlarni butunlay almashtirish (Apps Script → importSheets).
+ * Skript avval zaxira nusxa oladi; birorta varaq yozilmasa — hammasi zaxiradan tiklanadi.
+ */
+export async function importSheets(
+  spreadsheetId: string,
+  sheets: { name: string; values: unknown[][] }[],
+  meta: { section: string; login: string; fullName: string; fileName: string }
+): Promise<{ success: boolean; message?: string; rows?: Record<string, number> }> {
+  if (MOCK) {
+    return { success: true, message: "Demo: Sheets'ga yozilmadi", rows: Object.fromEntries(sheets.map((s) => [s.name, s.values.length - 1])) };
+  }
+  if (!spreadsheetId) return { success: false, message: `${meta.section} uchun Sheet ID sozlanmagan` };
+  return callAuthScript<{ rows?: Record<string, number> }>({ action: "importSheets", spreadsheetId, sheets, meta });
 }

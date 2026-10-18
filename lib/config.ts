@@ -3,8 +3,9 @@
  * va brauzerga hech qachon chiqmaydi (NEXT_PUBLIC_ prefiksi yo'q).
  */
 export const config = {
-  /** "Rollar kesimida tahlil" — Django API (masalan: https://xxx.ngrok-free.dev/api) */
-  deadlineApiBase: (process.env.DEADLINE_API_BASE || "").replace(/\/+$/, ""),
+  /** "Rollar kesimida tahlil" Google Sheet (xom qatorlar: Ariza raqami · Tuman · Manba · Rol · Kun) */
+  deadlineSheetId: process.env.DEADLINE_SHEET_ID || "",
+  deadlineSheetName: process.env.DEADLINE_SHEET_NAME || "Arizalar",
 
   /** "To'lov kutilmoqda" Google Sheet */
   paymentSheetId: process.env.PAYMENT_SHEET_ID || "",
@@ -16,8 +17,8 @@ export const config = {
   adviceAppsScriptUrl: process.env.ADVICE_APPS_SCRIPT_URL || "",
 
   /** Saytga kirish (Users/Logs sheet'idagi Apps Script) */
-  authAppsScriptUrl: process.env.AUTH_APPS_SCRIPT_URL || "",
-  authApiSecret: process.env.AUTH_APPS_SCRIPT_SECRET || "",
+  authAppsScriptUrl: (process.env.AUTH_APPS_SCRIPT_URL || "").trim(),
+  authApiSecret: (process.env.AUTH_APPS_SCRIPT_SECRET || "").trim(),
   /** Sayt sessiyasi muddati (soat) */
   authSessionHours: Number(process.env.AUTH_SESSION_HOURS || 12),
 
@@ -28,5 +29,3 @@ export const config = {
   cacheTtlMs: Number(process.env.CACHE_TTL_MS || 30_000),
 };
 
-/** Advice sessiyasi muddati — originaldagi SESSION_TIMEOUT (3 soat) */
-export const SESSION_TIMEOUT_MS = 3 * 60 * 60 * 1000;

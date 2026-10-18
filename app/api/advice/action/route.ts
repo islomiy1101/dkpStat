@@ -1,7 +1,7 @@
-import { getUser, authError } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getSession, isSuperAdminTuman, normalizeName } from "@/lib/session";
-import { callAppsScript } from "@/lib/advice-server";
+import { isSuperAdminTuman, normalizeName } from "@/lib/session";
+import { callAppsScript, adviceSessionFor } from "@/lib/advice-server";
 import { invalidate } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
@@ -9,9 +9,9 @@ export const dynamic = "force-dynamic";
 const ACTIONS = new Set(["saveMurojaat", "setKetdiVaqti", "updateNatija"]);
 
 export async function POST(req: Request) {
-  if (!(await getUser())) return authError();
-  const s = await getSession();
-  if (!s) return NextResponse.json({ success: false, message: "Sessiya tugagan. Qaytadan kiring." }, { status: 401 });
+  const u = await requireArea("advice");
+  if (u instanceof Response) return u;
+  const s = adviceSessionFor(u);
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = String(body.action || "");

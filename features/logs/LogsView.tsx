@@ -140,9 +140,10 @@ export default function LogsView() {
         "Bo'lim": l.department,
         IP: l.ip,
         Joylashuv: l.location,
+        "Aniqlik (m)": l.accuracy,
       }))
     );
-    ws["!cols"] = [6, 20, 30, 16, 24, 22, 16, 44].map((wch) => ({ wch }));
+    ws["!cols"] = [6, 20, 30, 16, 24, 22, 16, 44, 12].map((wch) => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Kirishlar");
     XLSX.writeFile(wb, `Kirishlar_tarixi_${ymd(new Date())}.xlsx`);
@@ -250,14 +251,15 @@ export default function LogsView() {
                 <th>Bo&apos;lim</th>
                 <th style={{ width: 130 }}>IP</th>
                 <th style={{ width: 110 }}>Joylashuv</th>
+                <th style={{ width: 80 }}>Aniqlik</th>
               </tr>
             </thead>
             <tbody>
               {error && (
-                <tr><td colSpan={8} className="lg-empty lg-error"><i className="fa-solid fa-triangle-exclamation" /> {error}</td></tr>
+                <tr><td colSpan={9} className="lg-empty lg-error"><i className="fa-solid fa-triangle-exclamation" /> {error}</td></tr>
               )}
               {!error && logs && rows.length === 0 && (
-                <tr><td colSpan={8} className="lg-empty">{hasFilter ? "Filtr bo'yicha yozuv topilmadi" : "Hozircha kirishlar yo'q"}</td></tr>
+                <tr><td colSpan={9} className="lg-empty">{hasFilter ? "Filtr bo'yicha yozuv topilmadi" : "Hozircha kirishlar yo'q"}</td></tr>
               )}
               {rows.map((l, i) => {
                 const [d, t] = l.dateTime.split(" ");
@@ -278,6 +280,7 @@ export default function LogsView() {
                         <span className="lg-muted">{l.location || "—"}</span>
                       )}
                     </td>
+                    <td className="lg-muted">{l.accuracy ? `±${l.accuracy} m` : "—"}</td>
                   </tr>
                 );
               })}

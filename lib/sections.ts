@@ -10,7 +10,7 @@ export const SECTIONS = [
     title: "Rollar kesimida tahlil",
     subtitle: "Arizalar muddati · Свод",
     icon: "fa-solid fa-chart-line",
-    source: "Django API",
+    source: "Google Sheets",
   },
   {
     id: "payment",

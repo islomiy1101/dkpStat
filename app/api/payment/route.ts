@@ -1,4 +1,5 @@
-import { getUser, authError } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
+import { isGlobal, sameBranch } from "@/lib/roles";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { cached } from "@/lib/cache";
@@ -52,11 +53,20 @@ async function load(): Promise<PaymentData> {
 }
 type PaymentRowCells = NonNullable<import("@/lib/gviz").GvizRow["c"]>;
 
+/** Filial rollari faqat o'z filialining qatorlari va rejasini oladi (kesh umumiy, filtr keshdan keyin) */
+function scopeToBranch(data: PaymentData, branch: string): PaymentData {
+  const plan: Record<string, number> = {};
+  for (const [dist, v] of Object.entries(data.plan)) if (sameBranch(dist, branch)) plan[dist] = v;
+  return { plan, rows: data.rows.filter((r) => sameBranch(r.district, branch)) };
+}
+
 export async function GET(req: Request) {
-  if (!(await getUser())) return authError();
+  const u = await requireArea("payment");
+  if (u instanceof Response) return u;
   const fresh = new URL(req.url).searchParams.has("fresh");
   try {
-    const data = await cached("payment", config.cacheTtlMs, load, { fresh });
+    const all = await cached("payment", config.cacheTtlMs, load, { fresh });
+    const data = isGlobal(u.role) ? all : scopeToBranch(all, u.branch);
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });

@@ -3,7 +3,7 @@ import path from "node:path";
 
 /**
  * DEMO / lokal ishlab chiqish rejimi: MOCK_DATA=1 bo'lsa, tashqi manbalar o'rniga
- * mock/*.json fayllari ishlatiladi (Google Sheets va Django'siz UI'ni sinash uchun).
+ * mock/*.json fayllari ishlatiladi (Google Sheets'siz UI'ni sinash uchun).
  */
 export const MOCK = process.env.MOCK_DATA === "1";
 
