@@ -79,3 +79,19 @@ export async function fetchLogs(limit = 5000): Promise<LogRow[]> {
   if (!r.success) throw new Error(r.message || "Loglarni olishda xatolik");
   return r.logs || [];
 }
+
+/**
+ * Bazaga yuklash: varaqlarni butunlay almashtirish (Apps Script → importSheets).
+ * Skript avval zaxira nusxa oladi; birorta varaq yozilmasa — hammasi zaxiradan tiklanadi.
+ */
+export async function importSheets(
+  spreadsheetId: string,
+  sheets: { name: string; values: unknown[][] }[],
+  meta: { section: string; login: string; fullName: string; fileName: string }
+): Promise<{ success: boolean; message?: string; rows?: Record<string, number> }> {
+  if (MOCK) {
+    return { success: true, message: "Demo: Sheets'ga yozilmadi", rows: Object.fromEntries(sheets.map((s) => [s.name, s.values.length - 1])) };
+  }
+  if (!spreadsheetId) return { success: false, message: `${meta.section} uchun Sheet ID sozlanmagan` };
+  return callAuthScript<{ rows?: Record<string, number> }>({ action: "importSheets", spreadsheetId, sheets, meta });
+}

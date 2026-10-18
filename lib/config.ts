@@ -3,8 +3,9 @@
  * va brauzerga hech qachon chiqmaydi (NEXT_PUBLIC_ prefiksi yo'q).
  */
 export const config = {
-  /** "Rollar kesimida tahlil" — Django API (masalan: https://xxx.ngrok-free.dev/api) */
-  deadlineApiBase: (process.env.DEADLINE_API_BASE || "").replace(/\/+$/, ""),
+  /** "Rollar kesimida tahlil" Google Sheet (xom qatorlar: Ariza raqami · Tuman · Manba · Rol · Kun) */
+  deadlineSheetId: process.env.DEADLINE_SHEET_ID || "",
+  deadlineSheetName: process.env.DEADLINE_SHEET_NAME || "Arizalar",
 
   /** "To'lov kutilmoqda" Google Sheet */
   paymentSheetId: process.env.PAYMENT_SHEET_ID || "",

@@ -11,6 +11,14 @@
  *     Olingan .../exec URL → AUTH_APPS_SCRIPT_URL.
  *  5. Sheet'ni hech kim bilan "havola orqali" ulashmang — unga faqat shu skript murojaat qiladi.
  *
+ * BAZAGA YUKLASH (importSheets — /upload sahifasi, faqat superadmin):
+ *  6. Script Properties → "IMPORT_TARGETS" qo'shing — qaysi sheet'ning qaysi varaqlariga yozish mumkin (JSON):
+ *       {"<PAYMENT_SHEET_ID>": ["TolovKutilmoqda", "TolovReja"], "<DEADLINE_SHEET_ID>": ["Arizalar"]}
+ *  7. Skript egasi (Execute as: Me) shu sheet'larga "Editor" huquqiga ega bo'lishi kerak.
+ *  8. Kod o'zgargach: Deploy → Manage deployments → Edit → Version: New version (URL o'zgarmaydi).
+ *     Birinchi marta openById uchun ruxsat so'raladi — muharrirda istalgan funksiyani bir marta ishga tushiring.
+ *  Har bir yuklash UploadLogs varag'iga yoziladi.
+ *
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
  *  Users: Branch | FullName | Department | Login | Password | Role
  *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | superadmin
@@ -27,6 +35,9 @@ const LOG_HEADERS = ["Branch", "FullName", "Department", "Login", "DateTime", "I
 const TZ = "Asia/Tashkent";
 const MAX_FAILS = 5;            // ketma-ket noto'g'ri urinishlar
 const LOCK_SECONDS = 10 * 60;   // bloklash muddati
+const UPLOAD_LOGS_SHEET = "UploadLogs";
+const UPLOAD_LOG_HEADERS = ["DateTime", "Login", "FullName", "Section", "FileName", "Sheets", "Rows", "Status"];
+const BACKUP_SUFFIX = "__backup";
 
 function doPost(e) {
   let result;
@@ -42,6 +53,8 @@ function doPost(e) {
       result = login_(req.login, req.password, req.ip, req.location, req.accuracy);
     } else if (req.action === "getLogs") {
       result = getLogs_(Number(req.limit) || 5000);
+    } else if (req.action === "importSheets") {
+      result = importSheets_(req.spreadsheetId, req.sheets, req.meta || {});
     } else if (req.action === "ping") {
       result = { success: true };
     } else {
@@ -199,4 +212,101 @@ function getLogs_(limit) {
   }).reverse(); // eng yangisi birinchi
 
   return { success: true, logs: logs, total: lastRow - 1 };
+}
+
+/* ---------------- bazaga yuklash ---------------- */
+
+/** Next.js { $date: "YYYY-MM-DDTHH:mm:ss" } → Date (skript vaqt zonasida) */
+function toCell_(v) {
+  if (v && typeof v === "object" && v.$date) {
+    const m = String(v.$date).match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})$/);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]);
+    return String(v.$date);
+  }
+  return v == null ? "" : v;
+}
+
+/**
+ * Bir sheet'dagi bir nechta varaqni to'liq almashtirish.
+ * 1) har bir varaqdan yashirin zaxira nusxa  2) tozalash va yozish
+ * 3) muvaffaqiyat — zaxiralar o'chiriladi; xato — HAMMA varaq zaxiradan tiklanadi.
+ */
+function importSheets_(spreadsheetId, sheets, meta) {
+  const allowed = JSON.parse(PropertiesService.getScriptProperties().getProperty("IMPORT_TARGETS") || "{}");
+  const names = (sheets || []).map(function (s) { return String(s.name); });
+  if (!names.length) return { success: false, message: "Yoziladigan varaq yo'q" };
+  const okList = allowed[spreadsheetId] || [];
+  const denied = names.filter(function (n) { return okList.indexOf(n) === -1; });
+  if (denied.length) {
+    return { success: false, message: "Ruxsat etilmagan varaq(lar): " + denied.join(", ") + " (Script Properties → IMPORT_TARGETS)" };
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const backups = [];
+  const rows = {};
+  try {
+    // 1) zaxira
+    sheets.forEach(function (s) {
+      const sheet = ss.getSheetByName(s.name) || ss.insertSheet(s.name);
+      const old = ss.getSheetByName(s.name + BACKUP_SUFFIX);
+      if (old) ss.deleteSheet(old);
+      const backup = sheet.copyTo(ss).setName(s.name + BACKUP_SUFFIX);
+      backup.hideSheet();
+      backups.push({ sheet: sheet, backup: backup });
+    });
+
+    // 2) yozish
+    try {
+      sheets.forEach(function (s, i) {
+        const sheet = backups[i].sheet;
+        const values = (s.values || []).map(function (r) { return r.map(toCell_); });
+        if (!values.length) throw new Error(s.name + ": ma'lumot yo'q");
+        const width = values[0].length;
+        sheet.clearContents();
+        if (sheet.getMaxRows() < values.length) sheet.insertRowsAfter(sheet.getMaxRows(), values.length - sheet.getMaxRows());
+        if (sheet.getMaxColumns() < width) sheet.insertColumnsAfter(sheet.getMaxColumns(), width - sheet.getMaxColumns());
+        sheet.getRange(1, 1, values.length, width).setValues(values);
+        rows[s.name] = values.length - 1;
+      });
+      SpreadsheetApp.flush();
+    } catch (err) {
+      // 3a) tiklash
+      backups.forEach(function (b) {
+        b.sheet.clearContents();
+        b.backup.getDataRange().copyTo(b.sheet.getRange(1, 1));
+      });
+      SpreadsheetApp.flush();
+      logUpload_(meta, names, rows, "XATO: " + err);
+      return { success: false, message: "Yozishda xatolik, eski ma'lumot tiklandi: " + err };
+    }
+
+    // 3b) zaxiralarni o'chirish
+    backups.forEach(function (b) { ss.deleteSheet(b.backup); });
+    logUpload_(meta, names, rows, "OK");
+    return { success: true, rows: rows };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function logUpload_(meta, names, rows, status) {
+  try {
+    let sheet = ss_().getSheetByName(UPLOAD_LOGS_SHEET);
+    if (!sheet) {
+      sheet = ss_().insertSheet(UPLOAD_LOGS_SHEET);
+      sheet.appendRow(UPLOAD_LOG_HEADERS);
+      sheet.setFrozenRows(1);
+    }
+    sheet.appendRow([
+      Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd HH:mm:ss"),
+      clean_(meta.login), clean_(meta.fullName), clean_(meta.section), clean_(meta.fileName),
+      names.join(", "),
+      names.map(function (n) { return n + ": " + (rows[n] == null ? "-" : rows[n]); }).join(", "),
+      status,
+    ]);
+  } catch (e) {
+    // jurnalga yozilmasa ham yuklash natijasi o'zgarmaydi
+  }
 }

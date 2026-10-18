@@ -55,7 +55,7 @@ const FETCHERS: { [K in SectionId]: (fresh: boolean) => Promise<DataMap[K]> } = 
   deadline: async (fresh) => {
     const json = await getJson(`/api/deadline/summary${fresh ? "?fresh=1" : ""}`);
     if (json.status === "success" && json.summary) return json.summary as DeadlineData;
-    throw new Error(json.message || "Django javobi noto'g'ri");
+    throw new Error(json.message || "Javob noto'g'ri");
   },
   payment: async (fresh) => (await getJson(`/api/payment${fresh ? "?fresh=1" : ""}`)) as PaymentData,
   advice: async (fresh) => (await getJson(`/api/advice/data${fresh ? "?fresh=1" : ""}`)) as AdvicePayload,

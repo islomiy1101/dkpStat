@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSection } from "@/components/DataProvider";
 import { useClock, fmtDate, fmtTime, downloadBlob } from "@/lib/useClock";
 import {
@@ -41,10 +41,8 @@ export default function DeadlineView() {
   const [groupStates, setGroupStates] = useState<Record<string, boolean>>(DEFAULT_GROUPS);
   const [manbaFilters, setManbaFilters] = useState<string[]>([]);
   const [localLoading, setLocalLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [drill, setDrill] = useState<Drill>({ open: false, loading: false, title: "", headers: [], data: [], message: null });
-  const fileRef = useRef<HTMLInputElement>(null);
 
   // localStorage'dagi ochiq/yopiq guruhlar (original bilan bir xil kalit)
   useEffect(() => {
@@ -82,35 +80,6 @@ export default function DeadlineView() {
     setLocalLoading(true);
     await slot.refresh(true);
     setLocalLoading(false);
-  };
-
-  const uploadExcelFile = async () => {
-    const input = fileRef.current;
-    if (!input || !input.files || !input.files.length) {
-      alert("Iltimos, avval Excel faylni tanlang!");
-      return;
-    }
-    const formData = new FormData();
-    formData.append("file", input.files[0]);
-    setUploading(true);
-    try {
-      const res = await fetch("/api/deadline/upload", { method: "POST", body: formData });
-      const json = await res.json();
-      if (json.status === "success") {
-        alert("✅ " + json.message);
-        setUploading(false);
-        setLocalLoading(true);
-        await slot.refresh(true);
-        setLocalLoading(false);
-      } else {
-        alert("❌ Xatolik: " + json.message);
-      }
-    } catch {
-      alert("❌ Tarmoq uzildi! Server yoniq ekanligiga ishonch hosil qiling.");
-    } finally {
-      setUploading(false);
-      input.value = "";
-    }
   };
 
   const openDrilldownModal = async (ctx: DrillCtx) => {
@@ -163,7 +132,7 @@ export default function DeadlineView() {
   };
 
   const jami = table["Viloyat jami"] || {};
-  const showMainLoader = (slot.status === "loading" && !slot.data) || uploading;
+  const showMainLoader = slot.status === "loading" && !slot.data;
   const hidden = (secId: string) => (groupStates[secId] === false ? { display: "none" as const } : undefined);
 
   const renderCell = (cells: RowCells, key: string, cls: string, secId: string) => {
@@ -187,7 +156,7 @@ export default function DeadlineView() {
         <div id="main-loader">
           <div className="spinner" />
           <h3 style={{ color: "#0284c7", marginTop: 10, fontWeight: 600, fontSize: 13 }}>
-            {uploading ? "Fayl yuklanmoqda va o'qilmoqda, kuting..." : "Ma'lumotlar yuklanmoqda..."}
+            Ma&apos;lumotlar yuklanmoqda...
           </h3>
         </div>
       )}
@@ -214,14 +183,6 @@ export default function DeadlineView() {
           <button onClick={refreshPageData} className="btn-action-panel" title="Ma'lumotlarni yangilash">
             <i className="fa-solid fa-rotate" /> Yangilash
           </button>
-
-          <div className="upload-card">
-            <span className="upload-label"><i className="fa-solid fa-cloud-arrow-up" /> Bazani yangilash:</span>
-            <div className="upload-controls">
-              <input type="file" id="excelFileInput" ref={fileRef} accept=".xlsx, .xls" />
-              <button onClick={uploadExcelFile} className="btn-upload">Yuklash ⚡</button>
-            </div>
-          </div>
         </div>
       </header>
 
