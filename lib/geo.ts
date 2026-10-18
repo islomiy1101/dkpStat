@@ -1,6 +1,3 @@
-/** Shu aniqlikka yetganda kutish to'xtatiladi (undan yomoni ham qabul qilinadi — eng aniq nuqta olinadi) */
-const GOOD_ACCURACY_M = 15;
-
 export type GeoFix = { lat: number; lng: number; accuracy: number };
 export type GeoErrorCode = "UNSUPPORTED" | "DENIED" | "TIMEOUT";
 
@@ -12,55 +9,84 @@ export class GeoError extends Error {
 
 export const mapsUrl = (f: { lat: number; lng: number }) => `https://maps.google.com/?q=${f.lat.toFixed(7)},${f.lng.toFixed(7)}`;
 
+const DENIED_MSG = "Joylashuvga ruxsat berilmadi. Tizimga kirish uchun lokatsiyani yoqishingiz shart.";
+
 /**
- * Joylashuvni imkon qadar aniq olish: `timeoutMs` davomida GPS/Wi-Fi nuqtalari kuzatiladi va eng kichik
- * xatolikka ega nuqta tanlanadi (GPS odatda birinchi soniyalarda "isiydi" — keyingi nuqtalar aniqroq bo'ladi).
- * ±GOOD_ACCURACY_M ga yetsa darhol qaytaradi. Aniqlik bo'yicha cheklov yo'q — kirish istalgan joydan.
- * onProgress har yangi (aniqroq) nuqtada joriy xatolikni beradi (UI'da "±N m" uchun).
+ * Joylashuvni fonda kuzatuvchi: login sahifasi ochilishi bilan ishga tushadi, foydalanuvchi login/parol
+ * yozguncha nuqta tayyor bo'ladi va aniqlashib boradi. "Kirish" bosilganda kutish deyarli yo'q.
+ *  - getCurrentPosition (past aniqlik, keshdan) — birinchi nuqtani tez beradi
+ *  - watchPosition (yuqori aniqlik, GPS) — keyingi nuqtalar bilan aniqlashtiradi; eng aniqi saqlanadi
  */
-export function getUserLocation(onProgress?: (accuracy: number) => void, timeoutMs = 20_000): Promise<GeoFix> {
-  return new Promise((resolve, reject) => {
+export function createLocationTracker() {
+  let best: GeoFix | null = null;
+  let error: GeoError | null = null;
+  let watchId: number | null = null;
+  const waiters = new Set<() => void>();
+  const notify = () => waiters.forEach((w) => w());
+
+  const onPos = (p: GeolocationPosition) => {
+    if (!best || p.coords.accuracy < best.accuracy) {
+      best = { lat: p.coords.latitude, lng: p.coords.longitude, accuracy: Math.round(p.coords.accuracy) };
+    }
+    error = null;
+    notify();
+  };
+  const onErr = (e: GeolocationPositionError) => {
+    // Vaqtinchalik xatolar (signal yo'q) e'tiborsiz — kuzatish davom etadi
+    if (e.code === e.PERMISSION_DENIED) {
+      error = new GeoError("DENIED", DENIED_MSG);
+      notify();
+    }
+  };
+
+  function start() {
+    if (watchId !== null) return;
     if (!navigator.geolocation) {
-      reject(new GeoError("UNSUPPORTED", "Brauzeringiz joylashuvni aniqlashni qo'llab-quvvatlamaydi!"));
+      error = new GeoError("UNSUPPORTED", "Brauzeringiz joylashuvni aniqlashni qo'llab-quvvatlamaydi!");
       return;
     }
-    let best: GeolocationPosition | null = null;
-    let watchId: number | null = null;
-    const done = () => {
-      clearTimeout(timer);
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    };
-    const fix = (p: GeolocationPosition): GeoFix => ({
-      lat: p.coords.latitude,
-      lng: p.coords.longitude,
-      accuracy: Math.round(p.coords.accuracy),
+    error = null;
+    navigator.geolocation.getCurrentPosition(onPos, onErr, { enableHighAccuracy: false, maximumAge: 5 * 60_000, timeout: 10_000 });
+    watchId = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 0 });
+  }
+
+  function stop() {
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    watchId = null;
+  }
+
+  /** Hozirgacha eng aniq nuqta; hali yo'q bo'lsa — birinchisini `timeoutMs` gacha kutadi */
+  function get(timeoutMs = 8_000): Promise<GeoFix> {
+    if (error?.code === "DENIED") {
+      // Foydalanuvchi ruxsatni yoqqan bo'lishi mumkin — qaytadan so'raymiz
+      stop();
+      start();
+    } else if (watchId === null) {
+      start();
+    }
+    if (best) return Promise.resolve(best);
+    if (error && error.code !== "DENIED") return Promise.reject(error);
+    return new Promise((resolve, reject) => {
+      const finish = () => {
+        clearTimeout(timer);
+        waiters.delete(check);
+      };
+      const check = () => {
+        if (best) {
+          finish();
+          resolve(best);
+        } else if (error) {
+          finish();
+          reject(error);
+        }
+      };
+      const timer = setTimeout(() => {
+        finish();
+        reject(new GeoError("TIMEOUT", "Joylashuvni aniqlab bo'lmadi. Qaytadan urinib ko'ring."));
+      }, timeoutMs);
+      waiters.add(check);
     });
+  }
 
-    const timer = setTimeout(() => {
-      done();
-      if (best) resolve(fix(best));
-      else reject(new GeoError("TIMEOUT", "Joylashuvni aniqlash vaqti tugadi. Qaytadan urinib ko'ring."));
-    }, timeoutMs);
-
-    watchId = navigator.geolocation.watchPosition(
-      (pos) => {
-        if (!best || pos.coords.accuracy < best.coords.accuracy) {
-          best = pos;
-          onProgress?.(Math.round(pos.coords.accuracy));
-        }
-        if (pos.coords.accuracy <= GOOD_ACCURACY_M) {
-          done();
-          resolve(fix(pos));
-        }
-      },
-      (err) => {
-        // Ruxsat berilmasa — darhol; vaqtinchalik xatolarda (signal yo'q) kutishda davom etamiz
-        if (err.code === err.PERMISSION_DENIED) {
-          done();
-          reject(new GeoError("DENIED", "Joylashuvga ruxsat berilmadi. Tizimga kirish uchun lokatsiyani yoqishingiz shart."));
-        }
-      },
-      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
-    );
-  });
+  return { start, stop, get };
 }

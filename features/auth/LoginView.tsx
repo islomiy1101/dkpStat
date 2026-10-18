@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { GeoError, getUserLocation, type GeoFix } from "@/lib/geo";
+import { useEffect, useRef, useState } from "react";
+import { GeoError, createLocationTracker, type GeoFix } from "@/lib/geo";
 
 /** Saytga kirish sahifasi. Joylashuvga ruxsat berilmasa kirish bloklanadi. */
 export default function LoginView() {
@@ -10,17 +10,25 @@ export default function LoginView() {
   const [showPass, setShowPass] = useState(false);
   const [stage, setStage] = useState<null | "location" | "auth">(null);
   const [error, setError] = useState<{ text: string; location?: boolean } | null>(null);
-  const [accuracy, setAccuracy] = useState<number | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
+  const tracker = useRef<ReturnType<typeof createLocationTracker> | null>(null);
+
+  // Joylashuv sahifa ochilishi bilan fonda aniqlanadi — "Kirish" bosilganda kutilmaydi
+  useEffect(() => {
+    const t = createLocationTracker();
+    tracker.current = t;
+    t.start();
+    return () => t.stop();
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setStage("location");
-    setAccuracy(null);
     let fix: GeoFix;
     try {
-      fix = await getUserLocation(setAccuracy);
+      tracker.current ??= createLocationTracker();
+      fix = await tracker.current.get();
     } catch (err) {
       setStage(null);
       const text = err instanceof GeoError ? err.message : String(err);
@@ -97,7 +105,7 @@ export default function LoginView() {
           <button type="submit" className="auth-submit" disabled={busy}>
             {busy && <i className="fa-solid fa-spinner fa-spin" />}
             {stage === "location"
-              ? `Joylashuv aniqlanmoqda...${accuracy !== null ? ` ±${accuracy} m` : ""}`
+              ? "Joylashuv aniqlanmoqda..."
               : stage === "auth" ? "Kirilmoqda..." : "Kirish"}
           </button>
         </form>

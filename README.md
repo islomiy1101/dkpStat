@@ -53,8 +53,9 @@ Google Sheet'da, ikkita varaqda turadi:
 **Qanday ishlaydi:**
 - Kirishda brauzer joylashuvni so'raydi; ruxsat berilmasa kirish bloklanadi va yo'riqnoma ko'rsatiladi
   (server ham tekshiradi). Kirish **istalgan joydan** mumkin — aniqlik bo'yicha cheklov yo'q.
-- Koordinata imkon qadar aniq olinadi: 20 soniyagacha GPS/Wi-Fi nuqtalari kuzatiladi va eng aniqi tanlanadi
-  (±15 m ga yetsa darhol), tugmada jonli "±N m" ko'rinadi. Kompyuterda GPS yo'q — aniqlik Wi-Fi'ga bog'liq.
+- Joylashuv login sahifasi ochilishi bilan fonda aniqlanadi (avval tez taxminiy nuqta, keyin GPS bilan
+  aniqlashtiriladi) — "Kirish" bosilganda o'sha paytgacha topilgan eng aniq nuqta olinadi, kutish deyarli yo'q.
+  Kompyuterda GPS yo'q — aniqlik Wi-Fi/IP'ga bog'liq (bir necha km gacha bo'lishi mumkin).
   Brauzer koordinatasini soxtalashtirishdan to'liq himoya qilib bo'lmaydi.
 - Muvaffaqiyatli kirishda `Logs` ga Branch, FullName, Department, Login, DateTime (Asia/Tashkent), Ip
   (`X-Forwarded-For`), Location (Google Maps havolasi) va Accuracy (metr) yoziladi.
