@@ -16,8 +16,8 @@ export const config = {
   adviceAppsScriptUrl: process.env.ADVICE_APPS_SCRIPT_URL || "",
 
   /** Saytga kirish (Users/Logs sheet'idagi Apps Script) */
-  authAppsScriptUrl: process.env.AUTH_APPS_SCRIPT_URL || "",
-  authApiSecret: process.env.AUTH_APPS_SCRIPT_SECRET || "",
+  authAppsScriptUrl: (process.env.AUTH_APPS_SCRIPT_URL || "").trim(),
+  authApiSecret: (process.env.AUTH_APPS_SCRIPT_SECRET || "").trim(),
   /** Sayt sessiyasi muddati (soat) */
   authSessionHours: Number(process.env.AUTH_SESSION_HOURS || 12),
 

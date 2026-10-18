@@ -23,7 +23,14 @@ async function callAuthScript<T>(payload: Record<string, unknown>): Promise<Scri
     body: JSON.stringify({ ...payload, secret: config.authApiSecret }),
     cache: "no-store",
   });
-  return (await res.json()) as ScriptRes<T>;
+  const text = await res.text();
+  try {
+    return JSON.parse(text) as ScriptRes<T>;
+  } catch {
+    // JSON o'rniga HTML keldi — odatda deploy "Who has access: Anyone" emas yoki URL /exec emas
+    console.error("[auth] Apps Script JSON qaytarmadi:", res.status, text.slice(0, 300));
+    return { success: false, message: `Apps Script javobi noto'g'ri (HTTP ${res.status}). Deploy sozlamasini tekshiring.` } as ScriptRes<T>;
+  }
 }
 
 /* ---------- MOCK (MOCK_DATA=1) ---------- */
@@ -59,7 +66,10 @@ export async function loginWithSheet(login: string, password: string, ip: string
     return { success: true as const, user };
   }
   const r = await callAuthScript<{ user?: LoginUser }>({ action: "login", login, password, ip, location });
-  if (!r.success || !r.user) return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
+  if (!r.success || !r.user) {
+    if (r.message && r.message.startsWith("Forbidden")) console.error("[auth]", r.message);
+    return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
+  }
   return { success: true as const, user: r.user };
 }
 

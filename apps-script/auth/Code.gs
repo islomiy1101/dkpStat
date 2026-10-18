@@ -30,9 +30,12 @@ function doPost(e) {
   let result;
   try {
     const req = JSON.parse((e && e.postData && e.postData.contents) || "{}");
-    const secret = PropertiesService.getScriptProperties().getProperty("API_SECRET");
-    if (!secret || req.secret !== secret) {
-      result = { success: false, message: "Forbidden" };
+    const secret = String(PropertiesService.getScriptProperties().getProperty("API_SECRET") || "").trim();
+    const given = String(req.secret || "").trim();
+    if (!secret) {
+      result = { success: false, message: "Forbidden: Script Properties'da API_SECRET topilmadi" };
+    } else if (given !== secret) {
+      result = { success: false, message: "Forbidden: secret mos emas (.env AUTH_APPS_SCRIPT_SECRET ≠ API_SECRET)" };
     } else if (req.action === "login") {
       result = login_(req.login, req.password, req.ip, req.location);
     } else if (req.action === "getLogs") {

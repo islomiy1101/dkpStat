@@ -39,6 +39,16 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [confirmOut, setConfirmOut] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+
+  // Escape bilan yopish
+  useEffect(() => {
+    if (!confirmOut) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !leaving && setConfirmOut(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [confirmOut, leaving]);
 
   useEffect(() => {
     try {
@@ -101,7 +111,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
             {user.department && <span className="sb-user-dept">{user.department}</span>}
             {isAdmin && <span className="sb-role">Admin</span>}
           </div>
-          <button className="sb-logout" onClick={logout} title="Tizimdan chiqish" aria-label="Tizimdan chiqish">
+          <button className="sb-logout" onClick={() => { setMobileOpen(false); setConfirmOut(true); }} title="Tizimdan chiqish" aria-label="Tizimdan chiqish">
             <i className="fa-solid fa-right-from-bracket" />
           </button>
         </div>
@@ -163,6 +173,28 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
           </div>
         </div>
       </aside>
+
+      {confirmOut && (
+        <div className="sb-confirm" role="dialog" aria-modal="true" aria-labelledby="sb-confirm-title"
+          onClick={(e) => e.target === e.currentTarget && !leaving && setConfirmOut(false)}>
+          <div className="sb-confirm-card">
+            <div className="sb-confirm-icon"><i className="fa-solid fa-right-from-bracket" /></div>
+            <h3 id="sb-confirm-title">Tizimdan chiqish</h3>
+            <p>
+              <b>{user.fullName || user.login}</b>, haqiqatan ham tizimdan chiqmoqchimisiz?
+            </p>
+            <div className="sb-confirm-actions">
+              <button className="sb-btn-cancel" onClick={() => setConfirmOut(false)} disabled={leaving} autoFocus>
+                Bekor qilish
+              </button>
+              <button className="sb-btn-danger" disabled={leaving}
+                onClick={async () => { setLeaving(true); await logout(); }}>
+                {leaving ? <><i className="fa-solid fa-spinner fa-spin" /> Chiqilmoqda...</> : "Ha, chiqish"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

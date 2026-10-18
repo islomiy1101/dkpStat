@@ -260,3 +260,38 @@ html[data-sidebar="collapsed"] .sb-user-info { display: none; }
   html[data-sidebar="collapsed"] .sb-user { flex-direction: row; padding: 12px; background: var(--sb-bg-2); border-color: #334155; }
   html[data-sidebar="collapsed"] .sb-user-info { display: flex; }
 }
+
+/* Chiqishni tasdiqlash oynasi */
+.sb-confirm {
+  position: fixed; inset: 0; z-index: 10000; padding: 16px;
+  background: rgba(15, 23, 42, 0.55); backdrop-filter: blur(4px);
+  display: flex; align-items: center; justify-content: center;
+  font-family: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
+  animation: sb-fade 0.15s ease-out;
+}
+.sb-confirm * { box-sizing: border-box; }
+.sb-confirm-card {
+  width: 100%; max-width: 380px; background: #fff; border-radius: 16px; padding: 24px;
+  text-align: center; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
+  animation: sb-pop 0.18s ease-out;
+}
+.sb-confirm-icon {
+  width: 52px; height: 52px; margin: 0 auto 12px; border-radius: 14px;
+  background: #fee2e2; color: #dc2626; font-size: 20px;
+  display: flex; align-items: center; justify-content: center;
+}
+.sb-confirm-card h3 { margin: 0 0 6px; font-size: 17px; color: #0f172a; }
+.sb-confirm-card p { margin: 0 0 20px; font-size: 13.5px; color: #475569; line-height: 1.5; }
+.sb-confirm-card p b { color: #0f172a; }
+.sb-confirm-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sb-confirm-actions button {
+  height: 42px; border-radius: 10px; font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.sb-confirm-actions button:disabled { opacity: 0.7; cursor: default; }
+.sb-btn-cancel { border: 1px solid #cbd5e1; background: #f8fafc; color: #334155; }
+.sb-btn-cancel:hover:not(:disabled) { background: #f1f5f9; }
+.sb-btn-danger { border: 0; background: #dc2626; color: #fff; box-shadow: 0 6px 14px -6px rgba(220, 38, 38, 0.7); }
+.sb-btn-danger:hover:not(:disabled) { background: #b91c1c; }
+@keyframes sb-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes sb-pop { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
