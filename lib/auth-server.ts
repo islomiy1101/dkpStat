@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "./config";
 import { MOCK } from "./mock";
-import type { Role } from "./auth";
+import { parseRole, type Role } from "./roles";
 
 export type LoginUser = { login: string; fullName: string; branch: string; department: string; role: Role };
 export type LogRow = {
@@ -63,14 +63,14 @@ export async function loginWithSheet(login: string, password: string, ip: string
     const { role: _r, ...who } = user;
     void _r;
     (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location });
-    return { success: true as const, user };
+    return { success: true as const, user: { ...user, role: parseRole(user.role) } };
   }
   const r = await callAuthScript<{ user?: LoginUser }>({ action: "login", login, password, ip, location });
   if (!r.success || !r.user) {
     if (r.message && r.message.startsWith("Forbidden")) console.error("[auth]", r.message);
     return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
   }
-  return { success: true as const, user: r.user };
+  return { success: true as const, user: { ...r.user, role: parseRole(r.user.role) } };
 }
 
 export async function fetchLogs(limit = 5000): Promise<LogRow[]> {

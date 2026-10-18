@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSection } from "@/components/DataProvider";
 import { useClock, fmtDate, fmtHM } from "@/lib/useClock";
 import type { AdviceSessionInfo, Murojaat, Natija } from "@/lib/types";
 import {
-  ITEMS_PER_PAGE, SESSION_TIMEOUT, TUMANLAR, cyrillicToLatin, formatFioTitleCase, getLatestDailyAppeals,
-  getUserLocation, isFilial, isIjobiy, isSuperAdmin, isVakolatsiz, normalizeName, parseLocalDate,
+  ITEMS_PER_PAGE, TUMANLAR, cyrillicToLatin, formatFioTitleCase, getLatestDailyAppeals,
+  isFilial, isIjobiy, isSuperAdmin, isVakolatsiz, normalizeName, parseLocalDate,
 } from "./utils";
 import { exportRegionalSummary, exportWeekly, generateExcelReportByDates } from "./excel";
 
@@ -30,107 +30,30 @@ const BtnLabel = ({ loading, text }: { loading: boolean; text: string }) =>
 
 export default function AdviceView() {
   const slot = useSection("advice");
-  const [session, setSession] = useState<AdviceSessionInfo | null>(null);
-  const [checked, setChecked] = useState(false);
+  // Alohida login yo'q: sessiya sayt foydalanuvchisidan serverda quriladi (/api/advice/data)
+  const session = slot.data?.session ?? null;
   const [showLatin, setShowLatin] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
-  const [guideOpen, setGuideOpen] = useState(false);
 
-  // Sessiyani tez tekshirish (data yuklanishini kutmasdan login yoki dashboard ko'rsatiladi)
+  // Lotin alifbosi eslatmasi — filial xodimiga brauzer sessiyasida bir marta
   useEffect(() => {
-    if (slot.data?.session) {
-      setSession(slot.data.session);
-      setChecked(true);
-      return;
-    }
-    if (slot.status === "locked") {
-      setSession(null);
-      setChecked(true);
-      return;
-    }
-    let alive = true;
-    fetch("/api/advice/me", { cache: "no-store" })
-      .then((r) => (r.ok ? r.json() : { session: null }))
-      .then((j) => {
-        if (!alive) return;
-        setSession(j.session);
-        setChecked(true);
-      })
-      .catch(() => alive && setChecked(true));
-    return () => {
-      alive = false;
-    };
-  }, [slot.data, slot.status]);
-
-  const doLogout = useCallback(async () => {
-    await fetch("/api/advice/logout", { method: "POST" }).catch(() => {});
-    setSession(null);
-    slot.reset("locked");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Sessiya kuzatuvchisi: 3 soat o'tganda chiqarib yuborish
-  useEffect(() => {
-    if (!session) return;
-    const t = setInterval(() => {
-      if (Date.now() - session.loginTime >= SESSION_TIMEOUT) {
-        alert("Tizimda ishlash vaqti (3 soat) tugadi! Xavfsizlik yuzasidan qaytadan login qiling.");
-        doLogout();
-      }
-    }, 60_000);
-    return () => clearInterval(t);
-  }, [session, doLogout]);
-
-  const onLoggedIn = (s: AdviceSessionInfo) => {
-    setSession(s);
-    if (!isSuperAdmin(s.tuman)) setShowLatin(true);
-    void slot.refresh(true);
-  };
+    if (!session || isSuperAdmin(session.tuman)) return;
+    try {
+      if (sessionStorage.getItem("dkp_advice_latin_seen")) return;
+      sessionStorage.setItem("dkp_advice_latin_seen", "1");
+    } catch {}
+    setShowLatin(true);
+  }, [session]);
 
   return (
     <div className="sec-advice">
       <div className="container">
-        {checked && !session && <LoginPage onSuccess={onLoggedIn} onOpenGuide={() => setGuideOpen(true)} />}
-        {checked && session && <Dashboard session={session} onLogout={() => setLogoutOpen(true)} />}
-      </div>
-
-      {/* CHIQISH MODALI */}
-      <div id="logout-modal" className="modal-overlay" style={{ display: logoutOpen ? "flex" : "none" }}>
-        <div className="modal-card">
-          <div className="modal-icon">⚠️</div>
-          <h4>Tizimdan chiqish</h4>
-          <p>Haqiqatan ham tizimdan chiqmoqchimisiz?</p>
-          <div className="modal-buttons">
-            <button onClick={() => { setLogoutOpen(false); doLogout(); }} className="btn-modal-yes">Ha, chiqish</button>
-            <button onClick={() => setLogoutOpen(false)} className="btn-modal-no">Yo&apos;q</button>
+        {session ? (
+          <Dashboard session={session} />
+        ) : (
+          <div style={{ padding: 40, textAlign: "center", color: slot.status === "error" ? "#dc2626" : "#64748b" }}>
+            {slot.status === "error" ? `Ma'lumotlarni yuklashda xatolik: ${slot.error || ""}` : <><span className="spinner" /> Ma&apos;lumotlar yuklanmoqda...</>}
           </div>
-        </div>
-      </div>
-
-      {/* LOKATSIYA YO'RIQNOMASI */}
-      <div id="location-guide-modal" className="modal-overlay" style={{ display: guideOpen ? "flex" : "none" }}>
-        <div className="modal-card" style={{ maxWidth: 440, textAlign: "left" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <h4 style={{ margin: 0, color: "var(--primary-color)", display: "flex", alignItems: "center", gap: 8 }}>📍 Joylashuvni yoqish tartibi</h4>
-            <button type="button" onClick={() => setGuideOpen(false)} style={{ background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#64748b" }}>✕</button>
-          </div>
-          <div style={{ fontSize: 13.5, color: "#334155", lineHeight: 1.6 }}>
-            <p style={{ marginBottom: 10, fontWeight: 600, color: "#1e293b" }}>Kompyuterda (Google Chrome / Edge):</p>
-            <ol style={{ marginLeft: 20, marginBottom: 16 }}>
-              <li style={{ marginBottom: 6 }}>Brauzer yuqori qismidagi manzil (URL) oldida joylashgan <b>sozlama belgisi</b> (slayder yoki qulf belgisi)ni bosing.</li>
-              <li style={{ marginBottom: 6 }}>Ochilgan menyuda <b>Location (Joylashuv)</b> bandini topib, uni <b>yoqing (ko&apos;k holatga o&apos;tkazing)</b> yoki <b>Reset permission</b> tugmasini bosing.</li>
-              <li style={{ marginBottom: 6 }}>Sahifani yangilang (<b>Ctrl + F5</b> yoki <b>F5</b>).</li>
-            </ol>
-            <p style={{ marginBottom: 10, fontWeight: 600, color: "#1e293b" }}>Mobil telefonda:</p>
-            <ol style={{ marginLeft: 20, marginBottom: 16 }}>
-              <li style={{ marginBottom: 6 }}>Telefon sozlamalaridan <b>GPS / Joylashuv</b> xizmati yoniqligini tekshiring.</li>
-              <li style={{ marginBottom: 6 }}>Brauzer menyusidan (3 nuqta) <b>Sayt sozlamalari &gt; Joylashuv</b> bo&apos;limiga kirib ruxsat bering.</li>
-            </ol>
-          </div>
-          <div className="modal-buttons">
-            <button type="button" onClick={() => setGuideOpen(false)} className="btn btn-primary" style={{ padding: 10 }}>Tushundim</button>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* LOTIN ALIFBOSI ESLATMASI */}
@@ -151,105 +74,9 @@ export default function AdviceView() {
 }
 
 /* =========================================================================
-   LOGIN
-   ========================================================================= */
-function LoginPage({ onSuccess, onOpenGuide }: { onSuccess: (s: AdviceSessionInfo) => void; onOpenGuide: () => void }) {
-  const [login, setLogin] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPass, setShowPass] = useState(false);
-  const [busyText, setBusyText] = useState<string | null>(null);
-  const [alert, setAlert] = useState<{ text: string; locationHelp?: boolean } | null>(null);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusyText("Joylashuv tekshirilmoqda...");
-    let location = "";
-    try {
-      location = await getUserLocation();
-    } catch (err) {
-      setBusyText(null);
-      setAlert(err === "LOCATION_DENIED" ? { text: "", locationHelp: true } : { text: String(err) });
-      return;
-    }
-    setBusyText("Kirilmoqda...");
-    try {
-      const res = await fetch("/api/advice/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, password, location }),
-      });
-      const json = await res.json();
-      if (!json.success) {
-        setAlert({ text: json.message || "Login yoki parol noto'g'ri!" });
-        setBusyText(null);
-        return;
-      }
-      setBusyText(null);
-      onSuccess(json.session);
-    } catch {
-      setBusyText(null);
-      setAlert({ text: "Tarmoq xatosi yuz berdi! Qayta urinib ko'ring." });
-    }
-  };
-
-  return (
-    <div id="login-page">
-      <div className="login-logo-wrapper">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.jpg" alt="Namangan Kadastr Logotipi" width={90} height={90} />
-      </div>
-      <h2>Tizimga Kirish</h2>
-      {alert && (
-        <div id="login-alert" className="alert alert-danger" style={{ display: "block" }}>
-          {alert.locationHelp ? (
-            <div>
-              <b>Diqqat! Joylashuvga (Lokatsiya) ruxsat berilmadi.</b><br />
-              Tizimga kirish uchun lokatsiyani yoqishingiz shart.
-              <div style={{ marginTop: 8 }}>
-                <a href="#" onClick={(e) => { e.preventDefault(); onOpenGuide(); }} style={{ color: "#1e3d6b", fontWeight: 700, textDecoration: "underline" }}>
-                  👉 Qanday yoqishni ko&apos;rish (Yo&apos;riqnoma)
-                </a>
-              </div>
-            </div>
-          ) : alert.text}
-        </div>
-      )}
-
-      <form id="login-form" onSubmit={submit}>
-        <div className="form-group">
-          <label htmlFor="login-input">Login</label>
-          <input type="text" id="login-input" className="form-control" required autoComplete="username" placeholder="Foydalanuvchi nomi" value={login} onChange={(e) => setLogin(e.target.value)} />
-        </div>
-        <div className="form-group">
-          <label htmlFor="password-input">Parol</label>
-          <div className="password-wrapper">
-            <input type={showPass ? "text" : "password"} id="password-input" className="form-control" required autoComplete="current-password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button type="button" id="password-toggle" className="password-toggle" onClick={() => setShowPass((v) => !v)} title="Parolni ko'rsatish/yashirish">
-              <svg id="eye-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                {showPass ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 0 0 1.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.451 10.451 0 0 1 12 4.5c4.756 0 8.773 3.162 10.065 7.498a10.522 10.522 0 0 1-4.293 5.774M6.228 6.228 3 3m3.228 3.228 3.65 3.65m7.894 7.894L21 21m-3.228-3.228-3.65-3.65m0 0a3 3 0 1 0-4.243-4.243m4.242 4.242L9.88 9.88" />
-                ) : (
-                  <>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 10.112 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-                  </>
-                )}
-              </svg>
-            </button>
-          </div>
-        </div>
-        <button type="submit" id="login-btn" className={`btn btn-primary${busyText ? " btn-disabled" : ""}`} disabled={!!busyText}>
-          <BtnLabel loading={!!busyText} text={busyText || "Kirish"} />
-        </button>
-      </form>
-    </div>
-  );
-}
-
-/* =========================================================================
    DASHBOARD
    ========================================================================= */
-function Dashboard({ session, onLogout }: { session: AdviceSessionInfo; onLogout: () => void }) {
+function Dashboard({ session }: { session: AdviceSessionInfo }) {
   const slot = useSection("advice");
   const now = useClock();
   const isAdmin = isSuperAdmin(session.tuman);
@@ -459,7 +286,6 @@ function Dashboard({ session, onLogout }: { session: AdviceSessionInfo; onLogout
           </button>
           <div className="realtime-indicator"><span className="dot" />Real vaqt</div>
           <div id="live-clock" className="live-clock">{now ? `${fmtDate(now)} ${fmtHM(now)}` : "--.--.---- --:--"}</div>
-          <button onClick={onLogout} className="btn btn-danger" style={{ width: "auto", padding: "8px 18px", borderRadius: 20 }}>Chiqish</button>
         </div>
       </div>
 

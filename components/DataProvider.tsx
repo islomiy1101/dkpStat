@@ -15,7 +15,7 @@ import { SECTIONS, type SectionId } from "@/lib/sections";
 export type AdvicePayload = AdviceData & { session: AdviceSessionInfo };
 type DataMap = { deadline: DeadlineData; payment: PaymentData; advice: AdvicePayload };
 
-export type SlotStatus = "idle" | "loading" | "ready" | "error" | "locked";
+export type SlotStatus = "idle" | "loading" | "ready" | "error";
 export type Slot<T> = {
   status: SlotStatus;
   data: T | null;
@@ -39,18 +39,13 @@ const CACHE_PREFIX = "dkp_cache_v1_";
 
 const empty = <T,>(): Slot<T> => ({ status: "idle", data: null, refreshing: false });
 
-class LockedError extends Error {}
-
 async function getJson(url: string) {
   const res = await fetch(url, { cache: "no-store" });
   const json = await res.json().catch(() => null);
   if (res.status === 401) {
-    // Sayt sessiyasi tugagan bo'lsa — login sahifasiga
-    if (json && json.error === "auth") {
-      window.location.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
-      throw new Error("auth");
-    }
-    throw new LockedError("locked");
+    // Sayt sessiyasi tugagan — login sahifasiga
+    window.location.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    throw new Error("auth");
   }
   if (!res.ok) throw new Error((json && (json.error || json.message)) || `HTTP ${res.status}`);
   return json;
@@ -87,7 +82,7 @@ export function dropCache(id: SectionId) {
   } catch {}
 }
 
-export function DataProvider({ children }: { children: React.ReactNode }) {
+export function DataProvider({ children, allowed }: { children: React.ReactNode; allowed: SectionId[] }) {
   const [state, setState] = useState<State>(() => ({
     deadline: empty(),
     payment: empty(),
@@ -115,16 +110,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
           patch(id, { status: "ready", data: data as never, updatedAt: Date.now(), refreshing: false, error: undefined });
         })
         .catch((e: Error) => {
-          if (e instanceof LockedError) {
-            dropCache(id);
-            patch(id, { status: "locked", data: null, refreshing: false });
-          } else {
-            console.error(`[${id}] yuklashda xatolik:`, e);
-            setState((s) => ({
-              ...s,
-              [id]: { ...s[id], refreshing: false, error: e.message, status: s[id].data ? s[id].status : "error" },
-            }));
-          }
+          console.error(`[${id}] yuklashda xatolik:`, e);
+          setState((s) => ({
+            ...s,
+            [id]: { ...s[id], refreshing: false, error: e.message, status: s[id].data ? s[id].status : "error" },
+          }));
         })
         .finally(() => {
           if (inflight.current[id] === p) delete inflight.current[id];
@@ -135,9 +125,11 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [patch]
   );
 
+  const allowedKey = allowed.join(",");
   const refreshAll = useCallback(async () => {
-    await Promise.allSettled(SECTIONS.map((s) => refresh(s.id, { fresh: true })));
-  }, [refresh]);
+    await Promise.allSettled(allowed.map((id) => refresh(id, { fresh: true })));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh, allowedKey]);
 
   const mutate = useCallback(<K extends SectionId>(id: K, fn: (d: DataMap[K]) => DataMap[K]) => {
     setState((s) => {
@@ -157,18 +149,21 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     [patch]
   );
 
-  // Ilova ochilganda: keshdan darhol ko'rsatish + HAMMA bo'limlarni bir vaqtda yuklash
+  // Ilova ochilganda: keshdan darhol ko'rsatish + ruxsat etilgan bo'limlarni bir vaqtda yuklash
   useEffect(() => {
+    // Ruxsat yo'q bo'limlarning eski keshi (boshqa foydalanuvchidan qolgan) o'chiriladi
+    for (const sec of SECTIONS) if (!allowed.includes(sec.id)) dropCache(sec.id);
     setState((s) => {
       const next = { ...s };
-      for (const sec of SECTIONS) {
-        const c = readCache(sec.id);
-        if (c) next[sec.id] = { status: "ready", data: c.data as never, updatedAt: c.updatedAt, refreshing: false };
+      for (const id of allowed) {
+        const c = readCache(id);
+        if (c) next[id] = { status: "ready", data: c.data as never, updatedAt: c.updatedAt, refreshing: false };
       }
       return next;
     });
-    for (const sec of SECTIONS) void refresh(sec.id);
-  }, [refresh]);
+    for (const id of allowed) void refresh(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh, allowedKey]);
 
   const value = useMemo(() => ({ state, refresh, refreshAll, mutate, reset }), [state, refresh, refreshAll, mutate, reset]);
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;

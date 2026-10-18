@@ -3,7 +3,10 @@ import { MOCK } from "./mock";
 import { cached } from "./cache";
 import { fetchGviz, type GvizTable } from "./gviz";
 import { normalizeName, isSuperAdminTuman } from "./session";
-import type { AdviceData, Murojaat, Natija } from "./types";
+import { isGlobal, sameBranch } from "./roles";
+import type { AppUser } from "./auth";
+import { TUMANLAR } from "@/features/advice/utils";
+import type { AdviceData, AdviceSessionInfo, Murojaat, Natija } from "./types";
 
 type Raw = { murojaat: GvizTable; mahalla: GvizTable; users: GvizTable };
 
@@ -24,34 +27,18 @@ export function loadAdviceRaw(fresh = false) {
   );
 }
 
-export function loadUsers(fresh = false) {
-  return cached("advice:users", 15_000, () => fetchGviz(config.adviceSheetId, "Foydalanuvchilar"), { fresh });
-}
-
-/** Login tekshiruvi — parollar faqat serverda solishtiriladi */
-export async function findUser(login: string, pass: string) {
-  const usersData = await loadUsers(true);
-  const inputLogin = login.trim().toLowerCase();
-  const inputPass = pass.trim();
-  for (const r of usersData.table?.rows || []) {
-    const c = r.c;
-    if (!c) continue;
-    const rowLogin = c[0] && c[0].v ? String(c[0].v).trim().toLowerCase() : "";
-    const rowPass = c[1] && c[1].v ? String(c[1].v).trim() : "";
-    if (rowLogin && rowLogin === inputLogin && rowPass === inputPass) {
-      return {
-        tuman: c[2] && c[2].v ? String(c[2].v).trim() : "",
-        fio: c[3] && c[3].v ? String(c[3].v).trim() : "",
-      };
-    }
-  }
-  return null;
+/**
+ * Advice bo'limi alohida login'siz ishlaydi: "sessiya" sayt foydalanuvchisidan quriladi.
+ * Umumiy rollar "Boshqarma" rejimida (hamma tumanlar, faqat ko'rish), qolganlari o'z tumanida.
+ */
+export function adviceSessionFor(u: AppUser): AdviceSessionInfo {
+  const tuman = isGlobal(u.role) ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
+  return { tuman, fio: u.fullName, loginTime: u.loginTime };
 }
 
 /** Original myjs.js -> loadDashboardData() parsing mantiqi, sessiya tumani bo'yicha filtrlangan */
 export function buildAdviceData(raw: Raw, sessionTuman: string): AdviceData {
   const isUserBoshqarma = isSuperAdminTuman(sessionTuman);
-  const cleanSessionTuman = normalizeName(sessionTuman);
 
   // Mas'ul xodimlar (login/parol ustunlari tashlab yuboriladi)
   const masullar: Record<string, string> = {};
@@ -86,9 +73,7 @@ export function buildAdviceData(raw: Raw, sessionTuman: string): AdviceData {
     if (isNaN(rowId) && !rawFio) return;
 
     const rowTuman = rawTuman || "Mavjud emas";
-    const matchTuman =
-      normalizeName(rowTuman).includes(cleanSessionTuman) || cleanSessionTuman.includes(normalizeName(rowTuman));
-    if (!(isUserBoshqarma || matchTuman)) return;
+    if (!(isUserBoshqarma || sameBranch(rowTuman, sessionTuman))) return;
 
     let natija: Natija = "";
     if (c[10] && c[10].v == 1) natija = "ijobiy";
@@ -127,8 +112,7 @@ export function buildAdviceData(raw: Raw, sessionTuman: string): AdviceData {
     const mTuman = col2 ? col1 : col1 ? col0 : "";
     const mNomi = col2 || col1 || "";
     if (normalizeName(mTuman).includes("tuman") && normalizeName(mNomi).includes("mahalla")) continue;
-    const cleanMTuman = normalizeName(mTuman);
-    if (mNomi && (isUserBoshqarma || cleanMTuman.includes(cleanSessionTuman) || cleanSessionTuman.includes(cleanMTuman))) {
+    if (mNomi && (isUserBoshqarma || sameBranch(mTuman, sessionTuman))) {
       mahallalar.push(mNomi);
     }
   }

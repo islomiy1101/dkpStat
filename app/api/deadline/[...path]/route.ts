@@ -1,4 +1,5 @@
-import { getUser, authError } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
+import { isGlobal, sameBranch } from "@/lib/roles";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { cached, invalidate } from "@/lib/cache";
@@ -19,8 +20,16 @@ function target(path: string, search: string) {
   return `${config.deadlineApiBase}/${path}/${search}`;
 }
 
+/** Filial rollari uchun summary'dan faqat o'z tumani qoldiriladi ("Viloyat jami" ham olib tashlanadi) */
+function scopeSummary<T extends { summary?: Record<string, unknown> }>(json: T, branch: string): T {
+  if (!json || !json.summary) return json;
+  const summary = Object.fromEntries(Object.entries(json.summary).filter(([tuman]) => sameBranch(tuman, branch)));
+  return { ...json, summary };
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
-  if (!(await getUser())) return authError();
+  const u = await requireArea("deadline");
+  if (u instanceof Response) return u;
   const { path } = await ctx.params;
   const name = path.join("/");
   if (!ALLOWED.has(name) || name === "upload") return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -28,10 +37,18 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
   const url = new URL(req.url);
   const fresh = url.searchParams.has("fresh");
   url.searchParams.delete("fresh");
+  const global = isGlobal(u.role);
+  // Filial roli boshqa tumanning tafsilotini so'ray olmaydi
+  if (!global && name === "details" && !sameBranch(url.searchParams.get("tuman"), u.branch)) {
+    return NextResponse.json({ status: "error", message: "Ruxsat yo'q" }, { status: 403 });
+  }
   const search = url.searchParams.toString() ? `?${url.searchParams}` : "";
 
   if (MOCK) {
-    if (name === "summary") return NextResponse.json(await readMock("deadline_summary"));
+    if (name === "summary") {
+      const json = await readMock<{ summary?: Record<string, unknown> }>("deadline_summary");
+      return NextResponse.json(global ? json : scopeSummary(json, u.branch));
+    }
     if (url.searchParams.get("action") === "export") return new Response("demo", { headers: { "Content-Type": "application/octet-stream" } });
     return NextResponse.json(await readMock("deadline_details"));
   }
@@ -48,7 +65,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
         },
         { fresh }
       );
-      return NextResponse.json(json, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json(global ? json : scopeSummary(json, u.branch), { headers: { "Cache-Control": "no-store" } });
     }
 
     // details (JSON yoki action=export bo'lsa Excel fayl) — keshsiz, oqim sifatida uzatiladi
@@ -67,7 +84,8 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
 }
 
 export async function POST(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
-  if (!(await getUser())) return authError();
+  const u = await requireArea("upload");
+  if (u instanceof Response) return u;
   const { path } = await ctx.params;
   if (path.join("/") !== "upload") return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (MOCK) return NextResponse.json({ status: "success", message: "Demo: fayl qabul qilindi" });

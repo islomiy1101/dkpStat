@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SECTIONS } from "@/lib/sections";
+import { canSee, ROLE_LABEL, type AreaId, type Role } from "@/lib/roles";
 import { useData, type SlotStatus } from "./DataProvider";
 
 const STATUS_LABEL: Record<SlotStatus, string> = {
@@ -11,7 +12,6 @@ const STATUS_LABEL: Record<SlotStatus, string> = {
   loading: "Yuklanmoqda…",
   ready: "Tayyor",
   error: "Xatolik",
-  locked: "Kirish talab qilinadi",
 };
 
 function timeAgo(ts?: number) {
@@ -20,7 +20,13 @@ function timeAgo(ts?: number) {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-export type SidebarUser = { login: string; fullName: string; branch: string; department: string; role: "admin" | "user" };
+export type SidebarUser = { login: string; fullName: string; branch: string; department: string; role: Role };
+
+/** Superadmin sahifalari (ma'lumot bo'limlaridan alohida, DataProvider'ga bog'lanmagan) */
+const ADMIN_LINKS: { id: AreaId; href: string; title: string; subtitle: string; icon: string }[] = [
+  { id: "upload", href: "/upload", title: "Bazaga yuklash", subtitle: "Excel → Google Sheets", icon: "fa-solid fa-file-arrow-up" },
+  { id: "logs", href: "/logs", title: "Log", subtitle: "Kirishlar tarixi", icon: "fa-solid fa-clock-rotate-left" },
+];
 
 const initials = (name: string) =>
   name.trim().split(/\s+/).slice(0, 2).map((w) => w[0] || "").join("").toUpperCase() || "?";
@@ -69,8 +75,9 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
     });
   };
 
-  const active = SECTIONS.find((s) => pathname?.startsWith(s.href)) || (pathname?.startsWith("/logs") ? { title: "Kirishlar tarixi" } : undefined);
-  const isAdmin = user.role === "admin";
+  const sections = SECTIONS.filter((s) => canSee(user.role, s.id));
+  const adminLinks = ADMIN_LINKS.filter((l) => canSee(user.role, l.id));
+  const active = [...sections, ...adminLinks].find((s) => pathname?.startsWith(s.href));
 
   const onRefreshAll = async () => {
     setBusy(true);
@@ -109,7 +116,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
             <span className="sb-user-name">{user.fullName || user.login}</span>
             <span className="sb-user-branch"><i className="fa-solid fa-building-columns" /> {user.branch}</span>
             {user.department && <span className="sb-user-dept">{user.department}</span>}
-            {isAdmin && <span className="sb-role">Admin</span>}
+            <span className="sb-role">{ROLE_LABEL[user.role]}</span>
           </div>
           <button className="sb-logout" onClick={() => { setMobileOpen(false); setConfirmOut(true); }} title="Tizimdan chiqish" aria-label="Tizimdan chiqish">
             <i className="fa-solid fa-right-from-bracket" />
@@ -118,7 +125,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
 
         <div className="sb-label">Bo&apos;limlar</div>
         <nav className="sb-nav">
-          {SECTIONS.map((s) => {
+          {sections.map((s) => {
             const slot = state[s.id];
             const isActive = pathname?.startsWith(s.href);
             const st: SlotStatus = slot.refreshing && slot.status !== "ready" ? "loading" : slot.status;
@@ -137,25 +144,21 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
                   <span className="sb-title">{s.title}</span>
                   <span className="sb-sub">{s.subtitle}</span>
                 </span>
-                <span className={`sb-status st-${st}${slot.refreshing ? " is-refreshing" : ""}`} title={STATUS_LABEL[st]}>
-                  {st === "locked" ? <i className="fa-solid fa-lock" /> : null}
-                </span>
+                <span className={`sb-status st-${st}${slot.refreshing ? " is-refreshing" : ""}`} title={STATUS_LABEL[st]} />
               </Link>
             );
           })}
 
-          {isAdmin && (
-            <>
-              <div className="sb-divider" />
-              <Link href="/logs" className={`sb-item${pathname?.startsWith("/logs") ? " active" : ""}`} title={collapsed ? "Kirishlar tarixi (Log)" : undefined}>
-                <span className="sb-icon"><i className="fa-solid fa-clock-rotate-left" /></span>
-                <span className="sb-text">
-                  <span className="sb-title">Log</span>
-                  <span className="sb-sub">Kirishlar tarixi · faqat admin</span>
-                </span>
-              </Link>
-            </>
-          )}
+          {adminLinks.length > 0 && <div className="sb-divider" />}
+          {adminLinks.map((l) => (
+            <Link key={l.id} href={l.href} className={`sb-item${pathname?.startsWith(l.href) ? " active" : ""}`} title={collapsed ? l.title : undefined}>
+              <span className="sb-icon"><i className={l.icon} /></span>
+              <span className="sb-text">
+                <span className="sb-title">{l.title}</span>
+                <span className="sb-sub">{l.subtitle}</span>
+              </span>
+            </Link>
+          ))}
         </nav>
 
         <div className="sb-footer">
@@ -164,7 +167,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
             <span>Barchasini yangilash</span>
           </button>
           <div className="sb-meta">
-            {SECTIONS.map((s) => (
+            {sections.map((s) => (
               <div key={s.id} className="sb-meta-row">
                 <span>{s.source}</span>
                 <span>{state[s.id].updatedAt ? timeAgo(state[s.id].updatedAt) : "—"}</span>

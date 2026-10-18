@@ -12,7 +12,8 @@
  *  5. Sheet'ni hech kim bilan "havola orqali" ulashmang — unga faqat shu skript murojaat qiladi.
  *
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
- *  Users: Branch | FullName | Department | Login | Password | Role   (Role: user / admin)
+ *  Users: Branch | FullName | Department | Login | Password | Role
+ *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | superadmin
  *  Logs : Branch | FullName | Department | Login | DateTime | Ip | Location
  *
  * Parol oddiy matn yoki "sha256:<hex>" ko'rinishida bo'lishi mumkin
@@ -116,7 +117,8 @@ function login_(login, password, ip, location) {
     if (!passwordMatches_(row[cPass], password)) break;
 
     cache.remove(failKey);
-    const role = clean_(row[col("Role")]).toLowerCase() === "admin" ? "admin" : "user";
+    // Rol nomi xom holda qaytariladi; Next.js (lib/roles.ts → parseRole) uni normalizatsiya qiladi
+    const role = clean_(row[col("Role")]);
     const user = {
       login: clean_(row[cLogin]),
       fullName: clean_(row[col("FullName")]),

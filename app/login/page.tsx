@@ -6,6 +6,6 @@ import LoginView from "@/features/auth/LoginView";
 export const metadata: Metadata = { title: "Tizimga kirish — DKP Namangan" };
 
 export default async function Page() {
-  if (await getUser()) redirect("/deadline");
+  if (await getUser()) redirect("/");
   return <LoginView />;
 }

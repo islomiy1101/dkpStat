@@ -28,5 +28,3 @@ export const config = {
   cacheTtlMs: Number(process.env.CACHE_TTL_MS || 30_000),
 };
 
-/** Advice sessiyasi muddati — originaldagi SESSION_TIMEOUT (3 soat) */
-export const SESSION_TIMEOUT_MS = 3 * 60 * 60 * 1000;

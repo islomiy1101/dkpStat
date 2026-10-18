@@ -1,14 +1,13 @@
-import { getUser, authError } from "@/lib/auth";
+import { requireArea } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/session";
-import { loadAdviceRaw, buildAdviceData } from "@/lib/advice-server";
+import { loadAdviceRaw, buildAdviceData, adviceSessionFor } from "@/lib/advice-server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  if (!(await getUser())) return authError();
-  const s = await getSession();
-  if (!s) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const u = await requireArea("advice");
+  if (u instanceof Response) return u;
+  const s = adviceSessionFor(u);
   const fresh = new URL(req.url).searchParams.has("fresh");
   try {
     const raw = await loadAdviceRaw(fresh);

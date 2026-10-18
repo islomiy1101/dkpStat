@@ -44,7 +44,7 @@ export default function LoginView() {
         Object.keys(localStorage).filter((k) => k.startsWith("dkp_cache_")).forEach((k) => localStorage.removeItem(k));
       } catch {}
       const next = new URLSearchParams(window.location.search).get("next");
-      window.location.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/deadline");
+      window.location.replace(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
     } catch {
       setError({ text: "Tarmoq xatosi. Qayta urinib ko'ring." });
       setStage(null);

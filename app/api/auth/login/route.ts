@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { loginWithSheet } from "@/lib/auth-server";
 import { setUser } from "@/lib/auth";
-import { clearSession as clearAdviceSession, isHttps } from "@/lib/session";
+import { isHttps } from "@/lib/session";
 import { invalidate } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +29,6 @@ export async function POST(req: Request) {
     const user = { ...r.user, loginTime: Date.now() };
     await setUser(user, isHttps(req));
     invalidate("auth:logs");
-    await clearAdviceSession(); // oldingi foydalanuvchining advice sessiyasi qolib ketmasin
     return NextResponse.json({ success: true, user });
   } catch (e) {
     console.error("auth login:", e);

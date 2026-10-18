@@ -5,54 +5,54 @@
   "department": "IT bo'limi",
   "login": "admin",
   "password": "admin123",
-  "role": "admin"
- },
- {
-  "branch": "Chust tumani filiali",
-  "fullName": "Yusupova Malika",
-  "department": "Qabulxona",
-  "login": "chust",
-  "password": "chust123",
-  "role": "user"
- },
- {
-  "branch": "Pop tumani filiali",
-  "fullName": "Karimov Dilshod",
-  "department": "Ro'yxatga olish",
-  "login": "pop",
-  "password": "pop123",
-  "role": "user"
- },
- {
-  "branch": "Namangan shahar filiali",
-  "fullName": "Rahimov Akmal",
-  "department": "Kadastr",
-  "login": "nshahar",
-  "password": "x",
-  "role": "user"
- },
- {
-  "branch": "Uychi tumani filiali",
-  "fullName": "Ergasheva Nodira",
-  "department": "Qabulxona",
-  "login": "uychi",
-  "password": "x",
-  "role": "user"
+  "role": "superadmin"
  },
  {
   "branch": "Viloyat boshqarmasi",
   "fullName": "Qodirov Sardor",
   "department": "Monitoring",
-  "login": "monitor",
-  "password": "x",
-  "role": "admin"
+  "login": "head",
+  "password": "head123",
+  "role": "headOfDepartment"
  },
  {
-  "branch": "Kosonsoy tumani filiali",
+  "branch": "Viloyat boshqarmasi",
+  "fullName": "Abdullayeva Gulnoza",
+  "department": "Buxgalteriya",
+  "login": "buxgalter",
+  "password": "bux123",
+  "role": "accountant"
+ },
+ {
+  "branch": "Chust tumani",
+  "fullName": "Yusupova Malika",
+  "department": "Filial rahbariyati",
+  "login": "chust",
+  "password": "chust123",
+  "role": "branchManager"
+ },
+ {
+  "branch": "Pop tumani",
+  "fullName": "Karimov Dilshod",
+  "department": "Kadastr",
+  "login": "pop",
+  "password": "pop123",
+  "role": "engineer"
+ },
+ {
+  "branch": "Chust tumani",
+  "fullName": "Ergasheva Nodira",
+  "department": "Qabulxona",
+  "login": "chustmaslahat",
+  "password": "maslahat123",
+  "role": "advicer"
+ },
+ {
+  "branch": "Kosonsoy tumani",
   "fullName": "Toshmatov Jasur",
   "department": "Kadastr",
   "login": "kosonsoy",
-  "password": "x",
-  "role": "user"
+  "password": "kosonsoy123",
+  "role": "engineer"
  }
 ]
