@@ -14,7 +14,8 @@
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
  *  Users: Branch | FullName | Department | Login | Password | Role
  *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | superadmin
- *  Logs : Branch | FullName | Department | Login | DateTime | Ip | Location
+ *  Logs : Branch | FullName | Department | Login | DateTime | Ip | Location | Accuracy
+ *         (Accuracy — joylashuv xatoligi, metr; ustun bo'lmasa avtomatik qo'shiladi)
  *
  * Parol oddiy matn yoki "sha256:<hex>" ko'rinishida bo'lishi mumkin
  * (hash olish uchun pastdagi hashPassword_ funksiyasini Apps Script'da ishga tushiring).
@@ -22,7 +23,7 @@
 
 const USERS_SHEET = "Users";
 const LOGS_SHEET = "Logs";
-const LOG_HEADERS = ["Branch", "FullName", "Department", "Login", "DateTime", "Ip", "Location"];
+const LOG_HEADERS = ["Branch", "FullName", "Department", "Login", "DateTime", "Ip", "Location", "Accuracy"];
 const TZ = "Asia/Tashkent";
 const MAX_FAILS = 5;            // ketma-ket noto'g'ri urinishlar
 const LOCK_SECONDS = 10 * 60;   // bloklash muddati
@@ -38,7 +39,7 @@ function doPost(e) {
     } else if (given !== secret) {
       result = { success: false, message: "Forbidden: secret mos emas (.env AUTH_APPS_SCRIPT_SECRET ≠ API_SECRET)" };
     } else if (req.action === "login") {
-      result = login_(req.login, req.password, req.ip, req.location);
+      result = login_(req.login, req.password, req.ip, req.location, req.accuracy);
     } else if (req.action === "getLogs") {
       result = getLogs_(Number(req.limit) || 5000);
     } else if (req.action === "ping") {
@@ -91,9 +92,17 @@ function hashPassword_() {
   Logger.log("sha256:" + sha256Hex_(pass));
 }
 
+/** Varaqda yo'q sarlavhalarni oxiriga qo'shadi */
+function ensureHeaders_(sheet, names) {
+  const lastCol = Math.max(sheet.getLastColumn(), 1);
+  const header = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return clean_(h).toLowerCase(); });
+  const missing = names.filter(function (n) { return header.indexOf(n.toLowerCase()) === -1; });
+  if (missing.length) sheet.getRange(1, sheet.getLastColumn() + 1, 1, missing.length).setValues([missing]);
+}
+
 /* ---------------- login ---------------- */
 
-function login_(login, password, ip, location) {
+function login_(login, password, ip, location, accuracy) {
   login = clean_(login).toLowerCase();
   password = clean_(password);
   if (!login || !password) return { success: false, message: "Login yoki parol noto'g'ri!" };
@@ -126,7 +135,7 @@ function login_(login, password, ip, location) {
       department: clean_(row[col("Department")]),
       role: role,
     };
-    appendLog_(user, ip, location);
+    appendLog_(user, ip, location, accuracy);
     return { success: true, user: user };
   }
 
@@ -134,7 +143,7 @@ function login_(login, password, ip, location) {
   return { success: false, message: "Login yoki parol noto'g'ri!" };
 }
 
-function appendLog_(user, ip, location) {
+function appendLog_(user, ip, location, accuracy) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
@@ -144,7 +153,8 @@ function appendLog_(user, ip, location) {
       sheet.appendRow(LOG_HEADERS);
       sheet.setFrozenRows(1);
     }
-    const header = sheet.getRange(1, 1, 1, Math.max(sheet.getLastColumn(), LOG_HEADERS.length)).getValues()[0];
+    ensureHeaders_(sheet, LOG_HEADERS); // eski Logs varag'iga Accuracy ustuni qo'shiladi
+    const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const col = headerIndex_(header);
     const row = new Array(header.length).fill("");
     row[col("Branch")] = user.branch;
@@ -154,6 +164,7 @@ function appendLog_(user, ip, location) {
     row[col("DateTime")] = Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd HH:mm:ss");
     row[col("Ip")] = clean_(ip) || "Noma'lum";
     row[col("Location")] = clean_(location) || "Aniqlanmadi";
+    row[col("Accuracy")] = accuracy == null ? "" : Number(accuracy);
     sheet.appendRow(row);
   } finally {
     lock.releaseLock();
@@ -169,6 +180,7 @@ function getLogs_(limit) {
   const lastCol = sheet.getLastColumn();
   const header = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   const col = headerIndex_(header);
+  const cAcc = header.map(function (h) { return clean_(h).toLowerCase(); }).indexOf("accuracy");
   const count = Math.min(limit, lastRow - 1);
   const rows = sheet.getRange(lastRow - count + 1, 1, count, lastCol).getValues();
 
@@ -182,6 +194,7 @@ function getLogs_(limit) {
       dateTime: dt instanceof Date ? Utilities.formatDate(dt, TZ, "yyyy-MM-dd HH:mm:ss") : clean_(dt),
       ip: clean_(r[col("Ip")]),
       location: clean_(r[col("Location")]),
+      accuracy: cAcc === -1 ? "" : clean_(r[cAcc]),
     };
   }).reverse(); // eng yangisi birinchi
 

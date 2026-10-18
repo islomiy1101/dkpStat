@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getUserLocation } from "@/lib/geo";
+import { GeoError, GEO_MAX_ACCURACY_M, getUserLocation, type GeoFix } from "@/lib/geo";
 
 /** Saytga kirish sahifasi. Joylashuvga ruxsat berilmasa kirish bloklanadi. */
 export default function LoginView() {
@@ -10,20 +10,21 @@ export default function LoginView() {
   const [showPass, setShowPass] = useState(false);
   const [stage, setStage] = useState<null | "location" | "auth">(null);
   const [error, setError] = useState<{ text: string; location?: boolean } | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
   const [guideOpen, setGuideOpen] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setStage("location");
-    let location = "";
+    setAccuracy(null);
+    let fix: GeoFix;
     try {
-      location = await getUserLocation();
+      fix = await getUserLocation(setAccuracy);
     } catch (err) {
       setStage(null);
-      setError(err === "LOCATION_DENIED"
-        ? { text: "Joylashuvga ruxsat berilmadi. Tizimga kirish uchun lokatsiyani yoqishingiz shart.", location: true }
-        : { text: String(err), location: true });
+      const text = err instanceof GeoError ? err.message : String(err);
+      setError({ text, location: true });
       return;
     }
     setStage("auth");
@@ -31,7 +32,7 @@ export default function LoginView() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ login, password, location }),
+        body: JSON.stringify({ login, password, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy }),
       });
       const json = await res.json();
       if (!json.success) {
@@ -95,12 +96,14 @@ export default function LoginView() {
 
           <button type="submit" className="auth-submit" disabled={busy}>
             {busy && <i className="fa-solid fa-spinner fa-spin" />}
-            {stage === "location" ? "Joylashuv aniqlanmoqda..." : stage === "auth" ? "Kirilmoqda..." : "Kirish"}
+            {stage === "location"
+              ? `Joylashuv aniqlanmoqda...${accuracy !== null ? ` ±${accuracy} m` : ""}`
+              : stage === "auth" ? "Kirilmoqda..." : "Kirish"}
           </button>
         </form>
 
         <p className="auth-note">
-          <i className="fa-solid fa-location-dot" /> Kirish uchun brauzer joylashuvni so&apos;raydi. Kirish vaqti, IP va joylashuv tizim jurnalida saqlanadi.
+          <i className="fa-solid fa-location-dot" /> Kirish uchun joylashuv ±{GEO_MAX_ACCURACY_M} m aniqlikda aniqlanishi kerak. Kirish vaqti, IP va joylashuv tizim jurnalida saqlanadi.
         </p>
       </div>
 
@@ -121,6 +124,13 @@ export default function LoginView() {
             <ol>
               <li>Telefon sozlamalarida <b>GPS / Joylashuv</b> yoqilganini tekshiring.</li>
               <li>Brauzer menyusi → <b>Sayt sozlamalari → Joylashuv</b> → ruxsat bering.</li>
+            </ol>
+            <p className="auth-modal-sub">Aniqlik yetarli bo&apos;lmasa (±{GEO_MAX_ACCURACY_M} m dan katta):</p>
+            <ol>
+              <li>Kompyuterda <b>Wi-Fi</b> ni yoqing (kabel orqali ulangan bo&apos;lsa ham) — joylashuv Wi-Fi tarmoqlari bo&apos;yicha aniqlanadi.</li>
+              <li>Windows: <b>Sozlamalar → Maxfiylik → Joylashuv</b> xizmati yoqilganini tekshiring.</li>
+              <li>Telefonda <b>aniq joylashuv (Precise location)</b> ni yoqing, bino ichida bo&apos;lsangiz deraza yoniga o&apos;ting.</li>
+              <li>Bir oz kutib, <b>Kirish</b> tugmasini qayta bosing.</li>
             </ol>
             <button className="auth-submit" onClick={() => setGuideOpen(false)}>Tushundim</button>
           </div>

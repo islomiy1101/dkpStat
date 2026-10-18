@@ -7,7 +7,7 @@ import { parseRole, type Role } from "./roles";
 export type LoginUser = { login: string; fullName: string; branch: string; department: string; role: Role };
 export type LogRow = {
   branch: string; fullName: string; department: string; login: string;
-  dateTime: string; ip: string; location: string;
+  dateTime: string; ip: string; location: string; accuracy: string;
 };
 
 type ScriptRes<T> = { success: boolean; message?: string } & T;
@@ -54,7 +54,7 @@ const nowStr = () => {
 };
 
 /* ---------- public ---------- */
-export async function loginWithSheet(login: string, password: string, ip: string, location: string) {
+export async function loginWithSheet(login: string, password: string, ip: string, location: string, accuracy: number) {
   if (MOCK) {
     const u = (await mockUsers()).find((x) => x.login.toLowerCase() === login.trim().toLowerCase() && x.password === password.trim());
     if (!u) return { success: false as const, message: "Login yoki parol noto'g'ri!" };
@@ -62,10 +62,10 @@ export async function loginWithSheet(login: string, password: string, ip: string
     void _p;
     const { role: _r, ...who } = user;
     void _r;
-    (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location });
+    (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location, accuracy: String(accuracy) });
     return { success: true as const, user: { ...user, role: parseRole(user.role) } };
   }
-  const r = await callAuthScript<{ user?: LoginUser }>({ action: "login", login, password, ip, location });
+  const r = await callAuthScript<{ user?: LoginUser }>({ action: "login", login, password, ip, location, accuracy });
   if (!r.success || !r.user) {
     if (r.message && r.message.startsWith("Forbidden")) console.error("[auth]", r.message);
     return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
