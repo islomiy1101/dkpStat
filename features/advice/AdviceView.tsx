@@ -9,11 +9,12 @@ import {
   isFilial, isIjobiy, isSuperAdmin, isVakolatsiz, normalizeName, parseLocalDate,
 } from "./utils";
 import { exportRegionalSummary, exportWeekly, generateExcelReportByDates } from "./excel";
+import AdviceDashboard from "./AdviceDashboard";
+import { sameBranch } from "@/lib/roles";
+import { dateKey, filterByPeriod, type Period } from "@/lib/analytics";
 
 type Alert = { text: string; type: "success" | "danger" } | null;
 type StatusFilter = "all" | "ijobiy" | "filial" | "vakolatsiz";
-
-const BAR_COLORS = ["#f43f5e", "#a855f7", "#06b6d4", "#10b981", "#f59e0b", "#ec4899", "#3b82f6", "#6366f1", "#14b8a6", "#84cc16", "#eab308", "#d946ef", "#0284c7", "#64748b"];
 
 async function postAction(payload: Record<string, unknown>) {
   try {
@@ -95,6 +96,9 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
   const [savingChora, setSavingChora] = useState<number | null>(null);
   const [pendingChora, setPendingChora] = useState<{ rowNum: number; natijaTuri: Natija } | null>(null);
   const [dateModal, setDateModal] = useState<{ open: boolean; start: string; end: string }>({ open: false, start: "", end: "" });
+  // Analitika paneli (faqat admin): davr va tuman filtri
+  const [period, setPeriod] = useState<Period>("30");
+  const [tumanFilter, setTumanFilter] = useState("");
 
   // Original applyCombinedFilters()
   const filtered = useMemo(() => {
@@ -124,23 +128,14 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
   const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
   const pageItems = filtered.slice(startIndex, endIndex);
 
-  const stats = useMemo(() => {
-    const s = { total: 0, ijobiy: 0, filial: 0, vakolat: 0, perTuman: {} as Record<string, number> };
-    if (!isAdmin) return s;
-    TUMANLAR.forEach((t) => (s.perTuman[t] = 0));
-    for (const m of getLatestDailyAppeals(all, true)) {
-      s.total++;
-      if (isIjobiy(m)) s.ijobiy++;
-      else if (isFilial(m)) s.filial++;
-      else if (isVakolatsiz(m)) s.vakolat++;
-      const t = m.tuman ? m.tuman.trim() : "";
-      if (t) {
-        const match = TUMANLAR.find((b) => normalizeName(b) === normalizeName(t));
-        if (match) s.perTuman[match]++;
-      }
-    }
-    return s;
-  }, [all, isAdmin]);
+  // Panel, hisobotlar: bir kunda takrorlangan fuqaro bir marta, davr va tuman bo'yicha
+  const today = now ? dateKey(now) : "";
+  const scoped = useMemo(() => {
+    if (!isAdmin || !today) return [];
+    const daily = getLatestDailyAppeals(all, false);
+    const byTuman = tumanFilter ? daily.filter((m) => sameBranch(m.tuman, tumanFilter)) : daily;
+    return filterByPeriod(byTuman, period, today);
+  }, [all, isAdmin, today, tumanFilter, period]);
 
   const manualSync = async () => {
     if (syncing) return;
@@ -151,7 +146,7 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
     setSyncing(false);
   };
 
-  const exportSource = () => (filtered.length > 0 ? filtered : all);
+  const exportSource = () => (isAdmin ? (scoped.length > 0 ? scoped : all) : filtered.length > 0 ? filtered : all);
   const excelCtx = { isAdmin, sessionTuman: session.tuman, masullar };
 
   const handleKetdi = async (rowNum: number) => {
@@ -267,8 +262,6 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
     : { icon: "⚖️", q: <>Haqiqatan ham ushbu qarorni tasdiqlaysizmi?</> };
 
   const emptyMsg = search.trim() || statusFilter !== "all" ? "Qidiruv bo'yicha hech qanday ma'lumot topilmadi." : "Bazada hali birorta ham murojaat mavjud emas.";
-  const maxMurojaat = Math.max(...Object.values(stats.perTuman), 1);
-  const sortedTumanlar = Object.keys(stats.perTuman).sort((a, b) => stats.perTuman[b] - stats.perTuman[a]);
 
   return (
     <div id="main-dashboard" style={{ display: "block" }}>
@@ -289,181 +282,151 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
         </div>
       </div>
 
-      <div className="dashboard-grid">
-        {!isAdmin && <MurojaatForm session={session} mahallalar={mahallalar} onSaved={() => { setSearch(""); return slot.refresh(true); }} />}
-
-        {isAdmin && (
-          <div className="card" id="stats-card" style={{ display: "block" }}>
-            <h3>Viloyat Umumiy Statistikasi</h3>
-            <div className="stats-mini-grid">
-              {([
-                ["all", "stat-total", "Jami", stats.total, "Barchasini ko'rsatish", "stat-total-count"],
-                ["ijobiy", "stat-ijobiy", "Ijobiy", stats.ijobiy, "Faqat Ijobiylarni ko'rsatish", "stat-ijobiy-count"],
-                ["filial", "stat-filial", "Filialga", stats.filial, "Faqat Filialga yo'naltirilganlarni ko'rsatish", "stat-filial-count"],
-                ["vakolatsiz", "stat-vakolat", "Vakolatsiz", stats.vakolat, "Faqat Vakolatsizlarni ko'rsatish", "stat-vakolat-count"],
-              ] as const).map(([key, cls, title, count, tip, id]) => (
-                <div key={key} className={`stat-box ${cls}${statusFilter === key ? " active-filter" : ""}`} onClick={() => setStatusFilter(key)} id={`card-filter-${key}`} title={tip}>
-                  <span className="stat-title">{title}</span>
-                  <span className="stat-count" id={id}>{count}</span>
-                </div>
-              ))}
-            </div>
-            <div className="progress-stats-container">
-              <div className="progress-stats-header"><h4>Filiallar kesimida murojaatlar</h4></div>
-              <div id="filiallar-progress-list" className="progress-bars-list">
-                {sortedTumanlar.map((name, index) => {
-                  const count = stats.perTuman[name];
-                  const pct = Number(((count / maxMurojaat) * 100).toFixed(0));
-                  const color = BAR_COLORS[index % BAR_COLORS.length];
-                  return (
-                    <div key={name} className="progress-item">
-                      <div className="progress-item-top">
-                        <span className="progress-item-name">{name}</span>
-                        <span className="progress-item-info">
-                          <span className="progress-item-count" style={{ color, fontWeight: 700 }}>{count} ta</span> murojaat
-                        </span>
-                      </div>
-                      <div className="progress-track">
-                        <div className="progress-fill" style={{ width: `${count > 0 ? Math.max(pct, 4) : 0}%`, backgroundColor: color }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* JADVAL */}
-        <div id="table-card" className="card">
-          <div className="table-card-header">
-            <h3 id="table-title">{isAdmin ? "Viloyat Bo'yicha Barcha Murojaatlar Ro'yxati" : "Murojaatlar Ro'yxati"}</h3>
-            <div className="table-actions-wrapper">
-              <button id="open-date-modal-btn" className="btn-excel-date" onClick={openDateModal} title="Tanlangan muddat bo'yicha yuklab olish" style={{ display: isAdmin ? "inline-flex" : "none" }}>
+      {isAdmin && today && (
+        <AdviceDashboard scoped={scoped} today={today} period={period} onPeriod={setPeriod}
+          tuman={tumanFilter} onTuman={setTumanFilter} totalAll={getLatestDailyAppeals(all, false).length}
+          actions={
+            <>
+              <button className="btn-excel-date" onClick={openDateModal} title="Sana oralig'i bo'yicha Excel hisobot">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 11H7v2h2v-2zm4 0h-2v2h2v-2zm4 0h-2v2h2v-2zm2-7h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V9h14v11z" /></svg>
-                Sana bo&apos;yicha hisobot
+                Sana bo&apos;yicha
               </button>
-              <button id="export-excel-btn" className="btn-excel" onClick={() => exportWeekly(exportSource(), excelCtx)} style={{ display: isAdmin ? "inline-flex" : "none" }}>
+              <button className="btn-excel" title="Joriy hafta (dushanba — juma) bo'yicha Excel hisobot" onClick={() => exportWeekly(exportSource(), excelCtx)}>
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" /></svg>
-                Haftalik hisobot
+                Haftalik
               </button>
-              <button id="export-summary-btn" className="btn-excel-summary" onClick={() => exportRegionalSummary(all, masullar)} style={{ display: isAdmin ? "inline-flex" : "none" }} title="14 ta filial bo'yicha yig'ma jadval">
+              <button className="btn-excel-summary" onClick={() => exportRegionalSummary(all, masullar)} title="Butun baza bo'yicha viloyat yig'ma Excel hisoboti">
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 3h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 4v3h4V7H4zm6 0v3h10V7H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10z" /></svg>
-                Viloyat yig&apos;ma hisoboti
+                Viloyat yig&apos;ma
               </button>
-              <div className="search-container">
-                <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.636Z" /></svg>
-                <input type="text" id="table-search" className="search-input" placeholder="F.I.O, telefon yoki maqsad..." value={search} onChange={(e) => setSearch(e.target.value)} />
+            </>
+          }
+        />
+      )}
+
+      {!isAdmin && (
+        <div className="dashboard-grid">
+          <MurojaatForm session={session} mahallalar={mahallalar} onSaved={() => { setSearch(""); return slot.refresh(true); }} />
+
+          {/* JADVAL */}
+          <div id="table-card" className="card">
+            <div className="table-card-header">
+              <h3 id="table-title">{isAdmin ? "Viloyat Bo'yicha Barcha Murojaatlar Ro'yxati" : "Murojaatlar Ro'yxati"}</h3>
+              <div className="table-actions-wrapper">
+                <div className="search-container">
+                  <svg className="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.637 10.636Z" /></svg>
+                  <input type="text" id="table-search" className="search-input" placeholder="F.I.O, telefon yoki maqsad..." value={search} onChange={(e) => setSearch(e.target.value)} />
+                </div>
               </div>
             </div>
-          </div>
 
-          {tableAlert && <div id="table-alert" className="table-alert alert-success" style={{ display: "block" }}>{tableAlert}</div>}
+            {tableAlert && <div id="table-alert" className="table-alert alert-success" style={{ display: "block" }}>{tableAlert}</div>}
 
-          <div className="table-wrapper">
-            <div id="table-loader" className="table-loader-overlay" style={{ display: tableLoading ? "flex" : "none" }}>
-              <div className="table-loader-circle" />
-              <div className="table-loader-text">Murojaatlar yuklanmoqda...</div>
-            </div>
-            <table id="murojaat-table" className={isAdmin ? "is-admin" : undefined}>
-              <thead>
-                <tr id="table-head-row">
-                  <th style={{ width: 38, textAlign: "center" }}>№</th>
-                  <th style={{ width: 85 }}>Sana</th>
-                  {isAdmin && <th style={{ width: 140 }}>Filial (Tuman)</th>}
-                  <th style={{ width: 175 }}>F.I.O</th>
-                  <th style={{ width: 135 }}>Telefon raqam</th>
-                  <th style={{ width: 105 }}>Keldi / Ketdi</th>
-                  <th>Kelishdan Maqsad</th>
-                  <th style={{ width: 165 }}>Murojaatga ko&apos;rilgan choralar</th>
-                  <th style={{ width: 90, textAlign: "center" }}>Amal</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slot.data && pageItems.length === 0 && (
-                  <tr><td colSpan={isAdmin ? 9 : 8} style={{ textAlign: "center", fontWeight: 600, color: "#666", padding: 25 }}>{emptyMsg}</td></tr>
-                )}
-                {pageItems.map((item, index) => {
-                  const v = rowView(item);
-                  return (
-                    <tr key={item.rowNum}>
-                      <td>{startIndex + index + 1}</td>
-                      <td style={{ whiteSpace: "nowrap", color: "#555" }}>{v.sana}</td>
-                      {isAdmin && <td style={{ whiteSpace: "nowrap", fontWeight: 600, color: "var(--primary-color)" }}>{v.tuman}</td>}
-                      <td style={{ fontWeight: 600 }}>{v.fio}</td>
-                      <td style={{ whiteSpace: "nowrap", fontWeight: 500, color: "#1f2937" }}>📞 {v.tel}</td>
-                      <td style={{ whiteSpace: "nowrap", fontSize: 12 }}>
-                        🕒 Keldi: <b>{v.keldi}</b><br />
-                        🕒 Ketdi: <span id={`time-ketdi-${item.rowNum}`}><b>{v.ketdi}</b></span>
-                      </td>
-                      <td style={{ maxWidth: 250, wordBreak: "break-word" }}>{v.maqsad}</td>
-                      <td>{choraSelect(item, "sel-chora-")}</td>
-                      <td style={{ textAlign: "center" }}>{actionCell(item)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobil kartalar */}
-          <div id="mobile-cards-container" className="mobile-cards-wrapper">
-            {slot.data && pageItems.length === 0 && (
-              <div style={{ textAlign: "center", fontWeight: 600, color: "#666", padding: 25, background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>{emptyMsg}</div>
-            )}
-            {pageItems.map((item, index) => {
-              const v = rowView(item);
-              return (
-                <div key={item.rowNum} className="mobile-record-card">
-                  <div className="m-card-header">
-                    <span className="m-badge-id">№ {startIndex + index + 1}</span>
-                    <span className="m-card-date">📅 {v.sana}</span>
-                  </div>
-                  <div className="m-card-body">
-                    <div className="m-card-name">{v.fio}</div>
-                    <div className="m-card-phone">📞 <a href={`tel:${v.tel}`}>{v.tel}</a></div>
-                    {isAdmin && <div className="m-card-tuman">📍 Filial: <b>{v.tuman}</b></div>}
-                    <div className="m-card-time-row">
-                      <span>🕒 Keldi: <b>{v.keldi}</b></span>
-                      <span>🕒 Ketdi: <b id={`m-time-ketdi-${item.rowNum}`}>{v.ketdi}</b></span>
-                    </div>
-                    <div className="m-card-purpose">
-                      <label>Kelishdan maqsad:</label>
-                      <p>{v.maqsad}</p>
-                    </div>
-                    <div className="m-card-actions">
-                      <label>Murojaat chorasi:</label>
-                      {choraSelect(item, "m-sel-chora-")}
-                    </div>
-                  </div>
-                  <div className="m-card-footer">{actionCell(item)}</div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="pagination-wrapper">
-            <div id="pagination-info" className="pagination-info">
-              {totalItems > 0 ? `${totalItems} tadan ${startIndex + 1}-${endIndex} qatorlar ko'rsatilmoqda` : ""}
-            </div>
-            <div id="pagination-buttons" className="pagination-buttons">
-              {totalItems > 0 && totalPages > 1 && (
-                <>
-                  <button className="page-btn" disabled={curPage === 1} onClick={() => setPage(curPage - 1)}>«</button>
-                  {pagesList.map((p, i) =>
-                    p === "..." ? (
-                      <span key={`d${i}`} className="page-dots" style={{ padding: "0 6px", color: "#666" }}>...</span>
-                    ) : (
-                      <button key={p} className={`page-btn ${p === curPage ? "active" : ""}`} onClick={() => setPage(p)}>{p}</button>
-                    )
+            <div className="table-wrapper">
+              <div id="table-loader" className="table-loader-overlay" style={{ display: tableLoading ? "flex" : "none" }}>
+                <div className="table-loader-circle" />
+                <div className="table-loader-text">Murojaatlar yuklanmoqda...</div>
+              </div>
+              <table id="murojaat-table" className={isAdmin ? "is-admin" : undefined}>
+                <thead>
+                  <tr id="table-head-row">
+                    <th style={{ width: 38, textAlign: "center" }}>№</th>
+                    <th style={{ width: 85 }}>Sana</th>
+                    {isAdmin && <th style={{ width: 140 }}>Filial (Tuman)</th>}
+                    <th style={{ width: 175 }}>F.I.O</th>
+                    <th style={{ width: 135 }}>Telefon raqam</th>
+                    <th style={{ width: 105 }}>Keldi / Ketdi</th>
+                    <th>Kelishdan Maqsad</th>
+                    <th style={{ width: 165 }}>Murojaatga ko&apos;rilgan choralar</th>
+                    <th style={{ width: 90, textAlign: "center" }}>Amal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {slot.data && pageItems.length === 0 && (
+                    <tr><td colSpan={isAdmin ? 9 : 8} style={{ textAlign: "center", fontWeight: 600, color: "#666", padding: 25 }}>{emptyMsg}</td></tr>
                   )}
-                  <button className="page-btn" disabled={curPage === totalPages} onClick={() => setPage(curPage + 1)}>»</button>
-                </>
+                  {pageItems.map((item, index) => {
+                    const v = rowView(item);
+                    return (
+                      <tr key={item.rowNum}>
+                        <td>{startIndex + index + 1}</td>
+                        <td style={{ whiteSpace: "nowrap", color: "#555" }}>{v.sana}</td>
+                        {isAdmin && <td style={{ whiteSpace: "nowrap", fontWeight: 600, color: "var(--primary-color)" }}>{v.tuman}</td>}
+                        <td style={{ fontWeight: 600 }}>{v.fio}</td>
+                        <td style={{ whiteSpace: "nowrap", fontWeight: 500, color: "#1f2937" }}>📞 {v.tel}</td>
+                        <td style={{ whiteSpace: "nowrap", fontSize: 12 }}>
+                          🕒 Keldi: <b>{v.keldi}</b><br />
+                          🕒 Ketdi: <span id={`time-ketdi-${item.rowNum}`}><b>{v.ketdi}</b></span>
+                        </td>
+                        <td style={{ maxWidth: 250, wordBreak: "break-word" }}>{v.maqsad}</td>
+                        <td>{choraSelect(item, "sel-chora-")}</td>
+                        <td style={{ textAlign: "center" }}>{actionCell(item)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobil kartalar */}
+            <div id="mobile-cards-container" className="mobile-cards-wrapper">
+              {slot.data && pageItems.length === 0 && (
+                <div style={{ textAlign: "center", fontWeight: 600, color: "#666", padding: 25, background: "#fff", borderRadius: 8, border: "1px solid #e2e8f0" }}>{emptyMsg}</div>
               )}
+              {pageItems.map((item, index) => {
+                const v = rowView(item);
+                return (
+                  <div key={item.rowNum} className="mobile-record-card">
+                    <div className="m-card-header">
+                      <span className="m-badge-id">№ {startIndex + index + 1}</span>
+                      <span className="m-card-date">📅 {v.sana}</span>
+                    </div>
+                    <div className="m-card-body">
+                      <div className="m-card-name">{v.fio}</div>
+                      <div className="m-card-phone">📞 <a href={`tel:${v.tel}`}>{v.tel}</a></div>
+                      {isAdmin && <div className="m-card-tuman">📍 Filial: <b>{v.tuman}</b></div>}
+                      <div className="m-card-time-row">
+                        <span>🕒 Keldi: <b>{v.keldi}</b></span>
+                        <span>🕒 Ketdi: <b id={`m-time-ketdi-${item.rowNum}`}>{v.ketdi}</b></span>
+                      </div>
+                      <div className="m-card-purpose">
+                        <label>Kelishdan maqsad:</label>
+                        <p>{v.maqsad}</p>
+                      </div>
+                      <div className="m-card-actions">
+                        <label>Murojaat chorasi:</label>
+                        {choraSelect(item, "m-sel-chora-")}
+                      </div>
+                    </div>
+                    <div className="m-card-footer">{actionCell(item)}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="pagination-wrapper">
+              <div id="pagination-info" className="pagination-info">
+                {totalItems > 0 ? `${totalItems} tadan ${startIndex + 1}-${endIndex} qatorlar ko'rsatilmoqda` : ""}
+              </div>
+              <div id="pagination-buttons" className="pagination-buttons">
+                {totalItems > 0 && totalPages > 1 && (
+                  <>
+                    <button className="page-btn" disabled={curPage === 1} onClick={() => setPage(curPage - 1)}>«</button>
+                    {pagesList.map((p, i) =>
+                      p === "..." ? (
+                        <span key={`d${i}`} className="page-dots" style={{ padding: "0 6px", color: "#666" }}>...</span>
+                      ) : (
+                        <button key={p} className={`page-btn ${p === curPage ? "active" : ""}`} onClick={() => setPage(p)}>{p}</button>
+                      )
+                    )}
+                    <button className="page-btn" disabled={curPage === totalPages} onClick={() => setPage(curPage + 1)}>»</button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* SANA BO'YICHA HISOBOT MODALI */}
       <div id="date-export-modal" className="modal-overlay" style={{ display: dateModal.open ? "flex" : "none" }}>

@@ -14,11 +14,15 @@ function clientIp(req: Request) {
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { login?: string; password?: string; lat?: unknown; lng?: unknown; accuracy?: unknown };
-  const login = String(body.login || "").trim();
+  const login = String(body.login || "");
   const password = String(body.password || "");
   const lat = Number(body.lat), lng = Number(body.lng), accuracy = Number(body.accuracy);
 
   if (!login || !password) return NextResponse.json({ success: false, message: "Login va parolni kiriting!" }, { status: 400 });
+  // Login va parolda bo'sh joy bo'lmaydi (brauzer ham kiritishga yo'l qo'ymaydi)
+  if (/\s/.test(login) || /\s/.test(password)) {
+    return NextResponse.json({ success: false, message: "Login va parolda probel bo'lmasligi kerak" }, { status: 400 });
+  }
   // Lokatsiya majburiy (istalgan joydan kirish mumkin, aniqlik bo'yicha cheklov yo'q — faqat jurnalga yoziladi)
   if (![lat, lng, accuracy].every(Number.isFinite) || Math.abs(lat) > 90 || Math.abs(lng) > 180 || accuracy <= 0) {
     return NextResponse.json({ success: false, message: "Kirish uchun joylashuvga ruxsat berish shart!" }, { status: 400 });

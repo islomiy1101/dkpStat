@@ -14,13 +14,57 @@ const STATUS_LABEL: Record<SlotStatus, string> = {
   error: "Xatolik",
 };
 
-function timeAgo(ts?: number) {
-  if (!ts) return "";
-  const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
 export type SidebarUser = { login: string; fullName: string; branch: string; department: string; role: Role };
+
+/** Ma'lumot bo'limi bo'lmagan ilovalar (DataProvider'ga bog'lanmagan) — "Bo'limlar" ro'yxatida chiqadi */
+type NavChild = { href: string; title: string; icon: string };
+const TOOL_LINKS: { id: AreaId; href: string; title: string; subtitle: string; icon: string; children: NavChild[] }[] = [
+  {
+    id: "regtest",
+    href: "/regtest",
+    title: "Registratsiya",
+    subtitle: "Registratorlar testi",
+    icon: "fa-solid fa-clipboard-question",
+    children: [
+      { href: "/regtest/test", title: "Test yechish", icon: "fa-solid fa-pen-to-square" },
+      { href: "/regtest/natijalar", title: "Test natijalari", icon: "fa-solid fa-chart-column" },
+    ],
+  },
+];
+
+/** Bo'limchali bo'lim: bosilganda ochiladi/yopiladi; joriy sahifa shu ichida bo'lsa — doim ochiq */
+function NavGroup({ id, inner, tip, items, isActive, isOpen, onToggle, pathname, collapsed }: {
+  id: string;
+  inner: React.ReactNode;
+  tip?: string;
+  items: NavChild[];
+  isActive: boolean;
+  isOpen: boolean;
+  onToggle: () => void;
+  pathname: string | null;
+  collapsed: boolean;
+}) {
+  return (
+    <div key={id} className={`sb-group${isOpen ? " open" : ""}`}>
+      <button type="button" className={`sb-item sb-group-toggle${isActive ? " active-parent" : ""}`} title={tip}
+        aria-expanded={isOpen} onClick={onToggle}>
+        {inner}
+        <i className="fa-solid fa-chevron-down sb-caret" />
+      </button>
+      {isOpen && (
+        <div className="sb-children">
+          {items.map((c) => (
+            <Link key={c.href} href={c.href} prefetch title={collapsed ? c.title : undefined}
+              className={`sb-child${pathname?.startsWith(c.href) ? " active" : ""}`}>
+              <i className={c.icon} />
+              <span>{c.title}</span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 /** Superadmin sahifalari (ma'lumot bo'limlaridan alohida, DataProvider'ga bog'lanmagan) */
 const ADMIN_LINKS: { id: AreaId; href: string; title: string; subtitle: string; icon: string }[] = [
@@ -47,6 +91,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
   const [busy, setBusy] = useState(false);
   const [confirmOut, setConfirmOut] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
 
   // Escape bilan yopish
   useEffect(() => {
@@ -77,7 +122,9 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
 
   const sections = SECTIONS.filter((s) => canSee(user.role, s.id));
   const adminLinks = ADMIN_LINKS.filter((l) => canSee(user.role, l.id));
-  const active = [...sections, ...adminLinks].find((s) => pathname?.startsWith(s.href));
+  const toolLinks = TOOL_LINKS.filter((l) => canSee(user.role, l.id));
+  const subLinks = [...sections, ...toolLinks].flatMap((s) => ("children" in s ? s.children : []));
+  const active = [...subLinks, ...sections, ...toolLinks, ...adminLinks].find((s) => pathname?.startsWith(s.href));
 
   const onRefreshAll = async () => {
     setBusy(true);
@@ -129,14 +176,8 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
             const slot = state[s.id];
             const isActive = pathname?.startsWith(s.href);
             const st: SlotStatus = slot.refreshing && slot.status !== "ready" ? "loading" : slot.status;
-            return (
-              <Link
-                key={s.id}
-                href={s.href}
-                prefetch
-                className={`sb-item${isActive ? " active" : ""}`}
-                title={collapsed ? `${s.title} — ${STATUS_LABEL[st]}` : undefined}
-              >
+            const inner = (
+              <>
                 <span className="sb-icon">
                   <i className={s.icon} />
                 </span>
@@ -145,7 +186,38 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
                   <span className="sb-sub">{s.subtitle}</span>
                 </span>
                 <span className={`sb-status st-${st}${slot.refreshing ? " is-refreshing" : ""}`} title={STATUS_LABEL[st]} />
-              </Link>
+              </>
+            );
+            const tip = collapsed ? `${s.title} — ${STATUS_LABEL[st]}` : undefined;
+            if (!("children" in s)) {
+              return (
+                <Link key={s.id} href={s.href} prefetch className={`sb-item${isActive ? " active" : ""}`} title={tip}>
+                  {inner}
+                </Link>
+              );
+            }
+            const isOpen = !!(isActive || openGroups[s.id]);
+            return (
+              <NavGroup key={s.id} id={s.id} inner={inner} tip={tip} items={s.children} isActive={!!isActive} isOpen={isOpen}
+                onToggle={() => setOpenGroups((g) => ({ ...g, [s.id]: !isOpen }))} pathname={pathname} collapsed={collapsed} />
+            );
+          })}
+
+          {toolLinks.map((l) => {
+            const isActive = !!pathname?.startsWith(l.href);
+            const isOpen = isActive || !!openGroups[l.id];
+            return (
+              <NavGroup key={l.id} id={l.id} tip={collapsed ? l.title : undefined} items={l.children} isActive={isActive} isOpen={isOpen}
+                onToggle={() => setOpenGroups((g) => ({ ...g, [l.id]: !isOpen }))} pathname={pathname} collapsed={collapsed}
+                inner={
+                  <>
+                    <span className="sb-icon"><i className={l.icon} /></span>
+                    <span className="sb-text">
+                      <span className="sb-title">{l.title}</span>
+                      <span className="sb-sub">{l.subtitle}</span>
+                    </span>
+                  </>
+                } />
             );
           })}
 
@@ -161,20 +233,15 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
           ))}
         </nav>
 
+        {/* Ma'lumot bo'limlari bo'lmasa (masalan, faqat RegTest) — yangilash paneli kerak emas */}
+        {sections.length > 0 && (
         <div className="sb-footer">
           <button className="sb-refresh" onClick={onRefreshAll} disabled={busy} title="Barcha bo'limlarni parallel yangilash">
             <i className={`fa-solid fa-rotate${busy ? " fa-spin" : ""}`} />
             <span>Barchasini yangilash</span>
           </button>
-          <div className="sb-meta">
-            {sections.map((s) => (
-              <div key={s.id} className="sb-meta-row">
-                <span>{s.source}</span>
-                <span>{state[s.id].updatedAt ? timeAgo(state[s.id].updatedAt) : "—"}</span>
-              </div>
-            ))}
-          </div>
         </div>
+        )}
       </aside>
 
       {confirmOut && (

@@ -25,7 +25,15 @@ async function callAuthScript<T>(payload: Record<string, unknown>): Promise<Scri
   });
   const text = await res.text();
   try {
-    return JSON.parse(text) as ScriptRes<T>;
+    const json = JSON.parse(text) as ScriptRes<T>;
+    // Skript bu amalni bilmaydi — Apps Script'ga Code.gs ning eski versiyasi deploy qilingan
+    if (!json.success && json.message === "Noma'lum amal") {
+      console.error(`[auth] Apps Script "${String(payload.action)}" amalini bilmaydi — eski versiya deploy qilingan`);
+      json.message =
+        "Apps Script eski versiyada ishlayapti. apps-script/auth/Code.gs ning oxirgi versiyasini qo'yib, " +
+        "Deploy → Manage deployments → Edit → New version qiling.";
+    }
+    return json;
   } catch {
     // JSON o'rniga HTML keldi — odatda deploy "Who has access: Anyone" emas yoki URL /exec emas
     console.error("[auth] Apps Script JSON qaytarmadi:", res.status, text.slice(0, 300));
@@ -70,6 +78,9 @@ export async function loginWithSheet(login: string, password: string, ip: string
     if (r.message && r.message.startsWith("Forbidden")) console.error("[auth]", r.message);
     return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
   }
+  if (r.user.role === undefined) {
+    console.error("[auth] Apps Script javobida role yo'q — eski deploy versiyasi? (Manage deployments → New version)");
+  }
   return { success: true as const, user: { ...r.user, role: parseRole(r.user.role) } };
 }
 
@@ -94,4 +105,75 @@ export async function importSheets(
   }
   if (!spreadsheetId) return { success: false, message: `${meta.section} uchun Sheet ID sozlanmagan` };
   return callAuthScript<{ rows?: Record<string, number> }>({ action: "importSheets", spreadsheetId, sheets, meta });
+}
+
+export type ImportChunk = {
+  startRow: number;
+  values: unknown[][];
+  reset: boolean;
+  totalRows: number;
+  width: number;
+  last: boolean;
+  asText: boolean;
+};
+
+/** Katta varaqni qismlab yozish (Apps Script → importChunk); zaxirasiz — xato bo'lsa varaq qisman yozilgan bo'ladi */
+export async function importChunk(
+  spreadsheetId: string,
+  name: string,
+  chunk: ImportChunk,
+  meta: { section: string; login: string; fullName: string; fileName: string }
+): Promise<{ success: boolean; message?: string }> {
+  if (MOCK) return { success: true };
+  if (!spreadsheetId) return { success: false, message: `${meta.section} uchun Sheet ID sozlanmagan` };
+  return callAuthScript({ action: "importChunk", spreadsheetId, name, chunk, meta });
+}
+
+/**
+ * Users/Logs jadvalining ID'si — Apps Script shu jadvalga bog'langan, shuning uchun .env'da yo'q bo'lishi mumkin.
+ * AUTH_SHEET_ID berilmagan bo'lsa "ping" javobidan olinadi (eski Code.gs'da bo'lmaydi → "").
+ */
+export async function authSpreadsheetId(): Promise<string> {
+  if (config.authSheetId) return config.authSheetId;
+  if (MOCK) return "";
+  // Faqat topilgan ID saqlanadi — Apps Script yangilangach, keyingi ochilishdayoq havola paydo bo'ladi
+  if (!authSheetIdCache) {
+    const r = await callAuthScript<{ spreadsheetId?: string }>({ action: "ping" }).catch(() => null);
+    authSheetIdCache = String(r?.spreadsheetId || "");
+  }
+  return authSheetIdCache;
+}
+let authSheetIdCache = "";
+
+/* ---------- RegTest (savollar banki va natijalar — REGTEST_SHEET_ID Code.gs'da) ---------- */
+
+export async function regtestQuestionRows(): Promise<string[][]> {
+  const r = await callAuthScript<{ rows?: string[][] }>({ action: "regtestQuestions" });
+  if (!r.success || !r.rows) throw new Error(r.message || "Savollarni o'qib bo'lmadi");
+  return r.rows;
+}
+
+/** Test boshlanishi: 2 soatlik cheklov tekshiriladi va "Jarayonda" qatori yoziladi */
+export async function regtestStartRow(row: Record<string, string | number>) {
+  return callAuthScript<{ limited?: boolean; nextAt?: string }>({ action: "regtestStart", row });
+}
+
+export async function regtestSaveResult(row: Record<string, string | number>) {
+  return callAuthScript({ action: "regtestSave", row });
+}
+
+/** "Натижалар" varag'i (dashboard uchun) */
+export async function regtestResultRows(): Promise<string[][]> {
+  const r = await callAuthScript<{ rows?: string[][] }>({ action: "regtestResults" });
+  if (!r.success || !r.rows) throw new Error(r.message || "Natijalarni o'qib bo'lmadi");
+  return r.rows;
+}
+
+/** Parolni qayta tekshirish (Logs'ga yozilmaydi); MOCK — mock/auth_users.json */
+export async function verifyPassword(login: string, password: string): Promise<{ success: boolean; message?: string }> {
+  if (MOCK) {
+    const u = (await mockUsers()).find((x) => x.login.toLowerCase() === login.toLowerCase());
+    return u && u.password === password ? { success: true } : { success: false, message: "Parol noto'g'ri" };
+  }
+  return callAuthScript({ action: "verifyPassword", login, password });
 }

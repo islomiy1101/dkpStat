@@ -1,0 +1,193 @@
+/* "Xatlov+Faol" — ЎРҚ-937 ШТАБ маълумоти (ekran, rasm va pechat) */
+.sec-xatlov {
+  --xt-border: #cbd5e1;
+  /* Jadval chiziqlari — rangli kataklar ustida ham ko'rinadigan to'q kulrang */
+  --xt-grid: #8391a3;
+  --xt-muted: #64748b;
+  --xt-text: #0f172a;
+  --xt-red: #dc2626;
+  --xt-blue: #1d4ed8;
+  --xt-accent: #0e7490;
+  --xt-head: #e2efd9;
+  --xt-orange: #ffc000;
+  --xt-soft-blue: #dce6f2;
+  --xt-soft-orange: #ffe0a3;
+  --xt-soft-yellow: #fff7d6;
+  --xt-soft-pink: #fbe4e4;
+  /* Bloklar: Хатлов — ko'k, Фаол — yashil, qolganlari — neytral */
+  --xt-x: #1d4ed8;
+  --xt-x-soft: #e3ebff;
+  --xt-f: #15803d;
+  --xt-f-soft: #dcf5e3;
+  --xt-o: #475569;
+  --xt-o-soft: #eef2f6;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 14px 28px 28px;
+  background: #f1f5f9;
+  color: var(--xt-text);
+  font-family: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: 13px;
+  min-width: 0;
+}
+.sec-xatlov * { box-sizing: border-box; }
+.sec-xatlov button { font: inherit; }
+
+/* Asboblar paneli */
+.sec-xatlov .xt-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 18px; margin-bottom: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+}
+.sec-xatlov .xt-toolbar-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sec-xatlov .xt-badge {
+  width: 38px; height: 38px; border-radius: 9px; color: #fff; font-size: 15px; flex-shrink: 0;
+  background: linear-gradient(135deg, #14b8a6, #0e7490); display: flex; align-items: center; justify-content: center;
+}
+.sec-xatlov .xt-toolbar h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.sec-xatlov .xt-toolbar-title span { font-size: 11.5px; color: var(--xt-muted); }
+.sec-xatlov .xt-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sec-xatlov .xt-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 8px;
+  border: 1px solid var(--xt-border); background: #fff; color: var(--xt-text); font-weight: 600; font-size: 12.5px; cursor: pointer;
+}
+.sec-xatlov .xt-btn:hover:not(:disabled) { background: #f8fafc; border-color: #94a3b8; }
+.sec-xatlov .xt-btn:disabled { opacity: 0.55; cursor: default; }
+.sec-xatlov .xt-btn-primary { background: var(--xt-accent); border-color: var(--xt-accent); color: #fff; }
+.sec-xatlov .xt-btn-primary:hover:not(:disabled) { background: var(--xt-accent); filter: brightness(1.08); }
+.sec-xatlov .xt-alert {
+  margin-bottom: 12px; padding: 10px 14px; border-radius: 10px; font-size: 12.5px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+}
+.sec-xatlov .xt-alert.is-info { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; cursor: pointer; }
+.sec-xatlov .xt-loading { padding: 60px 0; text-align: center; color: var(--xt-muted); font-size: 14px; }
+
+/* Hisobot kartasi */
+.sec-xatlov .xt-report {
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 18px 20px;
+  box-shadow: 0 10px 25px -12px rgba(15, 23, 42, 0.18);
+}
+.sec-xatlov .xt-report-head { text-align: center; margin-bottom: 10px; }
+.sec-xatlov .xt-report-head h1 { margin: 0; font-size: 18px; font-weight: 800; color: #1e3a8a; line-height: 1.35; }
+.sec-xatlov .xt-asof { margin-top: 4px; text-align: left; font-size: 12.5px; font-weight: 700; font-style: italic; color: var(--xt-red); }
+
+.sec-xatlov .xt-table-wrap { overflow-x: auto; border: 1px solid var(--xt-grid); border-radius: 10px; }
+.sec-xatlov .xt-table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; width: 100%; min-width: 1500px; }
+.sec-xatlov .xt-table th,
+.sec-xatlov .xt-table td { border-right: 1px solid var(--xt-grid); border-bottom: 1px solid var(--xt-grid); }
+.sec-xatlov .xt-table tr > :last-child { border-right: none; }
+
+.sec-xatlov .xt-table th {
+  padding: 6px 4px; background: var(--xt-head); color: #1e293b; font-size: 11px; font-weight: 700; line-height: 1.25;
+  text-align: center; vertical-align: middle;
+}
+/* Blok sarlavhalari och tusda (to'q sariq urg'ular quyidagi qoidalarda ustun turadi) */
+.sec-xatlov th.blk-xatlov { background: var(--xt-x-soft); }
+.sec-xatlov th.blk-faol { background: var(--xt-f-soft); }
+.sec-xatlov th.blk-other { background: var(--xt-o-soft); }
+.sec-xatlov th.h-block { font-size: 13.5px; font-weight: 800; letter-spacing: 0.06em; color: #fff; padding: 8px 4px; }
+.sec-xatlov th.h-block i { margin-right: 6px; opacity: 0.9; }
+.sec-xatlov th.h-block.blk-xatlov { background: var(--xt-x); }
+.sec-xatlov th.h-block.blk-faol { background: var(--xt-f); }
+.sec-xatlov th.h-block.blk-other { background: var(--xt-o); }
+/* Bloklar orasidagi qalin chegara: Tuman | Хатлов | Фаол | Жараён */
+.sec-xatlov .xt-table .blk-start { border-left: 3px solid var(--xt-o); }
+.sec-xatlov .xt-table .blk-start.blk-xatlov { border-left-color: var(--xt-x); }
+.sec-xatlov .xt-table .blk-start.blk-faol { border-left-color: var(--xt-f); }
+.sec-xatlov th.h-month { background: var(--xt-orange); color: var(--xt-red); font-size: 13px; font-weight: 800; }
+.sec-xatlov th.h-kun { font-style: italic; font-weight: 600; }
+.sec-xatlov th.h-sm { min-width: 70px; font-weight: 600; }
+.sec-xatlov th.h-pct { background: var(--xt-orange); font-size: 13px; min-width: 46px; }
+.sec-xatlov th.h-reja { background: var(--xt-orange); }
+.sec-xatlov th.h-bajar { background: var(--xt-orange); }
+.sec-xatlov th.h-farq { background: var(--xt-soft-blue); }
+.sec-xatlov th.h-ort { background: var(--xt-orange); }
+.sec-xatlov th.h-day { font-style: italic; font-weight: 700; }
+.sec-xatlov th.h-kunreja { font-style: italic; font-size: 12px; }
+.sec-xatlov .t-red { color: var(--xt-red); }
+.sec-xatlov .t-blue { color: var(--xt-blue); }
+/* Tik sarlavhalar (Excel'dagidek pastdan yuqoriga). writing-mode emas, rotate — html2canvas rasmda ham to'g'ri chizadi */
+.sec-xatlov th.h-vert { position: relative; height: 128px; min-width: 32px; padding: 0; }
+.sec-xatlov th.h-vert.is-2l { min-width: 42px; }
+.sec-xatlov th.h-vert > span {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-90deg);
+  white-space: nowrap; text-align: center; line-height: 1.2;
+}
+
+/* Kataklar */
+.sec-xatlov .xt-table td { padding: 6px 5px; text-align: center; white-space: nowrap; background: #fff; }
+.sec-xatlov .xt-table tbody tr:hover td { filter: brightness(0.97); }
+.sec-xatlov td.c-jami { font-weight: 500; }
+.sec-xatlov td.c-reja { background: var(--xt-soft-blue); font-weight: 600; }
+.sec-xatlov td.c-bajar { background: var(--xt-soft-orange); font-weight: 600; }
+.sec-xatlov td.c-pct { font-weight: 700; min-width: 46px; }
+.sec-xatlov td.c-farq { background: var(--xt-soft-blue); font-weight: 700; }
+.sec-xatlov td.c-farq.is-neg { color: var(--xt-red); }
+.sec-xatlov td.c-ort { background: var(--xt-soft-orange); font-weight: 700; }
+.sec-xatlov td.c-hafta { background: var(--xt-soft-pink); }
+.sec-xatlov td.c-kunreja { color: var(--xt-red); font-weight: 800; font-size: 14px; }
+.sec-xatlov td.c-day { background: var(--xt-soft-yellow); }
+.sec-xatlov td.c-day.is-low { color: var(--xt-red); font-weight: 600; }
+.sec-xatlov td.c-day.is-empty { color: #94a3b8; }
+.sec-xatlov td.c-soft { background: var(--xt-soft-blue); }
+
+/* № va tuman ustunlari chapda qotirilgan */
+.sec-xatlov .sticky-n,
+.sec-xatlov .sticky-name { position: sticky; z-index: 2; }
+.sec-xatlov .sticky-n { left: 0; width: 38px; min-width: 38px; }
+.sec-xatlov .sticky-name { left: 38px; min-width: 160px; text-align: left !important; font-weight: 600; box-shadow: 1px 0 0 var(--xt-grid); }
+.sec-xatlov thead .sticky-n,
+.sec-xatlov thead .sticky-name { z-index: 3; text-align: center !important; }
+.sec-xatlov td.sticky-n { color: var(--xt-muted); }
+
+/* Viloyat qatori — blok kataklari blokning och tusida */
+.sec-xatlov .xt-total td { font-weight: 800; font-size: 13.5px; border-bottom: 2px solid var(--xt-accent); }
+.sec-xatlov .xt-total td.blk-xatlov.c-jami, .sec-xatlov .xt-total td.blk-xatlov.c-kunreja, .sec-xatlov .xt-total td.blk-xatlov.c-day { background: var(--xt-x-soft); }
+.sec-xatlov .xt-total td.blk-faol.c-jami, .sec-xatlov .xt-total td.blk-faol.c-kunreja, .sec-xatlov .xt-total td.blk-faol.c-day { background: var(--xt-f-soft); }
+.sec-xatlov .xt-total td.sticky-n,
+.sec-xatlov .xt-total td.sticky-name { background: #e0f2f1; }
+
+/* Rasmga olish: butun jadval, scroll va sticky'siz */
+.sec-xatlov .xt-report.capturing { width: 2000px; border-radius: 0; box-shadow: none; }
+.sec-xatlov .xt-report.capturing .xt-table-wrap { overflow: visible; }
+.sec-xatlov .xt-report.capturing .sticky-n,
+.sec-xatlov .xt-report.capturing .sticky-name { position: static; }
+
+@media (max-width: 900px) {
+  .sec-xatlov { padding: 12px 16px 20px; }
+  .sec-xatlov .xt-report { padding: 12px 10px 14px; }
+  .sec-xatlov .xt-report-head h1 { font-size: 14px; }
+  .sec-xatlov .xt-btn span { display: none; }
+  .sec-xatlov .sticky-name { min-width: 120px; }
+}
+
+/* Pechat: faqat hisobot, A4 albom, ranglar bilan */
+@media print {
+  @page { size: A4 landscape; margin: 6mm; }
+  body:has(.sec-xatlov) { background: #fff !important; }
+  body:has(.sec-xatlov) .app-sidebar,
+  body:has(.sec-xatlov) .app-topbar,
+  body:has(.sec-xatlov) .app-scrim { display: none !important; }
+  body:has(.sec-xatlov) .app-main { margin: 0 !important; padding: 0 !important; }
+  .sec-xatlov { padding: 0; min-height: 0; background: #fff; }
+  .sec-xatlov * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sec-xatlov .xt-toolbar,
+  .sec-xatlov .xt-alert { display: none !important; }
+  .sec-xatlov .xt-report { border: none; box-shadow: none; padding: 0; border-radius: 0; }
+  .sec-xatlov .xt-report-head h1 { font-size: 13px; }
+  .sec-xatlov .xt-table-wrap { overflow: visible; border-radius: 0; border-color: #475569; }
+  .sec-xatlov .xt-table { min-width: 0; width: 100%; table-layout: auto; }
+  .sec-xatlov .xt-table th,
+  .sec-xatlov .xt-table td { border-color: #475569; padding: 3px 1px; font-size: 7.5px; }
+  .sec-xatlov th.h-vert { height: 92px; min-width: 15px; }
+  .sec-xatlov th.h-vert.is-2l { min-width: 22px; }
+  .sec-xatlov td.c-kunreja,
+  .sec-xatlov .xt-total td { font-size: 8px; }
+  .sec-xatlov .sticky-n,
+  .sec-xatlov .sticky-name { position: static; min-width: 0; }
+  .sec-xatlov .sticky-name { min-width: 70px; }
+  .sec-xatlov th.h-sm { min-width: 0; }
+  .sec-xatlov th.h-pct, .sec-xatlov td.c-pct { min-width: 0; }
+  .sec-xatlov .xt-table tr { break-inside: avoid; }
+  .sec-xatlov .xt-table .blk-start { border-left-width: 2px; }
+}

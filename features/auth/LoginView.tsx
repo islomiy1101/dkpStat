@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+
+/** Login va parolda bo'sh joy bo'lmaydi: yozilsa ham, nusxalab qo'yilsa ham olib tashlanadi */
+const noSpaces = (v: string) => v.replace(/\s/g, "");
+const blockSpace = (e: React.KeyboardEvent) => {
+  if (e.key === " " || e.key === "Spacebar") e.preventDefault();
+};
 import { GeoError, createLocationTracker, type GeoFix } from "@/lib/geo";
 
 /** Saytga kirish sahifasi. Joylashuvga ruxsat berilmasa kirish bloklanadi. */
@@ -90,13 +96,15 @@ export default function LoginView() {
           <label htmlFor="auth-login">Login</label>
           <div className="auth-input">
             <i className="fa-regular fa-user" />
-            <input id="auth-login" autoComplete="username" required autoFocus value={login} onChange={(e) => setLogin(e.target.value)} placeholder="Foydalanuvchi nomi" />
+            <input id="auth-login" autoComplete="username" autoCapitalize="none" spellCheck={false} required autoFocus value={login}
+              onChange={(e) => setLogin(noSpaces(e.target.value))} onKeyDown={blockSpace} placeholder="Foydalanuvchi nomi" />
           </div>
 
           <label htmlFor="auth-pass">Parol</label>
           <div className="auth-input">
             <i className="fa-solid fa-lock" />
-            <input id="auth-pass" type={showPass ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+            <input id="auth-pass" type={showPass ? "text" : "password"} autoComplete="current-password" required value={password}
+              onChange={(e) => setPassword(noSpaces(e.target.value))} onKeyDown={blockSpace} placeholder="••••••••" />
             <button type="button" className="auth-eye" onClick={() => setShowPass((v) => !v)} aria-label="Parolni ko'rsatish">
               <i className={`fa-regular ${showPass ? "fa-eye-slash" : "fa-eye"}`} />
             </button>

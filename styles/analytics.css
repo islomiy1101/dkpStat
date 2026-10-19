@@ -1,0 +1,267 @@
+/**
+ * Analitika paneli (headOfDepartment, superadmin): "Filial qabulxonasi" va "Maslahat burchagi".
+ * Komponentlar: components/analytics/charts.tsx. Ranglar — bitta ko'k sequential ramp, urg'u #2a78d6.
+ */
+
+/* Bo'lim CSS'idagi :where(... *)::before qoidasi Font Awesome ikonkalarining shriftini bekor qilmasin */
+:is(.sec-reception, .sec-advice) [class*="fa-"]::before { font-family: inherit; }
+
+/* ---------- Viloyat analitika paneli ("Boshqarma" rejimi) ---------- */
+
+:is(.sec-reception, .sec-advice) .rc-dash { display: flex; flex-direction: column; gap: 14px; margin-bottom: 16px; }
+
+/* filtrlar — bitta qatorda */
+:is(.sec-reception, .sec-advice) .rc-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: white;
+  padding: 10px 14px;
+  border-radius: 10px;
+  box-shadow: var(--card-shadow);
+}
+:is(.sec-reception, .sec-advice) .rc-chips { display: inline-flex; background: #f1f5f9; border-radius: 20px; padding: 3px; gap: 2px; flex-wrap: wrap; }
+:is(.sec-reception, .sec-advice) .rc-chip {
+  border: none;
+  background: transparent;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+:is(.sec-reception, .sec-advice) .rc-chip:hover { background: #e2e8f0; }
+:is(.sec-reception, .sec-advice) .rc-chip.active { background: white; color: var(--primary-color); box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12); }
+:is(.sec-reception, .sec-advice) .rc-chip i { font-size: 10px; }
+:is(.sec-reception, .sec-advice) .rc-select {
+  height: 32px;
+  border: 1.5px solid #d1d5db;
+  border-radius: 16px;
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f2937;
+  background: white;
+  cursor: pointer;
+  outline: none;
+}
+:is(.sec-reception, .sec-advice) .rc-select:focus { border-color: var(--primary-color); }
+:is(.sec-reception, .sec-advice) .rc-clear {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+:is(.sec-reception, .sec-advice) .rc-clear:hover { color: var(--danger-color); }
+:is(.sec-reception, .sec-advice) .rc-filters-info { font-size: 12px; color: #64748b; white-space: nowrap; }
+:is(.sec-reception, .sec-advice) .rc-filters-info b { color: #0f172a; }
+/* Hisobot tugmalari filtr qatorida: chip va select bilan bir xil balandlik */
+:is(.sec-reception, .sec-advice) .rc-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; padding-left: 14px; border-left: 1px solid #e5e7eb; }
+:is(.sec-reception, .sec-advice) .rc-actions-label { font-size: 12px; font-weight: 700; color: #52514e; display: inline-flex; align-items: center; gap: 6px; }
+:is(.sec-reception, .sec-advice) .rc-actions-label i { color: #107c41; }
+:is(.sec-reception, .sec-advice) .rc-actions button { height: 32px; padding: 0 13px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.12); }
+:is(.sec-reception, .sec-advice) .rc-actions button:hover { transform: translateY(-1px); }
+
+/* KPI tile'lar */
+:is(.sec-reception, .sec-advice) .rc-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+:is(.sec-reception, .sec-advice) .rc-tile {
+  background: white;
+  border-radius: 12px;
+  padding: 14px 16px 12px;
+  box-shadow: var(--card-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 3px solid transparent;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+:is(.sec-reception, .sec-advice) .rc-tile:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1); border-top-color: #2a78d6; }
+:is(.sec-reception, .sec-advice) .rc-tile-top { display: flex; align-items: center; gap: 8px; }
+:is(.sec-reception, .sec-advice) .rc-tile-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: #e8f1fd;
+  color: #2a78d6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+:is(.sec-reception, .sec-advice) .rc-tile-label { font-size: 11px; font-weight: 700; color: #52514e; text-transform: uppercase; letter-spacing: 0.4px; line-height: 1.2; }
+:is(.sec-reception, .sec-advice) .rc-tile-value { font-size: 28px; font-weight: 800; color: #0b0b0b; line-height: 1.1; margin-top: 4px; }
+:is(.sec-reception, .sec-advice) .rc-tile-value small { font-size: 13px; font-weight: 600; color: #52514e; margin-left: 4px; }
+:is(.sec-reception, .sec-advice) .rc-tile-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; min-height: 28px; flex-wrap: wrap; }
+:is(.sec-reception, .sec-advice) .rc-tile-note { font-size: 11.5px; color: #898781; }
+:is(.sec-reception, .sec-advice) .rc-spark { margin-left: auto; }
+:is(.sec-reception, .sec-advice) .rc-delta { font-size: 11.5px; font-weight: 600; color: #52514e; }
+:is(.sec-reception, .sec-advice) .rc-delta.up { color: #006300; }
+:is(.sec-reception, .sec-advice) .rc-delta.down { color: #b42318; }
+
+/* diagramma kartalari */
+:is(.sec-reception, .sec-advice) .rc-row { display: grid; gap: 14px; }
+:is(.sec-reception, .sec-advice) .rc-row-trend { grid-template-columns: minmax(0, 1.75fr) minmax(0, 1fr); }
+:is(.sec-reception, .sec-advice) .rc-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
+:is(.sec-reception, .sec-advice) .rc-row-staff { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); align-items: start; }
+
+:is(.sec-reception, .sec-advice) .rc-chart-card { background: white; border-radius: 12px; padding: 16px 18px; box-shadow: var(--card-shadow); min-width: 0; }
+:is(.sec-reception, .sec-advice) .rc-chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 12px; }
+:is(.sec-reception, .sec-advice) .rc-chart-head h4 { font-size: 14.5px; font-weight: 700; color: #0b0b0b; }
+:is(.sec-reception, .sec-advice) .rc-chart-head p { font-size: 12px; color: #898781; margin-top: 3px; }
+:is(.sec-reception, .sec-advice) .rc-chart-head p b { color: #52514e; }
+:is(.sec-reception, .sec-advice) .rc-mini-btn {
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+}
+:is(.sec-reception, .sec-advice) .rc-mini-btn:hover { border-color: #2a78d6; color: #2a78d6; }
+:is(.sec-reception, .sec-advice) .rc-empty { padding: 30px 0; text-align: center; color: #898781; font-size: 13px; }
+
+:is(.sec-reception, .sec-advice) .rc-plot { position: relative; width: 100%; }
+:is(.sec-reception, .sec-advice) .rc-plot svg { display: block; }
+:is(.sec-reception, .sec-advice) .rc-axis { font-size: 10.5px; fill: #898781; color: #898781; font-variant-numeric: tabular-nums; }
+:is(.sec-reception, .sec-advice) .rc-legend { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; font-size: 11.5px; color: #52514e; }
+:is(.sec-reception, .sec-advice) .rc-legend span { display: inline-flex; align-items: center; gap: 6px; }
+:is(.sec-reception, .sec-advice) .rc-key { display: inline-block; width: 12px; height: 4px; border-radius: 2px; }
+:is(.sec-reception, .sec-advice) .rc-key.dash { height: 0; border-top: 2px dashed #898781; border-radius: 0; }
+
+/* tooltip */
+:is(.sec-reception, .sec-advice) .rc-tip {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  transform: translate(12px, -50%);
+  background: #0f172a;
+  color: #f1f5f9;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+:is(.sec-reception, .sec-advice) .rc-tip b { color: #fff; }
+:is(.sec-reception, .sec-advice) .rc-tip span { display: inline-flex; align-items: center; gap: 6px; color: #cbd5e1; }
+:is(.sec-reception, .sec-advice) .rc-tip .rc-key.dash { border-top-color: #cbd5e1; }
+
+/* heatmap */
+:is(.sec-reception, .sec-advice) .rc-heat { position: relative; }
+:is(.sec-reception, .sec-advice) .rc-heat-grid { display: grid; gap: 3px; align-items: center; }
+:is(.sec-reception, .sec-advice) .rc-heat-h { text-align: center; font-size: 10px; }
+:is(.sec-reception, .sec-advice) .rc-heat-d { font-size: 11px; font-weight: 600; }
+:is(.sec-reception, .sec-advice) .rc-heat-cell { display: block; aspect-ratio: 1 / 1; min-height: 14px; border-radius: 4px; outline: 2px solid transparent; outline-offset: -1px; transition: outline-color 0.15s; }
+:is(.sec-reception, .sec-advice) .rc-heat-cell:hover { outline-color: #0f172a; }
+:is(.sec-reception, .sec-advice) .rc-heat-scale { display: flex; align-items: center; justify-content: flex-end; gap: 3px; margin-top: 10px; }
+:is(.sec-reception, .sec-advice) .rc-heat-scale i { width: 16px; height: 8px; border-radius: 2px; display: inline-block; }
+:is(.sec-reception, .sec-advice) .rc-heat-scale .rc-axis { font-size: 10.5px; margin: 0 4px; }
+
+/* gorizontal barlar */
+:is(.sec-reception, .sec-advice) .rc-bars { position: relative; display: flex; flex-direction: column; gap: 2px; }
+:is(.sec-reception, .sec-advice) .rc-bar-row {
+  display: grid;
+  grid-template-columns: minmax(96px, 42%) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  width: 100%;
+}
+:is(.sec-reception, .sec-advice) .rc-bar-row:hover { background: #f5f8fc; }
+:is(.sec-reception, .sec-advice) .rc-bar-row.clickable { cursor: pointer; }
+:is(.sec-reception, .sec-advice) .rc-bar-row.active { background: #e8f1fd; }
+:is(.sec-reception, .sec-advice) .rc-bar-label { display: flex; align-items: center; gap: 6px; min-width: 0; }
+:is(.sec-reception, .sec-advice) .rc-bar-name { font-size: 12.5px; font-weight: 600; color: #1f2937; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+:is(.sec-reception, .sec-advice) .rc-bar-tag { font-size: 10px; font-weight: 600; color: #52514e; background: #f1f5f9; border-radius: 8px; padding: 1px 6px; white-space: nowrap; flex-shrink: 0; }
+:is(.sec-reception, .sec-advice) .rc-bar-track { height: 10px; overflow: hidden; }
+:is(.sec-reception, .sec-advice) .rc-bar-fill { display: block; height: 100%; border-radius: 0 4px 4px 0; transition: width 0.4s ease, background 0.2s; }
+:is(.sec-reception, .sec-advice) .rc-bar-value { font-size: 12.5px; color: #0b0b0b; font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; min-width: 64px; }
+:is(.sec-reception, .sec-advice) .rc-bar-value small { color: #898781; font-size: 11px; margin-left: 2px; }
+
+:is(.sec-reception, .sec-advice) .rc-subsection { margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e1e0d9; }
+:is(.sec-reception, .sec-advice) .rc-subsection h5 { font-size: 12px; color: #52514e; font-weight: 700; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.4px; }
+:is(.sec-reception, .sec-advice) .rc-toplist { list-style: none; counter-reset: rc; display: flex; flex-direction: column; gap: 4px; }
+:is(.sec-reception, .sec-advice) .rc-toplist li { counter-increment: rc; display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; color: #1f2937; }
+:is(.sec-reception, .sec-advice) .rc-toplist li::before { content: counter(rc); font-size: 10.5px; font-weight: 700; color: #2a78d6; width: 16px; flex-shrink: 0; }
+:is(.sec-reception, .sec-advice) .rc-toplist li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:is(.sec-reception, .sec-advice) .rc-toplist li b { font-variant-numeric: tabular-nums; }
+
+/* xodimlar reytingi */
+:is(.sec-reception, .sec-advice) .rc-staff-wrap { overflow-x: auto; }
+:is(.sec-reception, .sec-advice) .rc-staff { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+:is(.sec-reception, .sec-advice) .rc-staff th { background: transparent; color: #898781; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; padding: 6px 8px; border-bottom: 1px solid #e1e0d9; text-align: left; }
+:is(.sec-reception, .sec-advice) .rc-staff td { padding: 7px 8px; border-bottom: 1px solid #f1f1ef; }
+:is(.sec-reception, .sec-advice) .rc-staff tr:hover { background: #f9fafb; }
+:is(.sec-reception, .sec-advice) .rc-staff td small { display: block; color: #898781; font-size: 11px; }
+:is(.sec-reception, .sec-advice) .rc-staff .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+:is(.sec-reception, .sec-advice) .rc-rank { width: 28px; font-weight: 800; color: #2a78d6; }
+:is(.sec-reception, .sec-advice) .rc-inline-meter { display: inline-block; width: 80px; height: 6px; background: #eef2f7; border-radius: 3px; overflow: hidden; vertical-align: middle; margin-right: 8px; }
+:is(.sec-reception, .sec-advice) .rc-inline-meter span { display: block; height: 100%; background: #2a78d6; border-radius: 0 3px 3px 0; }
+
+/* ma'lumot sifati */
+:is(.sec-reception, .sec-advice) .rc-quality { display: flex; flex-direction: column; gap: 14px; }
+:is(.sec-reception, .sec-advice) .rc-meter-top { display: flex; justify-content: space-between; font-size: 12.5px; color: #1f2937; margin-bottom: 5px; }
+:is(.sec-reception, .sec-advice) .rc-meter-track { height: 8px; background: #eef2f7; border-radius: 4px; overflow: hidden; }
+:is(.sec-reception, .sec-advice) .rc-meter-track span { display: block; height: 100%; border-radius: 0 4px 4px 0; }
+:is(.sec-reception, .sec-advice) .rc-quality-note { display: flex; gap: 8px; align-items: flex-start; font-size: 12px; color: #52514e; background: #f8fafc; border-radius: 8px; padding: 10px; }
+:is(.sec-reception, .sec-advice) .rc-quality-note i { color: #898781; margin-top: 2px; }
+
+@media (max-width: 1400px) {
+  :is(.sec-reception, .sec-advice) .rc-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  :is(.sec-reception, .sec-advice) .rc-row-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  :is(.sec-reception, .sec-advice) .rc-row-trend, :is(.sec-reception, .sec-advice) .rc-row-staff { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 768px) {
+  :is(.sec-reception, .sec-advice) .rc-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :is(.sec-reception, .sec-advice) .rc-row-3 { grid-template-columns: minmax(0, 1fr); }
+  :is(.sec-reception, .sec-advice) .rc-filters-info { margin-left: 0; width: 100%; }
+  :is(.sec-reception, .sec-advice) .rc-actions { width: 100%; flex-direction: column; align-items: stretch; margin-left: 0; padding-left: 0; border-left: none; }
+  :is(.sec-reception, .sec-advice) .rc-actions button { width: 100%; justify-content: center; }
+  :is(.sec-reception, .sec-advice) .rc-tile-value { font-size: 22px; }
+}
+
+/* ---------- bo'lingan barlar, ulush chizig'i, legend ---------- */
+:is(.sec-reception, .sec-advice) .rc-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+:is(.sec-reception, .sec-advice) .rc-key.sq { width: 10px; height: 10px; border-radius: 3px; }
+:is(.sec-reception, .sec-advice) .rc-seg-legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 10px; font-size: 11.5px; color: #52514e; }
+:is(.sec-reception, .sec-advice) .rc-seg-legend span { display: inline-flex; align-items: center; gap: 6px; }
+:is(.sec-reception, .sec-advice) .rc-seg-legend b { color: #0b0b0b; font-variant-numeric: tabular-nums; }
+:is(.sec-reception, .sec-advice) .rc-seg-legend small { color: #898781; }
+:is(.sec-reception, .sec-advice) .rc-stack { display: flex; gap: 2px; height: 12px; min-width: 2px; }
+:is(.sec-reception, .sec-advice) .rc-stack span { display: block; height: 100%; min-width: 2px; }
+:is(.sec-reception, .sec-advice) .rc-stack span:last-child { border-radius: 0 4px 4px 0; }
+:is(.sec-reception, .sec-advice) .rc-bar-row.dim { opacity: 0.45; }
+:is(.sec-reception, .sec-advice) .rc-share { position: relative; }
+:is(.sec-reception, .sec-advice) .rc-share-bar { display: flex; gap: 2px; height: 18px; border-radius: 6px; overflow: hidden; margin-bottom: 10px; }
+:is(.sec-reception, .sec-advice) .rc-share-bar span { display: block; height: 100%; cursor: default; }
+:is(.sec-reception, .sec-advice) .rc-share .rc-seg-legend { flex-direction: column; gap: 6px; margin-bottom: 0; }
+:is(.sec-reception, .sec-advice) .rc-share .rc-seg-legend span { width: 100%; }
+:is(.sec-reception, .sec-advice) .rc-share .rc-seg-legend b { margin-left: auto; }
+:is(.sec-reception, .sec-advice) .rc-share .rc-seg-legend small { min-width: 42px; text-align: right; }
+
+@media (max-width: 1100px) {
+  :is(.sec-reception, .sec-advice) .rc-row-2 { grid-template-columns: minmax(0, 1fr); }
+}

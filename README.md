@@ -6,7 +6,7 @@ faqat bir-biriga ta'sir qilmasligi uchun `.sec-*` klassi ichiga scope qilingan.
 
 | Bo'lim (sidebar) | Route | Manba |
 |---|---|---|
-| Rollar kesimida tahlil | `/deadline` | Google Sheets: `Arizalar` (jamlanma serverda hisoblanadi) |
+| Rollar kesimida tahlil | `/deadline/yakunlangan`, `/deadline/jarayonda` | Google Sheets: `YakunlanganArizalar`, `JarayondagiArizalar` (jamlanma serverda hisoblanadi) |
 | To'lov va tushumlar | `/payment` | Google Sheets: `TolovKutilmoqda`, `TolovReja` |
 | Maslahat burchagi | `/advice` | Google Sheets + Apps Script (saqlash, chora) |
 | Bazaga yuklash | `/upload` | .xlsx → Google Sheets (auth Apps Script orqali), faqat superadmin |
@@ -74,28 +74,115 @@ Demo (`MOCK_DATA=1`) loginlari (rol bo'yicha): `admin / admin123` (superadmin), 
 
 ## Bazaga yuklash (`/upload`, faqat superadmin)
 
+Sahifa pastida **Google Sheets jadvallari** — tizim ishlatadigan barcha jadvallarga havolalar (yangi oynada
+ochiladi), `lib/sheet-links.ts`. ID'lar `.env` dan olinadi va faqat shu superadmin sahifasiga uzatiladi.
+Qabulxona jadvali — `RECEPTION_SHEET_ID`. Users/Logs jadvali — `AUTH_SHEET_ID`, berilmagan bo'lsa auth Apps Script'ning
+`ping` javobidan (`spreadsheetId`) olinadi; topilmasa karta "Sozlanmagan" deb turadi.
+
 Har bir bo'lim uchun alohida .xlsx fayl. Fayl avval brauzerda tekshiriladi va ko'rsatiladi (birinchi 10 qator),
 tasdiqlangach server qayta tekshiradi va Google Sheets'dagi varaq(lar)ni **to'liq almashtiradi**.
 
 | Bo'lim | .xlsx ichidagi varaq | Sheets varag'i | Tekshiruv |
 |---|---|---|---|
-| To'lov va tushumlar | `TolovKutilmoqda`, `TolovReja` | `PAYMENT_SHEET_MAIN`, `PAYMENT_SHEET_PLAN` | ≥14 va ≥3 ustun |
-| Rollar kesimida tahlil | `Arizalar` yoki birinchi varaq | `DEADLINE_SHEET_NAME` (`Arizalar`) | sarlavhalar: Ariza raqami · Tuman · Manba · Rol · Kun |
+| To'lov va tushumlar | `TolovBaza` (yoki fayldagi yagona varaq) | `TolovBaza`, A–AZ | 52 ustun; B Tuman, G Tranzaksiya raqami, P Ariza raqami, R Buyurtmachi, W Ariza manbasi, Z To'lov holati, AT Ijrochi muhandis — aynan shu harflarda (`TolovKutilmoqda` undan formulalar bilan olinadi). `TolovReja` qo'lda kiritiladi |
+| Rollar kesimida tahlil | `YakunlanganArizalar` va/yoki `JarayondagiArizalar` | xuddi shu nomli varaqlar | 1–2-qator sarlavha: 1-qatorda Tuman · Tranzaksiya raqami · Ariza raqami · Ariza manbasi va rol guruhlari, 2-qatorda rollar |
 
-Yozish auth Apps Script'idagi `importSheets` orqali: avval har bir varaqdan yashirin `__backup` nusxa olinadi,
-keyin tozalanib yoziladi; birorta varaq yozilmasa — hammasi zaxiradan tiklanadi. Har bir urinish `UploadLogs` ga yoziladi.
+To'lov: auth Apps Script'idagi `importSheets` orqali — avval har bir varaqdan yashirin `__backup` nusxa olinadi,
+keyin tozalanib yoziladi; birorta varaq yozilmasa — hammasi zaxiradan tiklanadi.
+
+Rollar kesimida tahlil: fayl katta (~100 ming qator × ~80 ustun), shuning uchun brauzer har bir varaqni 2000 qatorlik
+qismlarga bo'lib yuboradi (`importChunk`), sahifada jarayon ko'rinadi. Birinchi qism varaqni tozalaydi.
+Zaxira nusxa **olinmaydi** — nusxa bilan Google Sheets'ning 10 mln katak chegarasidan oshib ketadi; yuklash
+o'rtada uzilsa, varaq qisman yozilgan bo'ladi va faylni qayta yuklash kerak. Kataklar matn sifatida yoziladi
+(raqamga o'xshash ariza raqamlari raqamga aylanib, gviz o'qishda yo'qolmasligi uchun).
+Har bir urinish `UploadLogs` ga yoziladi.
 
 **O'rnatish (bir marta):**
 1. `apps-script/auth/Code.gs` ning yangi versiyasini joylang → *Deploy → Manage deployments → Edit → New version*.
 2. *Script Properties* → `IMPORT_TARGETS` (qaysi sheet'ning qaysi varaqlariga yozish mumkin):
-   `{"<PAYMENT_SHEET_ID>": ["TolovKutilmoqda","TolovReja"], "<DEADLINE_SHEET_ID>": ["Arizalar"]}`
+   `{"<PAYMENT_SHEET_ID>": ["TolovBaza"], "<DEADLINE_SHEET_ID>": ["YakunlanganArizalar","JarayondagiArizalar"]}`
 3. Skript egasi shu sheet'larga **Editor** bo'lishi kerak. Muharrirda istalgan funksiyani bir marta ishga
    tushirib, boshqa sheet'larni ochish ruxsatini bering.
 4. `.env.local`: `DEADLINE_SHEET_ID=...` (sheet "havola orqali ko'rish" rejimida, payment kabi).
 
-**Rollar kesimida tahlil** endi Django'siz: `Arizalar` varag'idagi har bir qator — bitta ariza bitta rolda
-necha kun turgani. Jamlanma (manbalar, rollar × kun oraliqlari, "Viloyat jami") `features/deadline/aggregate.ts`
-da hisoblanadi; javob formati Django bilan bir xil, shuning uchun jadval o'zgarmagan.
+**Rollar kesimida tahlil** Django'siz: sidebar'da ikkita bo'limcha — *Yakunlangan arizalar* va *Jarayondagi arizalar*,
+ko'rinishi bir xil, har biri o'z varag'idan o'qiydi. Varaqda bitta qator — bitta ariza (tranzaksiya), har bir rol
+alohida ustunda, katakda rolda turgan vaqt (`1 kun 8 soat 16 min 42 s` yoki `-`). Ustunlar tartib raqami bo'yicha
+emas, sarlavha nomi bo'yicha topiladi (`features/deadline/source.ts`), keyin faqat kerakli ustunlar gviz CSV orqali
+olinadi. Kun — rolda turgan vaqt yuqoriga yaxlitlangan (8 soat → 1-kun, 1 kun 8 soat → 2-kun); guruhlarning
+"Jami" ustunlari jadvaldagi *Filial Jami*, *BOSHQARMA/DKP JAMI KUNLAR* ga tushadi. Jamlanma
+`features/deadline/aggregate.ts` da hisoblanadi va serverda `DEADLINE_CACHE_TTL_MS` (10 daqiqa) keshlanadi.
+
+## E'tirof (`/etirof/<nomzod|tahrirlash|tolov|qaror>`)
+
+Sidebar'dagi **E'tirof** ochiladi: *E'tirof nomzod*, *Tahrirlashga qaytarilgan*, *E'tirof to'lov kutilmoqda*,
+*E'tirof qaror chiqqan*. Har biri alohida Google Sheet (`ETIROF_*_SHEET_ID`, "havola orqali ko'rish") ning
+**«Свод»** varag'ini ko'rsatadi. Jadval tuzilishi (sarlavhalar, ranglar, data-bar'lar, ustun harflari)
+`features/etirof/config.ts` da; sheet'dan faqat qiymatlar olinadi: A — lotincha tuman nomi (yashirin),
+B — tartib raqami, C — kirillcha nom, D dan — raqamlar; C da "вилоят" — jami qatori. Sarlavhalar (1–4-qatorlar)
+har bir ustun uchun kalit so'z bilan tekshiriladi — Свод'da ustun qo'shilsa/surilsa, noto'g'ri raqam o'rniga
+xato chiqadi va `config.ts` dagi harflarni moslash kerak bo'ladi. "Tahrirlash" Свод'idagi yashirin
+E, H, K, L, M ustunlari sahifaga chiqmaydi. Diqqat: gviz noto'g'ri varaq nomida birinchi varaqni qaytaradi.
+
+- Tuman nomi bosilsa — xom varaqlardagi (`rawSheets`: nomzod — «Янги», «Хулосага юбориш»; tahrirlash —
+  «Тахрирлашга қайтган», «Мухофаза худудда жойлашган»; to'lov va qaror — «номма-ном») shu tuman qatorlari
+  `.xlsx` bo'lib yuklanadi, har bir varaq alohida (`/api/etirof/<page>/export?tuman=`); jami qatori — butun viloyat.
+  Tuman "Tuman" / "Tuman nomi" ustunidan, Свод'ning A ustunidagi lotincha nom bo'yicha topiladi.
+- **Rasm** — hisobot kartasi PNG (html2canvas, 3x); **Chop etish** — A4 albom, faqat hisobot, ranglar bilan.
+- Kesh: `ETIROF_CACHE_TTL_MS` (5 daqiqa), "Yangilash" keshni chetlab o'tadi.
+
+## Xatlov+Faol (`/xatlov`)
+
+ЎРҚ-937 "ШТАБ маълумоти" jadvali — sheet `XATLOV_FAOL_SHEET_ID` (yoki `XATLOV_FAOL`), ikki varaq:
+**«ШТАБ маълумоти»** (rejalar, oylik ko'rsatkichlar, Жараён, Кадастр муҳандиси) va **«Кунлик»** (Хатлов va Фаол
+bloklari, har kuni yangi sana ustuni). Ustunlar `features/xatlov/config.ts` da, sarlavhalari kalit so'z bilan tekshiriladi.
+
+- **Hafta** — dushanba–shanba (Toshkent vaqti); dushanba kuni o'tgan hafta ko'rsatiladi. Yakshanba qiymati
+  ШТАБ dagidek shanbaga qo'shiladi. Kunlar «Кунлик»dan sana bo'yicha olinadi; *1 ҳафтада* = kunlar yig'indisi,
+  *%* = yig'indi / ҳафталик режа.
+- **Ranglar** — kunlik qiymat *1 кунлик режа*dan kam bo'lsa qizil. Foizlar: eng kichigi qizil, medianasi sariq,
+  eng kattasi yashil (Excel 3 rangli shkala), 100% va undan yuqori — doim yashil.
+- Rejalar sheet'da kasr son — CSV ularni yaxlitlaydi, shuning uchun aniq qiymatlar gviz JSON'dan olinadi
+  (foiz va qizil rang sheet bilan bir xil chiqadi). Varaqlar `export?format=csv&gid=` orqali o'qiladi
+  (gviz raqamli ustunlardagi sana sarlavhalarini yo'qotadi), gid `htmlview`dan topiladi.
+- Sanalar `kun.oy.yil` formatida; Хатлов (ko'k) va Фаол (yashil) bloklari rang va qalin chegara bilan ajratilgan.
+- **Rasm** (PNG) va **Chop etish** (A4 albom) — E'tirof'dagidek.
+
+## Registratsiya (`/regtest`, `registrator` va `superadmin`)
+
+Sidebar'da dropdown: **Test yechish** (`/regtest/test`) va **Test natijalari** (`/regtest/natijalar`).
+
+Registratorlar bilim sinovi: F.I.O. + PINFL (14 raqam) → 20 ta tasodifiy savol (50 talik bankdan, variantlari ham har safar
+aralashtiriladi) → 40 daqiqa → natija oynasi va «Натижалар» varag'iga yozuv. Ishga kirayotgan xodimning tizimga
+kirish huquqi yo'q: registrator o'z login/paroli bilan kirib beradi, testni xodim PINFL bilan yechadi. Shuning uchun
+registratordan faqat **login** saqlanadi, qolgani — PINFL egasiniki. «Натижалар» ustunlari: `Sana | Vaqt | Login |
+PINFL | F.I.O. | Savol soni | To'g'ri | Noto'g'ri | Javobsiz | Ball | Sarflangan vaqt | Holat | Test ID`
+(«F.I.O.» ustuni bo'lmasa, skript uni oxiriga qo'shadi; «FIO», «Ф.И.О.», «F.I.SH» yozilishlari ham tanildi).
+F.I.O. imzolangan test tokenida saqlanadi — yakunlashda brauzerdan qayta olinmaydi.
+Users varag'ida `Role = registrator` — bu rol faqat shu bo'limni ko'radi; superadmin ham ko'radi.
+
+- Savollar sheet'i **yopiq** qoladi: «Тест саволлари» (`№ | Савол | а) | б) | в) | г) | Тўғри жавоб`, javob — variant
+  matni) auth Apps Script orqali o'qiladi (`regtestQuestions`), natija `regtestSave` bilan yoziladi. Sheet ID faqat
+  Apps Script muharririda — `Code.gs` → `REGTEST_SHEET_ID` (so'rovda ID yuborilmaydi).
+- To'g'ri javoblar brauzerga yuborilmaydi. Tanlangan savollar, variantlar tartibi va boshlanish vaqti imzolangan
+  httpOnly cookie'da (`dkp_regtest`); baholash serverda. Muddatdan 60 s kech kelgan javoblar hisobga olinmaydi.
+- Har bir testning ID'si «Натижалар»ning «Test ID» ustuniga yoziladi — token qayta yuborilsa natija berilmaydi
+  (javoblarni almashtirib to'g'ri javobni topishning oldi olinadi).
+- Sahifa yangilansa test davom etadi (javoblar `sessionStorage`da). MOCK rejimida `mock/regtest_questions.json` va
+  `mock/regtest_results.json` — o'ylab topilgan sinov ma'lumotlari (haqiqiy savollar repoga tushmaydi).
+- **Bitta PINFL — 2 soatda 1 test** (boshlangan test bo'yicha: tashlab ketib qayta boshlab, yangi savollarni ko'rib
+  chiqishning oldi olinadi). Boshlanganda «Натижалар»ga `Holat = Jarayonda` qatori yoziladi, yakunlanganda shu qator
+  Test ID bo'yicha yangilanadi (bitta urinish — bitta qator). Muddati o'tib yakunlanmagan urinish dashboardda
+  «Yakunlanmagan». Boshlanish vaqti Test ID'ning o'zida (`vaqt36-…`). Cheklov — `Code.gs → REGTEST_RETAKE_HOURS`.
+- Apps Script eski versiyada bo'lsa (yangi amalni bilmasa) sayt «Noma'lum amal» o'rniga qayta deploy qilish kerakligini
+  aytadi; `ping` → `regtestVersion`.
+- «Натижалар»ga yozish va o'qish **sarlavha nomlari bo'yicha** (ustunlar tartibi, ortiqcha ustun muhim emas;
+  yetishmagan sarlavha oxiriga qo'shiladi).
+- **Test natijalari** — test yechayotgan odam registrator kompyuterida bo'lgani uchun, ochishda tizimga kirgan
+  foydalanuvchi parolini qayta kiritadi (`verifyPassword` — Logs'ga yozilmaydi, 5 xatodan keyin 10 daqiqa blok).
+  Ochilgach 15 daqiqa amal qiladi (imzolangan `dkp_regtest_unlock` cookie); yangi test boshlansa yoki "Qulflash"
+  bosilsa — darhol qulflanadi. Dashboard: KPI'lar, ball taqsimoti, sana/holat/qidiruv filtrlari, saralanadigan
+  jadval (10 tadan), Excel.
 
 ## Ishga tushirish
 
@@ -105,8 +192,8 @@ repozitoriyga yoki `NEXT_PUBLIC_` o'zgaruvchilariga joylamang. `.env.example` fa
 va maxfiy bo'lmagan sozlamalarni saqlaydi.
 
 Netlify secrets scanning yoqilgan holda qoldirildi. `netlify.toml` faqat ommaviy varaq nomlari
-bo'lgan `PAYMENT_SHEET_MAIN`, `PAYMENT_SHEET_PLAN`, `DEADLINE_SHEET_NAME` va maxfiy bo'lmagan kesh muddati
-`CACHE_TTL_MS` uchun istisno belgilaydi: bu qiymatlar kodda, hujjatlarda yoki `.env.example`
+bo'lgan `PAYMENT_SHEET_MAIN`, `PAYMENT_SHEET_PLAN` va maxfiy bo'lmagan kesh muddatlari
+`CACHE_TTL_MS`, `DEADLINE_CACHE_TTL_MS`, `ETIROF_CACHE_TTL_MS`, `XATLOV_CACHE_TTL_MS` uchun istisno belgilaydi: bu qiymatlar kodda, hujjatlarda yoki `.env.example`
 faylida ham ishlatiladi. Sheet ID, Apps Script URL va maxfiy kalitlar tekshiruvdan chiqarilmagan.
 Agar deploy yana bloklansa, logdagi aniqlangan fayl yo'llari va o'zgaruvchi nomlarini tekshiring;
 maxfiy qiymatlarni logga chiqarmang va tekshiruvni butunlay o'chirmang. Oldin oshkor qilingan

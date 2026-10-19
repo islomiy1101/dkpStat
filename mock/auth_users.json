@@ -1,58 +1,74 @@
 [
- {
-  "branch": "Viloyat boshqarmasi",
-  "fullName": "Sayfiddinov Bexruz",
-  "department": "IT bo'limi",
-  "login": "admin",
-  "password": "admin123",
-  "role": "superadmin"
- },
- {
-  "branch": "Viloyat boshqarmasi",
-  "fullName": "Qodirov Sardor",
-  "department": "Monitoring",
-  "login": "head",
-  "password": "head123",
-  "role": "headOfDepartment"
- },
- {
-  "branch": "Viloyat boshqarmasi",
-  "fullName": "Abdullayeva Gulnoza",
-  "department": "Buxgalteriya",
-  "login": "buxgalter",
-  "password": "bux123",
-  "role": "accountant"
- },
- {
-  "branch": "Chust tumani",
-  "fullName": "Yusupova Malika",
-  "department": "Filial rahbariyati",
-  "login": "chust",
-  "password": "chust123",
-  "role": "branchManager"
- },
- {
-  "branch": "Pop tumani",
-  "fullName": "Karimov Dilshod",
-  "department": "Kadastr",
-  "login": "pop",
-  "password": "pop123",
-  "role": "engineer"
- },
- {
-  "branch": "Chust tumani",
-  "fullName": "Ergasheva Nodira",
-  "department": "Qabulxona",
-  "login": "chustmaslahat",
-  "password": "maslahat123",
-  "role": "advicer"
- },
- {
-  "branch": "Kosonsoy tumani",
-  "fullName": "Toshmatov Jasur",
-  "department": "Kadastr",
-  "login": "kosonsoy",
-  "password": "kosonsoy123",
-  "role": "engineer"
- }
+  {
+    "branch": "Viloyat boshqarmasi",
+    "fullName": "Sayfiddinov Bexruz",
+    "department": "IT bo'limi",
+    "login": "admin",
+    "password": "admin123",
+    "role": "superadmin"
+  },
+  {
+    "branch": "Viloyat boshqarmasi",
+    "fullName": "Qodirov Sardor",
+    "department": "Monitoring",
+    "login": "head",
+    "password": "head123",
+    "role": "headOfDepartment"
+  },
+  {
+    "branch": "Viloyat boshqarmasi",
+    "fullName": "Abdullayeva Gulnoza",
+    "department": "Buxgalteriya",
+    "login": "buxgalter",
+    "password": "bux123",
+    "role": "accountant"
+  },
+  {
+    "branch": "Chust tumani",
+    "fullName": "Yusupova Malika",
+    "department": "Filial rahbariyati",
+    "login": "chust",
+    "password": "chust123",
+    "role": "branchManager"
+  },
+  {
+    "branch": "Pop tuman filiali",
+    "fullName": "Karimov Dilshod",
+    "department": "Kadastr",
+    "login": "pop",
+    "password": "pop123",
+    "role": "engineer"
+  },
+  {
+    "branch": "Chust tumani",
+    "fullName": "Ergasheva Nodira",
+    "department": "Qabulxona",
+    "login": "chustmaslahat",
+    "password": "maslahat123",
+    "role": "advicer"
+  },
+  {
+    "branch": "Kosonsoy tumani",
+    "fullName": "Toshmatov Jasur",
+    "department": "Kadastr",
+    "login": "kosonsoy",
+    "password": "kosonsoy123",
+    "role": "engineer"
+  },
+  {
+    "branch": "Chust tumani filiali",
+    "fullName": "Rasulov Akmal",
+    "department": "Qabulxona",
+    "login": "chustqabul",
+    "password": "qabul123",
+    "role": "reception"
+  },
+  {
+    "login": "reg1",
+    "password": "reg123",
+    "fullName": "Sinov Registrator",
+    "branch": "Boshqarma",
+    "department": "Registratsiya bo'limi",
+    "role": "registrator"
+  }
 ]

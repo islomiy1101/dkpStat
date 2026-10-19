@@ -7,9 +7,10 @@ type Entry<T> = { value: T; expires: number };
 const store = new Map<string, Entry<unknown>>();
 const inflight = new Map<string, Promise<unknown>>();
 
+/** ttlMs — son yoki qiymatga qarab muddat (masalan, bo'sh natija qisqa muddat saqlansin) */
 export async function cached<T>(
   key: string,
-  ttlMs: number,
+  ttlMs: number | ((value: T) => number),
   loader: () => Promise<T>,
   opts: { fresh?: boolean } = {}
 ): Promise<T> {
@@ -23,7 +24,7 @@ export async function cached<T>(
 
   const p = loader()
     .then((value) => {
-      store.set(key, { value, expires: Date.now() + ttlMs });
+      store.set(key, { value, expires: Date.now() + (typeof ttlMs === "function" ? ttlMs(value) : ttlMs) });
       return value;
     })
     .finally(() => inflight.delete(key));

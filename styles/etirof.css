@@ -1,0 +1,171 @@
+/* "E'tirof" bo'limi — SVOD hisobot jadvallari (ekran, rasm va pechat) */
+.sec-etirof {
+  --et-border: #cbd5e1;
+  --et-line: #e2e8f0;
+  /* Jadval chiziqlari — rangli kataklar ustida ham ko'rinadigan to'q kulrang */
+  --et-grid: #8391a3;
+  --et-muted: #64748b;
+  --et-text: #0f172a;
+  --et-red: #dc2626;
+  --et-blue: #1d4ed8;
+  --et-orange: #ea580c;
+  box-sizing: border-box;
+  min-height: 100vh;
+  padding: 14px 28px 28px;
+  background: #f1f5f9;
+  color: var(--et-text);
+  font-family: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  font-size: 13px;
+}
+.sec-etirof * { box-sizing: border-box; }
+.sec-etirof button { font: inherit; }
+
+/* Asboblar paneli */
+.sec-etirof .et-toolbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  background: #fff; border: 1px solid var(--et-line); border-radius: 12px; padding: 12px 18px; margin-bottom: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+}
+.sec-etirof .et-toolbar-title { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sec-etirof .et-badge {
+  width: 38px; height: 38px; border-radius: 9px; color: #fff; font-size: 15px; flex-shrink: 0;
+  background: var(--et-accent); display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 10px var(--et-soft2);
+}
+.sec-etirof .et-toolbar h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.sec-etirof .et-toolbar-title span { font-size: 11.5px; color: var(--et-muted); }
+.sec-etirof .et-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.sec-etirof .et-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 8px;
+  border: 1px solid var(--et-border); background: #fff; color: var(--et-text); font-weight: 600; font-size: 12.5px; cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sec-etirof .et-btn:hover:not(:disabled) { background: #f8fafc; border-color: #94a3b8; }
+.sec-etirof .et-btn:disabled { opacity: 0.55; cursor: default; }
+.sec-etirof .et-btn-primary { background: var(--et-accent); border-color: var(--et-accent); color: #fff; }
+.sec-etirof .et-btn-primary:hover:not(:disabled) { background: var(--et-accent); border-color: var(--et-accent); filter: brightness(1.08); }
+
+.sec-etirof .et-alert {
+  margin-bottom: 12px; padding: 10px 14px; border-radius: 10px; font-size: 12.5px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+}
+.sec-etirof .et-alert[role="status"] { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; cursor: pointer; }
+.sec-etirof .et-loading { padding: 60px 0; text-align: center; color: var(--et-muted); font-size: 14px; }
+.sec-etirof .et-hint { margin: 0 0 8px 4px; font-size: 11.5px; color: var(--et-muted); }
+.sec-etirof .et-hint i { color: #16a34a; }
+
+/* Hisobot kartasi — rasm va pechat aynan shu blokdan */
+.sec-etirof .et-report {
+  background: #fff; border: 1px solid var(--et-line); border-radius: 14px; padding: 20px 20px 22px;
+  box-shadow: 0 10px 25px -12px rgba(15, 23, 42, 0.18);
+}
+.sec-etirof .et-report-head { position: relative; text-align: center; margin-bottom: 14px; }
+.sec-etirof .et-report-head h1 { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; }
+.sec-etirof .et-report-head h2 { margin: 2px 0 0; font-size: 16px; font-weight: 800; letter-spacing: 0.08em; }
+.sec-etirof .et-asof { margin-top: 6px; font-size: 12px; font-style: italic; color: var(--et-red); text-align: left; }
+.sec-etirof .t-r { color: var(--et-red); }
+.sec-etirof .t-b { color: var(--et-blue); }
+.sec-etirof .t-c { color: #0ea5e9; }
+.sec-etirof .t-o { color: var(--et-orange); }
+
+.sec-etirof .et-table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--et-grid); }
+.sec-etirof .et-table {
+  width: 100%; border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums;
+  min-width: 760px;
+}
+.sec-etirof .et-table col.c-n { width: 44px; }
+.sec-etirof .et-table col.c-name { width: 190px; }
+.sec-etirof .et-table th,
+.sec-etirof .et-table td { border-right: 1px solid var(--et-grid); border-bottom: 1px solid var(--et-grid); }
+.sec-etirof .et-table tr > :last-child { border-right: none; }
+
+.sec-etirof .et-table thead th {
+  padding: 8px 6px; background: #f8fafc; color: #1e293b; font-size: 11.5px; font-weight: 700; line-height: 1.3;
+  text-align: center; vertical-align: middle;
+}
+.sec-etirof .et-table thead th.h-group { background: var(--et-soft); border-bottom-color: var(--et-grid); }
+.sec-etirof .et-table thead th.head-orange { color: var(--et-orange); }
+.sec-etirof .et-table thead tr:first-child th:first-child { border-top-left-radius: 9px; }
+
+/* Jami qatori */
+.sec-etirof .et-total td {
+  background: var(--et-soft2); font-weight: 800; font-size: 14px;
+  border-top: 2px solid var(--et-accent); border-bottom: 2px solid var(--et-accent);
+}
+.sec-etirof .et-total .et-tuman { font-weight: 800; font-size: 13.5px; }
+
+.sec-etirof .et-table tbody tr:nth-child(even) td { background: #fbfdff; }
+.sec-etirof .et-table tbody tr:hover td { background: var(--et-soft); }
+.sec-etirof .et-table tbody tr:last-child td { border-bottom: none; }
+
+.sec-etirof .et-n { text-align: center; color: var(--et-muted); font-weight: 600; padding: 0 4px; }
+.sec-etirof .et-name { padding: 0; }
+.sec-etirof .et-tuman {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  padding: 7px 10px; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; font-weight: 600;
+}
+.sec-etirof .et-tuman i { color: #16a34a; opacity: 0; transition: opacity 0.15s; font-size: 13px; }
+.sec-etirof .et-tuman:hover span { color: var(--et-accent); text-decoration: underline; text-underline-offset: 3px; }
+.sec-etirof .et-tuman:hover i,
+.sec-etirof .et-tuman:focus-visible i,
+.sec-etirof .et-tuman .fa-spinner { opacity: 1; }
+.sec-etirof .et-tuman:disabled { cursor: progress; }
+
+/* Raqamlar va data-bar'lar */
+.sec-etirof .et-num { position: relative; padding: 7px 8px; text-align: center; white-space: nowrap; }
+.sec-etirof .et-val { position: relative; z-index: 1; }
+.sec-etirof .et-num.tone-red { color: var(--et-red); }
+.sec-etirof .et-num.tone-blue { color: var(--et-blue); }
+.sec-etirof .et-num.tone-orange { color: var(--et-orange); }
+.sec-etirof .et-num.is-bold { font-weight: 700; }
+.sec-etirof tbody .et-num.is-zero { color: #94a3b8; font-weight: 400; }
+.sec-etirof .et-bar { position: absolute; left: 2px; top: 4px; bottom: 4px; min-width: 5px; border-radius: 3px; border: 1px solid; }
+.sec-etirof .bar-orange { background: linear-gradient(90deg, #fb923c, rgba(254, 215, 170, 0.35)); border-color: #fdba74; }
+.sec-etirof .bar-blue { background: linear-gradient(90deg, #3b82f6, rgba(191, 219, 254, 0.35)); border-color: #93c5fd; }
+.sec-etirof .bar-red { background: linear-gradient(90deg, #f87171, rgba(254, 202, 202, 0.35)); border-color: #fca5a5; }
+.sec-etirof .bar-neg { background: linear-gradient(90deg, #ef4444, rgba(254, 202, 202, 0.25)); border-color: #fca5a5; max-width: 30%; }
+
+/* Rasmga olish paytida: butun jadval (scroll'siz, sticky'siz) */
+.sec-etirof .et-report.capturing { width: 1280px; box-shadow: none; border-radius: 0; }
+.sec-etirof .et-report.capturing .et-table-wrap { overflow: visible; }
+.sec-etirof .et-report.capturing .et-tuman i { display: none; }
+
+@media (max-width: 900px) {
+  .sec-etirof { padding: 12px 16px 20px; }
+  .sec-etirof .et-report { padding: 14px 10px 16px; }
+  .sec-etirof .et-report-head h1 { font-size: 15px; }
+  .sec-etirof .et-btn span { display: none; }
+  .sec-etirof .et-table col.c-name { width: 150px; }
+}
+
+/* Pechat: faqat hisobot kartasi, A4 albom, ranglar va bar'lar bilan */
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  body:has(.sec-etirof) { background: #fff !important; }
+  body:has(.sec-etirof) .app-sidebar,
+  body:has(.sec-etirof) .app-topbar,
+  body:has(.sec-etirof) .app-scrim { display: none !important; }
+  body:has(.sec-etirof) .app-main { margin: 0 !important; padding: 0 !important; }
+  .sec-etirof { padding: 0; min-height: 0; background: #fff; font-size: 11px; }
+  .sec-etirof * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sec-etirof .et-toolbar,
+  .sec-etirof .et-alert,
+  .sec-etirof .et-hint { display: none !important; }
+  .sec-etirof .et-report { border: none; box-shadow: none; padding: 0; border-radius: 0; }
+  .sec-etirof .et-report-head h1 { font-size: 16px; }
+  .sec-etirof .et-report-head h2 { font-size: 14px; }
+  .sec-etirof .et-table-wrap { overflow: visible; border-radius: 0; border: 1px solid #475569; }
+  .sec-etirof .et-table { min-width: 0; table-layout: fixed; }
+  .sec-etirof .et-table th,
+  .sec-etirof .et-table td { border-color: #475569; }
+  .sec-etirof .et-table thead { display: table-header-group; }
+  .sec-etirof .et-table thead th { font-size: 9.5px; padding: 5px 3px; }
+  .sec-etirof .et-table tr { break-inside: avoid; page-break-inside: avoid; }
+  .sec-etirof .et-num { padding: 4px 3px; font-size: 11px; }
+  .sec-etirof .et-total td { font-size: 12px; }
+  .sec-etirof .et-tuman { padding: 4px 6px; font-size: 11px; }
+  .sec-etirof .et-tuman i { display: none; }
+  .sec-etirof .et-table tbody tr:hover td { background: inherit; }
+  .sec-etirof .et-table col.c-n { width: 28px; }
+  .sec-etirof .et-table col.c-name { width: 130px; }
+}

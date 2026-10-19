@@ -1,11 +1,13 @@
 import { requireArea } from "@/lib/auth";
 import { NextResponse } from "next/server";
-import { isGlobal, sameBranch } from "@/lib/roles";
-import { loadDeadlineRows } from "@/lib/deadline-server";
-import { buildSummary, detailRows, filterDetails, DETAIL_HEADERS, VILOYAT_JAMI } from "@/features/deadline/aggregate";
+import { isGlobalIn, sameBranch } from "@/lib/roles";
+import { loadDeadlineRows, loadDeadlineSummary } from "@/lib/deadline-server";
+import { detailRows, filterDetails, DETAIL_HEADERS } from "@/features/deadline/aggregate";
+import { DEADLINE_LISTS, isDeadlineList } from "@/features/deadline/source";
 
 /**
- * "Rollar kesimida tahlil": /api/deadline/summary, /api/deadline/details
+ * "Rollar kesimida tahlil": /api/deadline/summary?list=…, /api/deadline/details?list=…
+ * list: yakunlangan | jarayonda — Google Sheets'dagi YakunlanganArizalar / JarayondagiArizalar varaqlari.
  * Avval Django API proxy edi; endi xom qatorlar Google Sheets'dan olinib shu yerda hisoblanadi
  * (javob formati o'zgarmagan — DeadlineView avvalgidek ishlaydi).
  * Bazani yangilash: /api/upload/deadline (faqat superadmin).
@@ -21,18 +23,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
 
   const url = new URL(req.url);
   const q = url.searchParams;
-  const global = isGlobal(u.role);
+  const global = isGlobalIn(u.role, "deadline");
+  const list = q.get("list") || "yakunlangan";
+  if (!isDeadlineList(list)) return NextResponse.json({ error: "Noma'lum ro'yxat" }, { status: 404 });
 
   try {
-    let rows = await loadDeadlineRows(q.has("fresh"));
-    // Filial roli faqat o'z tumanini ko'radi ("Viloyat jami" ham bo'lmaydi)
-    if (!global) rows = rows.filter((r) => sameBranch(r.tuman, u.branch));
-
     if (name === "summary") {
-      const summary = buildSummary(rows);
-      if (!global) delete summary[VILOYAT_JAMI];
+      const all = await loadDeadlineSummary(list, q.has("fresh"));
+      // Filial roli faqat o'z tumanini ko'radi ("Viloyat jami" ham bo'lmaydi)
+      const summary = global ? all : Object.fromEntries(Object.entries(all).filter(([tuman]) => sameBranch(tuman, u.branch)));
       return NextResponse.json({ status: "success", summary }, { headers: { "Cache-Control": "no-store" } });
     }
+
+    let rows = await loadDeadlineRows(list, q.has("fresh"));
+    if (!global) rows = rows.filter((r) => sameBranch(r.tuman, u.branch));
 
     const tuman = q.get("tuman");
     if (!global && !sameBranch(tuman, u.branch)) {
@@ -43,11 +47,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
     if (q.get("action") === "export") {
       const XLSX = await import("xlsx");
       const ws = XLSX.utils.aoa_to_sheet([DETAIL_HEADERS, ...data]);
-      ws["!cols"] = [6, 16, 22, 18, 34, 8].map((wch) => ({ wch }));
+      ws["!cols"] = [6, 16, 16, 22, 18, 34, 24, 8].map((wch) => ({ wch }));
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Arizalar");
-      const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
-      const file = `${String(tuman || "Arizalar").replace(/\s+/g, "_")}_Arizalar.xlsx`;
+      const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx", compression: true }) as Buffer;
+      const file = `${String(tuman || "Arizalar").replace(/\s+/g, "_")}_${DEADLINE_LISTS[list].sheet}.xlsx`;
       return new Response(new Uint8Array(buf), {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

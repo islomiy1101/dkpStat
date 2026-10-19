@@ -3,8 +3,14 @@ import "@fortawesome/fontawesome-free/css/all.min.css";
 import "@/styles/deadline.css";
 import "@/styles/payment.css";
 import "@/styles/advice.css";
+import "@/styles/reception.css";
+import "@/styles/analytics.css";
 import "@/styles/logs.css";
 import "@/styles/upload.css";
+import "@/styles/etirof.css";
+import "@/styles/xatlov.css";
+import "@/styles/regtest.css";
+import "@/styles/regtest-results.css";
 import "./globals.css";
 
 export const metadata: Metadata = {

@@ -53,3 +53,24 @@ export type RegionSummary = {
   byManba?: Record<string, { rollar?: Record<string, RoleStats> }>;
 };
 export type DeadlineData = Record<string, RegionSummary>;
+
+// ---------- Reception (Filial qabulxonasi) ----------
+export type ReceptionXodim = { fio: string; lavozim: string; tuman: string };
+export type ReceptionMurojaat = {
+  rowNum: number;
+  id: string;
+  passport: string;
+  fio: string;
+  tuman: string;
+  manzil: string;
+  keldi: string;
+  ketdi: string;
+  maqsad: string;
+  qabulQildi: string;
+  lavozim: string;
+  sana: string;
+  qaytaMurojaat: number;
+};
+export type ReceptionData = { xodimlar: ReceptionXodim[]; murojaatlar: ReceptionMurojaat[] };
+/** tuman = "Boshqarma" — viloyat bo'yicha (hamma tumanlar) */
+export type ReceptionSessionInfo = { tuman: string; fio: string };
