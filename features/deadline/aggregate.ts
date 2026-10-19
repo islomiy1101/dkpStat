@@ -3,12 +3,10 @@ import { slugify } from "./model";
 
 /**
  * "Rollar kesimida tahlil" — avval Django hisoblardi, endi Google Sheets'dagi xom qatorlardan
- * shu yerda (serverda) hisoblanadi. Har bir qator: bitta ariza bitta rolda necha kun turgani.
+ * shu yerda (serverda) hisoblanadi. Har bir qator: bitta ariza bitta rolda necha kun turgani
+ * (keng jadvaldan source.ts → toDeadlineRows orqali olinadi).
  */
-export type DeadlineRow = { ariza: string; tuman: string; manba: string; rol: string; kun: number };
-
-/** Sheets'dagi (va yuklanadigan .xlsx'dagi) majburiy ustunlar — tartibi muhim emas */
-export const DEADLINE_HEADERS = ["Ariza raqami", "Tuman", "Manba", "Rol", "Kun"] as const;
+export type DeadlineRow = { ariza: string; tranz: string; tuman: string; manba: string; rol: string; vaqt: string; kun: number };
 export const VILOYAT_JAMI = "Viloyat jami";
 
 type DayKey = Exclude<keyof RoleStats, "arizaSoni">;
@@ -26,8 +24,10 @@ function addRow(region: RegionSummary, seen: Set<string>, r: DeadlineRow, mSlug:
   region.rollar ??= {};
   region.byManba ??= {};
   // Manba bo'yicha ariza bir marta sanaladi (bitta ariza bir nechta rolda bo'lishi mumkin)
-  if (!seen.has(r.ariza)) {
-    seen.add(r.ariza);
+  // Varaqda har bir qator — bitta tranzaksiya; "Ariza raqami" takrorlanishi (yoki bo'sh bo'lishi) mumkin
+  const id = r.tranz || r.ariza;
+  if (!seen.has(id)) {
+    seen.add(id);
     region.manbalar[mSlug] = (region.manbalar[mSlug] || 0) + 1;
   }
   const bump = (s: RoleStats) => {
@@ -74,5 +74,5 @@ export function filterDetails(rows: DeadlineRow[], f: DetailFilter) {
 }
 
 /** Drilldown jadvali va Excel eksporti uchun (Django /details/ formati) */
-export const DETAIL_HEADERS = ["№", "Ariza raqami", "Tuman", "Manba", "Rol", "Kun"];
-export const detailRows = (rows: DeadlineRow[]) => rows.map((r, i) => [i + 1, r.ariza, r.tuman, r.manba, r.rol, r.kun]);
+export const DETAIL_HEADERS = ["№", "Ariza raqami", "Tranzaksiya raqami", "Tuman", "Manba", "Rol", "Rolda turgan vaqt", "Kun"];
+export const detailRows = (rows: DeadlineRow[]) => rows.map((r, i) => [i + 1, r.ariza, r.tranz, r.tuman, r.manba, r.rol, r.vaqt, r.kun]);

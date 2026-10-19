@@ -30,7 +30,7 @@ export const DISTRICTS = [
 export const ROWS = [{ no: "-", name: "Viloyat jami", isJami: true }, ...DISTRICTS.map((d) => ({ no: String(d.no), name: d.name, isJami: false }))];
 
 export function slugify(text: string) {
-  return text.toLowerCase().replace(/['`ʻ’ʼ]/g, "").replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+  return text.toLowerCase().replace(/['`ʻ’‘ʼ]/g, "").replace(/[^a-z0-9]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 }
 
 export function roleDisplayName(role: string, secId: string) {

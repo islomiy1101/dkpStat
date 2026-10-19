@@ -8,6 +8,7 @@ import {
   type DrillCtx, type RowCells,
 } from "./model";
 import { downloadSectionPDF } from "./pdf";
+import { DEADLINE_LISTS, type DeadlineList } from "./source";
 
 const GROUP_KEY = "dkp_group_states";
 const DEFAULT_GROUPS: Record<string, boolean> = { manba: true, filial: true, boshqarma: true, dkp: true, agentlik: true };
@@ -34,8 +35,11 @@ type Drill = {
   message: { text: string; error?: boolean } | null;
 };
 
-export default function DeadlineView() {
+export default function DeadlineView({ list }: { list: DeadlineList }) {
   const slot = useSection("deadline");
+  // Ikkala ro'yxat bitta slotda; eski keshda (bitta ro'yxatli format) bu kalit bo'lmaydi
+  const summary = slot.data?.[list] ?? null;
+  const listInfo = DEADLINE_LISTS[list];
   const now = useClock();
 
   const [groupStates, setGroupStates] = useState<Record<string, boolean>>(DEFAULT_GROUPS);
@@ -59,7 +63,7 @@ export default function DeadlineView() {
     return () => document.removeEventListener("contextmenu", h);
   }, []);
 
-  const { result: table, hasData } = useMemo(() => computeTable(slot.data, manbaFilters), [slot.data, manbaFilters]);
+  const { result: table, hasData } = useMemo(() => computeTable(summary, manbaFilters), [summary, manbaFilters]);
 
   const toggleSection = (id: string) => {
     setGroupStates((g) => {
@@ -72,7 +76,7 @@ export default function DeadlineView() {
   };
 
   const toggleManbaFilter = (slug: string) => {
-    if (!slot.data) return;
+    if (!summary) return;
     setManbaFilters((f) => (f.includes(slug) ? f.filter((x) => x !== slug) : [...f, slug]));
   };
 
@@ -85,7 +89,7 @@ export default function DeadlineView() {
   const openDrilldownModal = async (ctx: DrillCtx) => {
     setDrill({ open: true, loading: true, title: `${ctx.tuman} arizalari (Yuklanmoqda...)`, headers: [], data: [], message: null });
     try {
-      const p = new URLSearchParams({ tuman: ctx.tuman, _t: String(Date.now()) });
+      const p = new URLSearchParams({ list, tuman: ctx.tuman, _t: String(Date.now()) });
       if (ctx.manba) p.set("manba", ctx.manba);
       if (ctx.role) p.set("role", ctx.role);
       if (ctx.day) p.set("day", ctx.day);
@@ -110,16 +114,16 @@ export default function DeadlineView() {
     const ws = XLSX.utils.aoa_to_sheet([drill.headers, ...drill.data]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Tafsilot");
-    XLSX.writeFile(wb, "Arizalar_Batafsil.xlsx");
+    XLSX.writeFile(wb, `${listInfo.sheet}_Batafsil.xlsx`);
   };
 
   const downloadTumanExcel = async (tumanName: string) => {
     setExporting(tumanName);
     try {
-      const p = new URLSearchParams({ action: "export", tuman: tumanName, _t: String(Date.now()) });
+      const p = new URLSearchParams({ list, action: "export", tuman: tumanName, _t: String(Date.now()) });
       const res = await fetch(`${API_DETAILS}?${p}`);
       if (!res.ok) throw new Error("Server xatosi");
-      downloadBlob(await res.blob(), `${tumanName.replace(/\s+/g, "_")}_Arizalar.xlsx`);
+      downloadBlob(await res.blob(), `${tumanName.replace(/\s+/g, "_")}_${listInfo.sheet}.xlsx`);
     } catch {
       alert("Excel yuklab olishda xatolik yuz berdi!");
     } finally {
@@ -132,7 +136,7 @@ export default function DeadlineView() {
   };
 
   const jami = table["Viloyat jami"] || {};
-  const showMainLoader = slot.status === "loading" && !slot.data;
+  const showMainLoader = !summary && (slot.status === "loading" || slot.refreshing);
   const hidden = (secId: string) => (groupStates[secId] === false ? { display: "none" as const } : undefined);
 
   const renderCell = (cells: RowCells, key: string, cls: string, secId: string) => {
@@ -166,7 +170,7 @@ export default function DeadlineView() {
         <div className="header-title-box">
           <div className="header-icon-badge"><i className="fa-solid fa-chart-line" /></div>
           <div>
-            <h2>Рўллар кесмида тахлил («Свод»)</h2>
+            <h2>Рўллар кесмида тахлил («Свод») — {listInfo.title}</h2>
             <span>Har bir bo‘lim alohida asosiy ustunda va bo‘limchalaridan oldinda turadi (FinTech Dashboard).</span>
           </div>
         </div>
@@ -191,6 +195,13 @@ export default function DeadlineView() {
           <div className="spinner-sm" />
           <span style={{ color: "#0284c7", marginTop: 10, fontWeight: 600, fontSize: 13 }}>Ma&apos;lumotlar yangilanmoqda...</span>
         </div>
+
+        {slot.error && (
+          <div role="alert" style={{ margin: "0 0 12px", padding: "10px 14px", borderRadius: 10, background: "#fef2f2", border: "1px solid #fecaca", color: "#b91c1c", fontSize: 13, fontWeight: 600 }}>
+            <i className="fa-solid fa-circle-exclamation" style={{ marginRight: 8 }} />
+            Ma&apos;lumotni yuklab bo&apos;lmadi: {slot.error}
+          </div>
+        )}
 
         {/* KPI KARTALARI */}
         <section className="kpi-cards-grid">
@@ -217,7 +228,7 @@ export default function DeadlineView() {
             <thead>
               <tr>
                 <th colSpan={320} className="banner-row-1">
-                  <i className="fa-solid fa-file-invoice" style={{ marginRight: 8 }} /> Davlat kadastrlari palatasi Namangan viloyati filiallariga Uzkad dasturiga kelib tushgan, ichki va tashqi manbalardan kelgan va jarayonda turgan arizalar toʻgʻrisida
+                  <i className="fa-solid fa-file-invoice" style={{ marginRight: 8 }} /> Davlat kadastrlari palatasi Namangan viloyati filiallariga Uzkad dasturiga kelib tushgan, ichki va tashqi manbalardan kelgan {list === "yakunlangan" ? "va yakunlangan" : "va jarayonda turgan"} arizalar toʻgʻrisida
                 </th>
               </tr>
               <tr>

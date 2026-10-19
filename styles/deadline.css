@@ -1,6 +1,7 @@
 /* Auto-scoped from tools/deadline.in.css — scope .sec-deadline */
 .sec-deadline {
-  --grid-border: #e2e8f0;
+  /* Jadval chiziqlari — rangli kataklar ustida ham ko'rinadigan to'q kulrang */
+  --grid-border: #8391a3;
   --header-bg-main: #0f172a;
   --header-bg-sub: #1e293b;
   

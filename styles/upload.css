@@ -68,6 +68,11 @@
 .sec-upload .up-table th { position: sticky; top: 0; background: #fff; font-weight: 700; color: #334155; }
 .sec-upload .up-more { padding: 6px 12px; font-size: 11.5px; color: var(--up-muted); background: #f8fafc; }
 
+.sec-upload .up-progress { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 8px; background: #f0f9ff; color: #0369a1; font-size: 12.5px; }
+.sec-upload .up-progress-head { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; }
+.sec-upload .up-progress-bar { height: 8px; border-radius: 999px; background: #e0f2fe; overflow: hidden; }
+.sec-upload .up-progress-bar span { display: block; height: 100%; background: linear-gradient(90deg, #0ea5e9, #0284c7); transition: width 0.3s; }
+.sec-upload .up-progress small { color: var(--up-muted); }
 .sec-upload .up-result { display: flex; align-items: flex-start; gap: 8px; padding: 10px 12px; border-radius: 8px; font-weight: 500; line-height: 1.45; }
 .sec-upload .up-result.ok { background: #ecfdf5; color: #047857; }
 .sec-upload .up-result.err { background: #fef2f2; color: #b91c1c; }
@@ -94,3 +99,33 @@
 @media (max-width: 640px) {
   .sec-upload { padding: 12px 16px 20px; }
 }
+
+/* Google Sheets havolalari */
+.sec-upload .up-links {
+  margin-top: 12px; background: #fff; border: 1px solid var(--up-border); border-radius: 12px; padding: 16px 18px 18px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04);
+}
+.sec-upload .up-links-head { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 6px; }
+.sec-upload .up-links-head .up-card-icon { background: #dcfce7; color: #16a34a; }
+.sec-upload .up-links-head h3 { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
+.sec-upload .up-links-head p { margin: 0; font-size: 11.5px; color: var(--up-muted); }
+.sec-upload .up-links-label {
+  margin: 14px 0 8px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--up-muted);
+}
+.sec-upload .up-links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 10px; }
+.sec-upload .up-link {
+  display: flex; align-items: center; gap: 12px; min-width: 0; padding: 11px 14px; border-radius: 10px;
+  border: 1px solid var(--up-border); background: #f8fafc; color: var(--up-text); text-decoration: none;
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+.sec-upload a.up-link:hover { border-color: #22c55e; background: #f0fdf4; box-shadow: 0 6px 14px -8px rgba(22, 163, 74, 0.45); transform: translateY(-1px); }
+.sec-upload .up-link-icon {
+  width: 34px; height: 34px; flex-shrink: 0; border-radius: 8px; display: flex; align-items: center; justify-content: center;
+  background: #fff; border: 1px solid var(--up-border); color: #16a34a; font-size: 14px;
+}
+.sec-upload .up-link-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.sec-upload .up-link-text b { font-size: 13px; font-weight: 700; }
+.sec-upload .up-link-text small { font-size: 11px; color: var(--up-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec-upload .up-link-go { color: #94a3b8; font-size: 12px; }
+.sec-upload a.up-link:hover .up-link-go { color: #16a34a; }
+.sec-upload .up-link.is-off { opacity: 0.55; cursor: not-allowed; }

@@ -1,8 +1,11 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import type { AdviceData, AdviceSessionInfo, DeadlineData, PaymentData } from "@/lib/types";
+import type { AdviceData, AdviceSessionInfo, DeadlineData, PaymentData, ReceptionData, ReceptionSessionInfo } from "@/lib/types";
 import { SECTIONS, type SectionId } from "@/lib/sections";
+import { DEADLINE_LIST_IDS, type DeadlineList } from "@/features/deadline/source";
+import { ETIROF_PAGE_IDS, type EtirofPage, type EtirofSvod } from "@/features/etirof/config";
+import type { XatlovData } from "@/features/xatlov/config";
 
 /**
  * Barcha bo'limlar ma'lumotini PARALLEL yuklovchi provider.
@@ -13,7 +16,12 @@ import { SECTIONS, type SectionId } from "@/lib/sections";
  */
 
 export type AdvicePayload = AdviceData & { session: AdviceSessionInfo };
-type DataMap = { deadline: DeadlineData; payment: PaymentData; advice: AdvicePayload };
+export type ReceptionPayload = ReceptionData & { session: ReceptionSessionInfo };
+/** "Rollar kesimida tahlil": ikkala ro'yxat bitta slotda (parallel yuklanadi) */
+export type DeadlinePayload = Partial<Record<DeadlineList, DeadlineData>>;
+/** "E'tirof": 4 ta SVOD bitta slotda; bittasi xato bersa, qolganlari baribir ko'rinadi */
+export type EtirofPayload = Partial<Record<EtirofPage, EtirofSvod | { error: string }>>;
+type DataMap = { deadline: DeadlinePayload; etirof: EtirofPayload; xatlov: XatlovData; payment: PaymentData; advice: AdvicePayload; reception: ReceptionPayload };
 
 export type SlotStatus = "idle" | "loading" | "ready" | "error";
 export type Slot<T> = {
@@ -53,12 +61,26 @@ async function getJson(url: string) {
 
 const FETCHERS: { [K in SectionId]: (fresh: boolean) => Promise<DataMap[K]> } = {
   deadline: async (fresh) => {
-    const json = await getJson(`/api/deadline/summary${fresh ? "?fresh=1" : ""}`);
-    if (json.status === "success" && json.summary) return json.summary as DeadlineData;
-    throw new Error(json.message || "Javob noto'g'ri");
+    const lists = await Promise.all(
+      DEADLINE_LIST_IDS.map(async (list) => {
+        const json = await getJson(`/api/deadline/summary?list=${list}${fresh ? "&fresh=1" : ""}`);
+        if (json.status === "success" && json.summary) return [list, json.summary as DeadlineData] as const;
+        throw new Error(json.message || "Javob noto'g'ri");
+      })
+    );
+    return Object.fromEntries(lists) as DeadlinePayload;
   },
+  etirof: async (fresh) => {
+    const res = await Promise.allSettled(ETIROF_PAGE_IDS.map((p) => getJson(`/api/etirof/${p}${fresh ? "?fresh=1" : ""}`)));
+    if (res.every((r) => r.status === "rejected")) throw (res[0] as PromiseRejectedResult).reason;
+    return Object.fromEntries(
+      res.map((r, i) => [ETIROF_PAGE_IDS[i], r.status === "fulfilled" ? (r.value as EtirofSvod) : { error: (r.reason as Error).message }])
+    ) as EtirofPayload;
+  },
+  xatlov: async (fresh) => (await getJson(`/api/xatlov${fresh ? "?fresh=1" : ""}`)) as XatlovData,
   payment: async (fresh) => (await getJson(`/api/payment${fresh ? "?fresh=1" : ""}`)) as PaymentData,
   advice: async (fresh) => (await getJson(`/api/advice/data${fresh ? "?fresh=1" : ""}`)) as AdvicePayload,
+  reception: async (fresh) => (await getJson(`/api/reception/data${fresh ? "?fresh=1" : ""}`)) as ReceptionPayload,
 };
 
 function readCache<T>(id: SectionId): { data: T; updatedAt: number } | null {
@@ -85,8 +107,11 @@ export function dropCache(id: SectionId) {
 export function DataProvider({ children, allowed }: { children: React.ReactNode; allowed: SectionId[] }) {
   const [state, setState] = useState<State>(() => ({
     deadline: empty(),
+    etirof: empty(),
+    xatlov: empty(),
     payment: empty(),
     advice: empty(),
+    reception: empty(),
   }));
   const inflight = useRef<Partial<Record<SectionId, Promise<void>>>>({});
 

@@ -61,7 +61,7 @@ export async function downloadSectionPDF(secId: string, table: Record<string, Ro
 
     autoTable(doc, {
       head: [headRow], body: rows, startY: 18, theme: "grid", tableWidth: 255,
-      styles: { font: "times", fontSize: 7, cellPadding: 1.3, halign: "center", valign: "middle", lineColor: [180, 180, 180], lineWidth: 0.1, textColor: [0, 0, 0] },
+      styles: { font: "times", fontSize: 7, cellPadding: 1.3, halign: "center", valign: "middle", lineColor: [100, 116, 139], lineWidth: 0.15, textColor: [0, 0, 0] },
       headStyles: { fillColor: [217, 234, 211], textColor: [0, 0, 0], fontStyle: "bold", halign: "center" },
       columnStyles: colStyles, margin: { left: 14, right: 14 },
       didParseCell(data) {
@@ -120,7 +120,7 @@ export async function downloadSectionPDF(secId: string, table: Record<string, Ro
 
       autoTable(doc, {
         head: headRows, body: rows, startY: startYPos, theme: "grid",
-        styles: { font: "times", fontSize: 7.5, cellPadding: 1.4, halign: "center", valign: "middle", lineColor: [180, 180, 180], lineWidth: 0.1, textColor: [0, 0, 0] },
+        styles: { font: "times", fontSize: 7.5, cellPadding: 1.4, halign: "center", valign: "middle", lineColor: [100, 116, 139], lineWidth: 0.15, textColor: [0, 0, 0] },
         headStyles: { fillColor: [2, 132, 199], textColor: [255, 255, 255], fontStyle: "bold", halign: "center" },
         columnStyles: { 0: { cellWidth: 10 }, 1: { cellWidth: 38, halign: "left" } },
         margin: { left: 14, right: 14 },

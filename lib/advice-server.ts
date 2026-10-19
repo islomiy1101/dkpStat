@@ -3,7 +3,7 @@ import { MOCK } from "./mock";
 import { cached } from "./cache";
 import { fetchGviz, type GvizTable } from "./gviz";
 import { normalizeName, isSuperAdminTuman } from "./session";
-import { isGlobal, sameBranch } from "./roles";
+import { isGlobalIn, sameBranch } from "./roles";
 import type { AppUser } from "./auth";
 import { TUMANLAR } from "@/features/advice/utils";
 import type { AdviceData, AdviceSessionInfo, Murojaat, Natija } from "./types";
@@ -32,7 +32,7 @@ export function loadAdviceRaw(fresh = false) {
  * Umumiy rollar "Boshqarma" rejimida (hamma tumanlar, faqat ko'rish), qolganlari o'z tumanida.
  */
 export function adviceSessionFor(u: AppUser): AdviceSessionInfo {
-  const tuman = isGlobal(u.role) ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
+  const tuman = isGlobalIn(u.role, "advice") ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
   return { tuman, fio: u.fullName, loginTime: u.loginTime };
 }
 

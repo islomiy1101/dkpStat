@@ -1,5 +1,5 @@
 import { requireArea } from "@/lib/auth";
-import { isGlobal, sameBranch } from "@/lib/roles";
+import { isGlobalIn, sameBranch } from "@/lib/roles";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { cached } from "@/lib/cache";
@@ -66,7 +66,7 @@ export async function GET(req: Request) {
   const fresh = new URL(req.url).searchParams.has("fresh");
   try {
     const all = await cached("payment", config.cacheTtlMs, load, { fresh });
-    const data = isGlobal(u.role) ? all : scopeToBranch(all, u.branch);
+    const data = isGlobalIn(u.role, "payment") ? all : scopeToBranch(all, u.branch);
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });

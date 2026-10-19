@@ -12,16 +12,22 @@
  *  5. Sheet'ni hech kim bilan "havola orqali" ulashmang — unga faqat shu skript murojaat qiladi.
  *
  * BAZAGA YUKLASH (importSheets — /upload sahifasi, faqat superadmin):
- *  6. Script Properties → "IMPORT_TARGETS" qo'shing — qaysi sheet'ning qaysi varaqlariga yozish mumkin (JSON):
- *       {"<PAYMENT_SHEET_ID>": ["TolovKutilmoqda", "TolovReja"], "<DEADLINE_SHEET_ID>": ["Arizalar"]}
+ *  6. Pastdagi IMPORT_TARGETS ga (yoki Script Properties → "IMPORT_TARGETS" ga JSON qilib) yozing —
+ *     qaysi sheet'ning qaysi varaqlariga yozish mumkin:
+ *       {"<PAYMENT_SHEET_ID>": ["TolovBaza"], "<DEADLINE_SHEET_ID>": ["YakunlanganArizalar", "JarayondagiArizalar"]}
  *  7. Skript egasi (Execute as: Me) shu sheet'larga "Editor" huquqiga ega bo'lishi kerak.
  *  8. Kod o'zgargach: Deploy → Manage deployments → Edit → Version: New version (URL o'zgarmaydi).
  *     Birinchi marta openById uchun ruxsat so'raladi — muharrirda istalgan funksiyani bir marta ishga tushiring.
  *  Har bir yuklash UploadLogs varag'iga yoziladi.
  *
+ * REGTEST (/regtest — registratorlar testi):
+ *  9. Pastdagi REGTEST_SHEET_ID ga savollar sheet'i ID'sini yozing (faqat muharrirda). Sheet ochiq ulashilmaydi —
+ *     skript egasi unga Editor bo'lishi kifoya. Varaqlar: "Тест саволлари" (№ | Савол | а) | б) | в) | г) | Тўғри жавоб)
+ *     va "Натижалар" (sarlavhasini skript o'zi yozadi): registratordan faqat Login, qolgani — test yechgan xodim (PINFL, F.I.O.).
+ *
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
  *  Users: Branch | FullName | Department | Login | Password | Role
- *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | superadmin
+ *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | registrator | superadmin
  *  Logs : Branch | FullName | Department | Login | DateTime | Ip | Location | Accuracy
  *         (Accuracy — joylashuv xatoligi, metr; ustun bo'lmasa avtomatik qo'shiladi)
  *
@@ -39,6 +45,31 @@ const UPLOAD_LOGS_SHEET = "UploadLogs";
 const UPLOAD_LOG_HEADERS = ["DateTime", "Login", "FullName", "Section", "FileName", "Sheets", "Rows", "Status"];
 const BACKUP_SUFFIX = "__backup";
 
+/**
+ * Bazaga yuklash ruxsatlari: qaysi sheet'ning qaysi varaqlariga yozish mumkin.
+ * Script Properties'dagi "IMPORT_TARGETS" bo'lsa — o'sha ishlatiladi, bo'lmasa shu yerdagi qiymat.
+ * Sheet ID'larni FAQAT Apps Script muharririda yozing (repozitoriyda bo'sh qolsin — Netlify secrets scan).
+ */
+const IMPORT_TARGETS = {
+  // "<PAYMENT_SHEET_ID>": ["TolovBaza"],
+  // "<DEADLINE_SHEET_ID>": ["YakunlanganArizalar", "JarayondagiArizalar"],
+};
+
+/**
+ * RegTest: savollar banki va natijalar sheet'i. ID FAQAT muharrirda yoziladi (repozitoriyda bo'sh).
+ * So'rovda sheet ID kelmaydi — skript faqat shu sheet'ni o'qiydi/yozadi.
+ */
+const REGTEST_SHEET_ID = "1U3nM3ofXebqPQhYHFkq4Et-gb-_VaJg_umOUOHhvyms";
+const REGTEST_QUESTIONS_SHEET = "Тест саволлари";
+const REGTEST_RESULTS_SHEET = "Натижалар";
+/** Bitta PINFL — shuncha soatda bir marta (boshlangan test bo'yicha) */
+const REGTEST_RETAKE_HOURS = 2;
+/** Sayt shu raqamga qarab skript eskirganini aniqlaydi (ping → regtestVersion) */
+const REGTEST_VERSION = 4;
+// Registratordan faqat login (u tizimga kirib beradi); qolgani — test yechgan xodimniki (PINFL)
+const REGTEST_HEADERS = ["Sana", "Vaqt", "Login", "PINFL", "F.I.O.", "Savol soni", "To'g'ri", "Noto'g'ri", "Javobsiz", "Ball",
+  "Sarflangan vaqt", "Holat", "Test ID"];
+
 function doPost(e) {
   let result;
   try {
@@ -55,8 +86,21 @@ function doPost(e) {
       result = getLogs_(Number(req.limit) || 5000);
     } else if (req.action === "importSheets") {
       result = importSheets_(req.spreadsheetId, req.sheets, req.meta || {});
+    } else if (req.action === "importChunk") {
+      result = importChunk_(req.spreadsheetId, req.name, req.chunk || {}, req.meta || {});
+    } else if (req.action === "regtestQuestions") {
+      result = regtestQuestions_();
+    } else if (req.action === "regtestStart") {
+      result = regtestStart_(req.row || {});
+    } else if (req.action === "regtestSave") {
+      result = regtestSave_(req.row || {});
+    } else if (req.action === "regtestResults") {
+      result = regtestResults_();
+    } else if (req.action === "verifyPassword") {
+      result = verifyPassword_(req.login, req.password);
     } else if (req.action === "ping") {
-      result = { success: true };
+      // Sayt "Bazaga yuklash" sahifasida shu jadvalga havola ko'rsatadi (AUTH_SHEET_ID berilmagan bo'lsa)
+      result = { success: true, spreadsheetId: ss_().getId(), regtestVersion: REGTEST_VERSION };
     } else {
       result = { success: false, message: "Noma'lum amal" };
     }
@@ -216,6 +260,42 @@ function getLogs_(limit) {
 
 /* ---------------- bazaga yuklash ---------------- */
 
+/**
+ * IMPORT_TARGETS bo'yicha ruxsatni tekshirish. Qo'lda kiritishdagi odatiy xatolar kechiriladi:
+ * kalit sifatida to'liq havola, bo'sh joylar, "egri" qo'shtirnoqlar. Ruxsat bo'lsa — null, aks holda aniq sabab.
+ */
+function checkImportTarget_(spreadsheetId, names) {
+  const raw = String(PropertiesService.getScriptProperties().getProperty("IMPORT_TARGETS") || "")
+    .replace(/[“”„«»]/g, '"').trim();
+  let parsed = IMPORT_TARGETS;
+  if (raw) {
+    try {
+      parsed = JSON.parse(raw);
+    } catch (e) {
+      return "Script Properties'dagi IMPORT_TARGETS JSON emas: " + e + ". Namuna: {\"<SHEET_ID>\": [\"TolovBaza\"]}";
+    }
+  }
+  if (!Object.keys(parsed).length) return "IMPORT_TARGETS bo'sh: Code.gs boshidagi IMPORT_TARGETS ga yoki Script Properties'ga sheet ID'larni yozing";
+  const id = clean_(spreadsheetId);
+  let list = null;
+  Object.keys(parsed).forEach(function (k) {
+    const m = String(k).match(/\/d\/([\w-]+)/);
+    if (clean_(m ? m[1] : k) === id) list = (list || []).concat(parsed[k] || []);
+  });
+  const tail = "…" + id.slice(-6);
+  const where = raw ? "Script Properties → IMPORT_TARGETS" : "Code.gs → IMPORT_TARGETS";
+  if (!list) {
+    const keys = Object.keys(parsed).map(function (k) { return "…" + clean_(k).slice(-6); }).join(", ") || "yo'q";
+    return where + "'da bu sheet ID yo'q (" + tail + "). Kiritilgan ID'lar: " + keys;
+  }
+  const ok = list.map(function (n) { return clean_(n).toLowerCase(); });
+  const denied = names.filter(function (n) { return ok.indexOf(clean_(n).toLowerCase()) === -1; });
+  if (denied.length) {
+    return "Ruxsat etilmagan varaq(lar): " + denied.join(", ") + " — " + where + "'da " + tail + " uchun faqat: " + (list.join(", ") || "bo'sh");
+  }
+  return null;
+}
+
 /** Next.js { $date: "YYYY-MM-DDTHH:mm:ss" } → Date (skript vaqt zonasida) */
 function toCell_(v) {
   if (v && typeof v === "object" && v.$date) {
@@ -232,14 +312,10 @@ function toCell_(v) {
  * 3) muvaffaqiyat — zaxiralar o'chiriladi; xato — HAMMA varaq zaxiradan tiklanadi.
  */
 function importSheets_(spreadsheetId, sheets, meta) {
-  const allowed = JSON.parse(PropertiesService.getScriptProperties().getProperty("IMPORT_TARGETS") || "{}");
   const names = (sheets || []).map(function (s) { return String(s.name); });
   if (!names.length) return { success: false, message: "Yoziladigan varaq yo'q" };
-  const okList = allowed[spreadsheetId] || [];
-  const denied = names.filter(function (n) { return okList.indexOf(n) === -1; });
-  if (denied.length) {
-    return { success: false, message: "Ruxsat etilmagan varaq(lar): " + denied.join(", ") + " (Script Properties → IMPORT_TARGETS)" };
-  }
+  const denied = checkImportTarget_(spreadsheetId, names);
+  if (denied) return { success: false, message: denied };
 
   const lock = LockService.getScriptLock();
   lock.waitLock(30000);
@@ -291,6 +367,58 @@ function importSheets_(spreadsheetId, sheets, meta) {
   }
 }
 
+/**
+ * Katta varaqni qismlab yozish (Rollar kesimida tahlil: ~100 ming qator × ~80 ustun).
+ * Zaxira nusxa olinmaydi: nusxa bilan Google Sheets'ning 10 mln katak chegarasidan oshib ketadi.
+ * chunk: { startRow (1 dan), values, reset (birinchi qism), totalRows, width, last, asText }
+ *  - reset: varaq kerakli o'lchamga keltiriladi (avval kengaytiriladi — chegara xatosi bo'lsa eski ma'lumot saqlanadi),
+ *           keyin tozalanadi va ortiqcha qator/ustunlar o'chiriladi (katak chegarasini tejash);
+ *  - asText: kataklar matn formatida ("@") — raqamga o'xshash ID'lar raqamga aylanmaydi.
+ */
+function importChunk_(spreadsheetId, name, chunk, meta) {
+  name = String(name || "");
+  const denied = checkImportTarget_(spreadsheetId, [name]);
+  if (denied) return { success: false, message: denied };
+  const values = (chunk.values || []).map(function (r) { return r.map(toCell_); });
+  const startRow = Number(chunk.startRow) || 0;
+  const width = Number(chunk.width) || 0;
+  const totalRows = Number(chunk.totalRows) || 0;
+  if (!values.length || startRow < 1 || width < 1 || startRow + values.length - 1 > totalRows) {
+    return { success: false, message: "Qism ma'lumotlari noto'g'ri" };
+  }
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+    if (chunk.reset) {
+      if (sheet.getMaxRows() < totalRows) sheet.insertRowsAfter(sheet.getMaxRows(), totalRows - sheet.getMaxRows());
+      if (sheet.getMaxColumns() < width) sheet.insertColumnsAfter(sheet.getMaxColumns(), width - sheet.getMaxColumns());
+      sheet.clearContents();
+      if (sheet.getMaxRows() > totalRows) sheet.deleteRows(totalRows + 1, sheet.getMaxRows() - totalRows);
+      if (sheet.getMaxColumns() > width) sheet.deleteColumns(width + 1, sheet.getMaxColumns() - width);
+    }
+    const range = sheet.getRange(startRow, 1, values.length, width);
+    if (chunk.asText) range.setNumberFormat("@");
+    range.setValues(values);
+    SpreadsheetApp.flush();
+    if (chunk.last) {
+      const rows = {};
+      rows[name] = totalRows;
+      logUpload_(meta, [name], rows, "OK");
+    }
+    return { success: true };
+  } catch (err) {
+    const rows = {};
+    rows[name] = (startRow - 1) + " / " + totalRows;
+    logUpload_(meta, [name], rows, "XATO (qisman yozildi): " + err);
+    return { success: false, message: name + ": " + startRow + "-qatordan yozishda xatolik: " + err };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function logUpload_(meta, names, rows, status) {
   try {
     let sheet = ss_().getSheetByName(UPLOAD_LOGS_SHEET);
@@ -309,4 +437,237 @@ function logUpload_(meta, names, rows, status) {
   } catch (e) {
     // jurnalga yozilmasa ham yuklash natijasi o'zgarmaydi
   }
+}
+
+/* ---------------- RegTest ---------------- */
+
+function regtestBook_() {
+  if (!REGTEST_SHEET_ID) throw new Error("Code.gs → REGTEST_SHEET_ID to'ldirilmagan");
+  return SpreadsheetApp.openById(REGTEST_SHEET_ID);
+}
+
+/** Savollar varag'i ko'rinishdagi matn sifatida (to'g'ri javoblar faqat serverga — brauzerga emas) */
+function regtestQuestions_() {
+  const sheet = regtestBook_().getSheetByName(REGTEST_QUESTIONS_SHEET);
+  if (!sheet) return { success: false, message: "\"" + REGTEST_QUESTIONS_SHEET + "\" varag'i topilmadi" };
+  return { success: true, rows: sheet.getDataRange().getDisplayValues() };
+}
+
+/** Sarlavhani solishtirish: katta-kichik harf, apostrof turlari, qavs ichidagi izoh va bo'sh joyga befarq */
+function regtestKey_(h) {
+  const k = clean_(h).toLowerCase().replace(/\(.*?\)/g, "").replace(/[`'ʻ’‘ʼ.\s]/g, "");
+  // F.I.O. ustunining boshqa yozilishlari: FIO, Ф.И.О., F.I.SH, Xodim FIO
+  return ["фио", "fish", "фиш", "xodimfio", "xodimfish"].indexOf(k) >= 0 ? "fio" : k;
+}
+
+/** "Натижалар" varag'i; bo'lmasa yoki bo'sh bo'lsa — REGTEST_HEADERS bilan yaratiladi */
+function regtestSheet_() {
+  const book = regtestBook_();
+  const sheet = book.getSheetByName(REGTEST_RESULTS_SHEET) || book.insertSheet(REGTEST_RESULTS_SHEET);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(REGTEST_HEADERS);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, REGTEST_HEADERS.length).setFontWeight("bold");
+  }
+  return sheet;
+}
+
+/**
+ * Sarlavha → ustun (0 dan). Qiymatlar USTUN TARTIBI bo'yicha emas, SARLAVHA NOMLARI bo'yicha qo'yiladi —
+ * ustunlar surilsa, ortiqchasi o'chirilsa yoki qo'shilsa ham yozuv o'z joyiga tushadi. Yetishmagan sarlavha oxiriga qo'shiladi.
+ */
+function regtestCols_(sheet) {
+  let head = sheet.getRange(1, 1, 1, Math.max(1, sheet.getLastColumn())).getDisplayValues()[0];
+  const colOf = {};
+  head.forEach(function (h, i) { if (clean_(h)) colOf[regtestKey_(h)] = i; });
+  const added = [];
+  REGTEST_HEADERS.forEach(function (name) {
+    if (colOf[regtestKey_(name)] === undefined) {
+      colOf[regtestKey_(name)] = head.length;
+      head = head.concat([name]);
+      added.push(name);
+    }
+  });
+  if (added.length) sheet.getRange(1, 1, 1, head.length).setValues([head]);
+  return { width: head.length, col: function (name) { return colOf[regtestKey_(name)]; }, added: added };
+}
+
+/** Qatorni sarlavha bo'yicha to'ldirish: { "Holat": "…" } → [.., "…", ..] */
+function regtestRowValues_(cols, values) {
+  const out = [];
+  for (let i = 0; i < cols.width; i++) out.push("");
+  Object.keys(values).forEach(function (name) { out[cols.col(name)] = values[name]; });
+  return out;
+}
+
+/**
+ * Urinish boshlangan vaqt (ms). Yangi Test ID'lar "vaqt36-tasodifiy" — vaqt ID'ning o'zidan olinadi
+ * (Sana/Vaqt kataklari joy sozlamasiga qarab sana yoki matn bo'lishi mumkin). Eski ID'lar uchun — Sana + Vaqt matni.
+ */
+function regtestStartedAt_(id, sana, vaqt) {
+  const m = /^([0-9a-z]{6,12})-/.exec(clean_(id));
+  if (m) {
+    const t = parseInt(m[1], 36);
+    if (t > 1600000000000 && t < 4100000000000) return t;
+  }
+  sana = clean_(sana);
+  vaqt = clean_(vaqt);
+  let y, mo, d;
+  let p = /^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(sana);
+  if (p) { y = p[1]; mo = p[2]; d = p[3]; }
+  else if ((p = /^(\d{1,2})\.(\d{1,2})\.(\d{4})/.exec(sana))) { y = p[3]; mo = p[2]; d = p[1]; }
+  else if ((p = /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(sana))) { y = p[3]; mo = p[1]; d = p[2]; }
+  else return 0;
+  const tm = /^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?/i.exec(vaqt) || [];
+  let h = Number(tm[1] || 0);
+  if (tm[4] && /pm/i.test(tm[4]) && h < 12) h += 12;
+  if (tm[4] && /am/i.test(tm[4]) && h === 12) h = 0;
+  const pad2 = function (n) { return ("0" + n).slice(-2); };
+  const s = y + "-" + pad2(mo) + "-" + pad2(d) + " " + pad2(h) + ":" + pad2(tm[2] || 0) + ":" + pad2(tm[3] || 0);
+  try { return Utilities.parseDate(s, TZ, "yyyy-MM-dd HH:mm:ss").getTime(); } catch (e) { return 0; }
+}
+
+/**
+ * Test boshlanishi: bitta PINFL — REGTEST_RETAKE_HOURS soatda bir marta (boshlangan testlar bo'yicha —
+ * tashlab ketib qayta boshlab, yangi savollarni ko'rib chiqishning oldi olinadi).
+ * Ruxsat bo'lsa — "Jarayonda" holatidagi qator qo'shiladi; yakunlanganda shu qator yangilanadi.
+ */
+function regtestStart_(row) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sheet = regtestSheet_();
+    const cols = regtestCols_(sheet);
+    const id = clean_(row.testId);
+    const pinfl = clean_(row.pinfl);
+    if (!id || !pinfl) return { success: false, message: "Test ID yoki PINFL yo'q" };
+
+    const now = Date.now();
+    const limitMs = REGTEST_RETAKE_HOURS * 3600 * 1000;
+    let last = 0;
+    if (sheet.getLastRow() > 1) {
+      const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, cols.width).getDisplayValues();
+      const cP = cols.col("PINFL"), cId = cols.col("Test ID"), cS = cols.col("Sana"), cV = cols.col("Vaqt");
+      data.forEach(function (r) {
+        if (clean_(r[cP]).replace(/^'/, "") !== pinfl) return;
+        const t = regtestStartedAt_(r[cId], r[cS], r[cV]);
+        if (t > last) last = t;
+      });
+    }
+    if (last && now - last < limitMs) {
+      const nextAt = Utilities.formatDate(new Date(last + limitMs), TZ, "dd.MM.yyyy HH:mm");
+      return {
+        success: false, limited: true, nextAt: nextAt,
+        message: "Bu PINFL bilan test " + REGTEST_RETAKE_HOURS + " soatda bir marta topshiriladi. Keyingi urinish: " + nextAt + " dan keyin",
+      };
+    }
+
+    const t = new Date(now);
+    sheet.appendRow(regtestRowValues_(cols, {
+      "Sana": Utilities.formatDate(t, TZ, "yyyy-MM-dd"),
+      "Vaqt": Utilities.formatDate(t, TZ, "HH:mm:ss"),
+      "Login": clean_(row.login),
+      "PINFL": "'" + pinfl, // matn — boshidagi 0 va 14 xonali raqam yo'qolmasin
+      "F.I.O.": clean_(row.fio),
+      "Savol soni": Number(row.total) || 0,
+      "Holat": "Jarayonda",
+      "Test ID": id,
+    }));
+    return { success: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Natija: "Jarayonda" qatori Test ID bo'yicha topilib yangilanadi (bitta urinish — bitta qator).
+ * Holati "Jarayonda" bo'lmasa — takror yuborilgan (rad etiladi); qator topilmasa (eski testlar) — oxiriga qo'shiladi.
+ */
+function regtestSave_(row) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const sheet = regtestSheet_();
+    const cols = regtestCols_(sheet);
+    const id = clean_(row.testId);
+    if (!id) return { success: false, message: "Test ID yo'q" };
+
+    const result = {
+      "Login": clean_(row.login),
+      "PINFL": "'" + clean_(row.pinfl),
+      "F.I.O.": clean_(row.fio),
+      "Savol soni": Number(row.total) || 0,
+      "To'g'ri": Number(row.correct) || 0,
+      "Noto'g'ri": Number(row.wrong) || 0,
+      "Javobsiz": Number(row.unanswered) || 0,
+      "Ball": Number(row.score) || 0,
+      "Sarflangan vaqt": Number(row.spentSec) || 0,
+      "Holat": clean_(row.status),
+      "Test ID": id,
+    };
+
+    let found = null;
+    if (sheet.getLastRow() > 1) {
+      found = sheet.getRange(2, cols.col("Test ID") + 1, sheet.getLastRow() - 1, 1)
+        .createTextFinder(id).matchEntireCell(true).findNext();
+    }
+    if (found) {
+      const r = found.getRow();
+      const current = sheet.getRange(r, 1, 1, cols.width).getDisplayValues()[0];
+      // Bir test — bir natija: token qayta yuborilsa (cookie nusxalanib) — rad etiladi
+      if (clean_(current[cols.col("Holat")]) !== "Jarayonda") {
+        return { success: false, duplicate: true, message: "Bu test allaqachon yakunlangan" };
+      }
+      Object.keys(result).forEach(function (name) {
+        if (name === "Login" || name === "PINFL" || name === "F.I.O." || name === "Test ID") return; // boshlanishda yozilgan
+        sheet.getRange(r, cols.col(name) + 1).setValue(result[name]);
+      });
+      return { success: true };
+    }
+
+    const t = new Date();
+    result["Sana"] = Utilities.formatDate(t, TZ, "yyyy-MM-dd");
+    result["Vaqt"] = Utilities.formatDate(t, TZ, "HH:mm:ss");
+    sheet.appendRow(regtestRowValues_(cols, result));
+    return cols.added.length ? { success: true, message: "Varaqqa ustun(lar) qo'shildi: " + cols.added.join(", ") } : { success: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** "Натижалар" — dashboard uchun (ko'rinishdagi matn sifatida) */
+function regtestResults_() {
+  const sheet = regtestBook_().getSheetByName(REGTEST_RESULTS_SHEET);
+  if (!sheet || sheet.getLastRow() === 0) return { success: true, rows: [] };
+  return { success: true, rows: sheet.getDataRange().getDisplayValues() };
+}
+
+/**
+ * Parolni qayta tekshirish ("Test natijalari"ni ochish uchun). login_ bilan bir xil qoidalar
+ * (sha256, 5 ta xato urinishdan keyin 10 daqiqa blok), lekin Logs'ga yozilmaydi.
+ */
+function verifyPassword_(login, password) {
+  login = clean_(login).toLowerCase();
+  password = clean_(password);
+  if (!login || !password) return { success: false, message: "Parol noto'g'ri" };
+  const cache = CacheService.getScriptCache();
+  const failKey = "fail_" + login;
+  const fails = Number(cache.get(failKey) || 0);
+  if (fails >= MAX_FAILS) return { success: false, message: "Juda ko'p noto'g'ri urinish. 10 daqiqadan so'ng qayta urinib ko'ring." };
+
+  const sheet = ss_().getSheetByName(USERS_SHEET);
+  if (!sheet) return { success: false, message: "Users varag'i topilmadi" };
+  const data = sheet.getDataRange().getValues();
+  const col = headerIndex_(data[0]);
+  const cLogin = col("Login"), cPass = col("Password");
+  for (let r = 1; r < data.length; r++) {
+    if (clean_(data[r][cLogin]).toLowerCase() !== login) continue;
+    if (passwordMatches_(data[r][cPass], password)) {
+      cache.remove(failKey);
+      return { success: true };
+    }
+    break;
+  }
+  cache.put(failKey, String(fails + 1), LOCK_SECONDS);
+  return { success: false, message: "Parol noto'g'ri" };
 }

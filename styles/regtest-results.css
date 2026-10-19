@@ -1,0 +1,143 @@
+/* Registratsiya → "Test natijalari" (qulf ekrani va dashboard). Asosiy o'zgaruvchilar — styles/regtest.css */
+.sec-regtest .rt-toolbar-text { flex: 1; min-width: 0; }
+.sec-regtest .rt-toolbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sec-regtest .rt-lock-left { font-size: 12px; color: var(--rt-muted); margin-right: 4px; }
+.sec-regtest .rt-lock-left i { color: var(--rt-green); }
+.sec-regtest .rt-btn-dark { background: #0f172a; border-color: #0f172a; color: #fff; }
+.sec-regtest .rt-btn-dark:hover:not(:disabled) { background: #1e293b; border-color: #1e293b; }
+.sec-regtest .rt-btn-excel { background: #16a34a; border-color: #16a34a; color: #fff; height: 38px; }
+.sec-regtest .rt-btn-excel:hover:not(:disabled) { background: #15803d; border-color: #15803d; }
+
+/* Qulf */
+.sec-regtest .rt-unlock { max-width: 420px; text-align: center; }
+.sec-regtest .rt-unlock-icon {
+  width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%; font-size: 24px; color: #fff;
+  background: linear-gradient(135deg, #0f172a, #334155); display: flex; align-items: center; justify-content: center;
+}
+.sec-regtest .rt-unlock-login {
+  display: inline-flex; align-items: center; gap: 6px; margin: 0 auto 14px; padding: 6px 12px; border-radius: 999px;
+  background: #f1f5f9; font-weight: 600; font-size: 13px;
+}
+.sec-regtest .rt-pass { display: flex; position: relative; margin-bottom: 12px; }
+.sec-regtest .rt-pass input {
+  flex: 1; height: 48px; padding: 0 46px 0 14px; border-radius: 12px; border: 2px solid #cbd5e1; font-size: 16px; outline: none; background: #f8fafc;
+}
+.sec-regtest .rt-pass input:focus { border-color: var(--rt-blue); background: #fff; box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12); }
+.sec-regtest .rt-pass button {
+  position: absolute; right: 6px; top: 6px; width: 36px; height: 36px; border: 0; background: transparent;
+  color: var(--rt-muted); cursor: pointer; border-radius: 8px;
+}
+.sec-regtest .rt-unlock-note { display: block; margin-top: 12px; font-size: 12px; color: var(--rt-muted); }
+
+/* Dashboard */
+.sec-regtest .rt-dash { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+/* Keng jadval grid ustunini cho'zmasin — u o'z ichida gorizontal scroll bo'ladi */
+.sec-regtest .rt-panel,
+.sec-regtest .rt-kpi { min-width: 0; }
+.sec-regtest .rt-kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; }
+.sec-regtest .rt-kpi {
+  display: flex; align-items: center; gap: 12px; background: #fff; border: 1px solid var(--rt-border); border-radius: 14px; padding: 14px 16px;
+  box-shadow: 0 4px 12px -8px rgba(15, 23, 42, 0.15);
+}
+.sec-regtest .rt-kpi-icon {
+  width: 42px; height: 42px; flex-shrink: 0; border-radius: 11px; display: flex; align-items: center; justify-content: center;
+  background: var(--rt-blue-soft); color: var(--rt-blue); font-size: 17px;
+}
+.sec-regtest .rt-kpi.tone-bad .rt-kpi-icon { background: var(--rt-red-soft); color: var(--rt-red); }
+.sec-regtest .rt-kpi span { display: block; font-size: 11.5px; font-weight: 700; color: var(--rt-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.sec-regtest .rt-kpi b { display: block; font-size: 22px; line-height: 1.2; }
+.sec-regtest .rt-kpi small { font-size: 12px; color: var(--rt-muted); }
+
+.sec-regtest .rt-panel {
+  background: #fff; border: 1px solid var(--rt-border); border-radius: 16px; padding: 16px 18px;
+  box-shadow: 0 4px 12px -8px rgba(15, 23, 42, 0.15);
+}
+.sec-regtest .rt-panel-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+.sec-regtest .rt-panel-head h3 { margin: 0; font-size: 14px; }
+.sec-regtest .rt-panel-head h3 i { color: var(--rt-blue); margin-right: 6px; }
+.sec-regtest .rt-panel-head span { font-size: 12px; color: var(--rt-muted); }
+
+/* Ball taqsimoti (0..20) */
+.sec-regtest .rt-dist { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 6px; height: 150px; align-items: end; }
+.sec-regtest .rt-dist-col { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 3px; }
+.sec-regtest .rt-dist-col i { display: block; width: 100%; max-width: 34px; min-height: 2px; border-radius: 5px 5px 2px 2px; }
+.sec-regtest .rt-dist-n { font-size: 11px; font-weight: 700; color: #334155; min-height: 14px; }
+.sec-regtest .rt-dist-x { font-size: 11px; color: var(--rt-muted); }
+.sec-regtest i.tone-good { background: linear-gradient(180deg, #4ade80, #16a34a); }
+.sec-regtest i.tone-mid { background: linear-gradient(180deg, #fcd34d, #d97706); }
+.sec-regtest i.tone-bad { background: linear-gradient(180deg, #fca5a5, #dc2626); }
+
+/* Filtrlar */
+.sec-regtest .rt-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; margin-bottom: 12px; }
+.sec-regtest .rt-filters label {
+  display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: var(--rt-muted); text-transform: uppercase; letter-spacing: 0.04em;
+}
+.sec-regtest .rt-filters input,
+.sec-regtest .rt-filters select {
+  height: 38px; border: 1px solid #cbd5e1; border-radius: 9px; padding: 0 10px; font: inherit; font-size: 13px;
+  text-transform: none; letter-spacing: 0; color: var(--rt-text); background: #fff;
+}
+.sec-regtest .rt-search { position: relative; flex: 1 1 220px; }
+.sec-regtest .rt-search i { position: absolute; left: 12px; bottom: 12px; color: var(--rt-muted); font-size: 13px; }
+.sec-regtest .rt-search input { width: 100%; padding-left: 34px; }
+.sec-regtest .rt-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.sec-regtest .rt-chips button {
+  height: 38px; padding: 0 12px; border-radius: 999px; border: 1px solid #cbd5e1; background: #f8fafc; cursor: pointer; font-size: 12.5px; font-weight: 600;
+}
+.sec-regtest .rt-chips button:hover { border-color: var(--rt-blue); color: var(--rt-blue); }
+.sec-regtest .rt-filters .rt-btn-excel { margin-left: auto; }
+
+/* Jadval */
+.sec-regtest .rt-table-wrap { overflow-x: auto; border: 1px solid #94a3b8; border-radius: 12px; }
+.sec-regtest .rt-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 980px; }
+.sec-regtest .rt-table td.rt-fio { max-width: 220px; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.sec-regtest .rt-table th { background: #0f172a; color: #fff; font-weight: 600; text-align: left; padding: 10px 9px; white-space: nowrap; }
+.sec-regtest .rt-table th.sortable { cursor: pointer; user-select: none; }
+.sec-regtest .rt-table th.sortable:hover { background: #1e293b; }
+.sec-regtest .rt-table td { padding: 9px 9px; border-top: 1px solid #cbd5e1; white-space: nowrap; }
+.sec-regtest .rt-table tbody tr:nth-child(even) td { background: #f8fafc; }
+.sec-regtest .rt-table tbody tr:hover td { background: var(--rt-blue-soft); }
+.sec-regtest .rt-table .muted,
+.sec-regtest .rt-pager .muted { color: var(--rt-muted); }
+.sec-regtest .rt-table .t-good { color: var(--rt-green); font-weight: 700; }
+.sec-regtest .rt-table .t-bad { color: var(--rt-red); font-weight: 700; }
+.sec-regtest .rt-login { padding: 2px 8px; border-radius: 6px; background: #f1f5f9; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.sec-regtest .rt-badge-score {
+  display: inline-block; min-width: 58px; text-align: center; padding: 3px 8px; border-radius: 999px; font-weight: 800; font-size: 12.5px; color: #fff;
+}
+.sec-regtest .rt-badge-score.tone-good { background: var(--rt-green); }
+.sec-regtest .rt-badge-score.tone-mid { background: #d97706; }
+.sec-regtest .rt-badge-score.tone-bad { background: var(--rt-red); }
+.sec-regtest .rt-status { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--rt-green-soft); color: var(--rt-green); }
+.sec-regtest .rt-status.is-late { background: var(--rt-red-soft); color: var(--rt-red); }
+.sec-regtest .rt-status.is-live { background: var(--rt-blue-soft); color: var(--rt-blue); }
+.sec-regtest .rt-status.is-gone { background: #f1f5f9; color: #64748b; }
+.sec-regtest .rt-table td.rt-nores { text-align: center; font-style: italic; }
+.sec-regtest .rt-empty { text-align: center; color: var(--rt-muted); padding: 30px 0 !important; }
+
+/* Sahifalash */
+.sec-regtest .rt-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; flex-wrap: wrap; }
+.sec-regtest .rt-pages { display: flex; gap: 6px; align-items: center; }
+.sec-regtest .rt-pages button { min-width: 34px; height: 34px; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; font-weight: 600; }
+.sec-regtest .rt-pages button.active { background: var(--rt-blue); border-color: var(--rt-blue); color: #fff; }
+.sec-regtest .rt-pages button:disabled { opacity: 0.4; cursor: default; }
+
+@media (max-width: 1100px) {
+  .sec-regtest .rt-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 900px) {
+  .sec-regtest .rt-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sec-regtest .rt-toolbar { flex-wrap: wrap; }
+  .sec-regtest .rt-toolbar-actions .rt-btn span { display: none; }
+  .sec-regtest .rt-lock-left { width: 100%; }
+  .sec-regtest .rt-dist { height: 110px; gap: 3px; }
+  .sec-regtest .rt-dist-n { font-size: 9px; }
+  .sec-regtest .rt-filters .rt-btn-excel { margin-left: 0; }
+  .sec-regtest .rt-filters label:not(.rt-search) { flex: 1 1 130px; }
+  .sec-regtest .rt-filters input,
+  .sec-regtest .rt-filters select { width: 100%; }
+  .sec-regtest .rt-kpi { padding: 12px; gap: 10px; }
+  .sec-regtest .rt-kpi b { font-size: 18px; }
+  .sec-regtest .rt-kpi-icon { width: 36px; height: 36px; font-size: 15px; }
+  .sec-regtest .rt-panel { padding: 14px 12px; }
+}
