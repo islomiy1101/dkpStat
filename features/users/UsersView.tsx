@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { UserRow } from "@/lib/auth-server";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
-import { BlockDialog, CreateUserDialog, UnblockDialog } from "./UserDialogs";
+import { BlockDialog, UnblockDialog, UserFormDialog } from "./UserDialogs";
 
 /**
  * "Foydalanuvchilar" (faqat superadmin): statistika, filtrlar, sahifalangan ro'yxat;
@@ -51,6 +51,8 @@ export default function UsersView({ self }: { self: string }) {
   const [issued, setIssued] = useState<{ fullName: string; login: string; password: string; created?: boolean } | null>(null);
   const [creating, setCreating] = useState(false);
   const [blockFor, setBlockFor] = useState<UserRow | null>(null);
+  const [editFor, setEditFor] = useState<UserRow | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [unblockFor, setUnblockFor] = useState<UserRow | null>(null);
   const [resetError, setResetError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -74,6 +76,12 @@ export default function UsersView({ self }: { self: string }) {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 4000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const all = useMemo(() => users ?? [], [users]);
   const branches = useMemo(() => [...new Set(all.map((u) => u.branch).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [all]);
@@ -267,9 +275,17 @@ export default function UsersView({ self }: { self: string }) {
                     </td>
                     <td className="us-act">
                       {isSelf ? (
-                        <span className="us-self"><i className="fa-solid fa-user-check" /> Siz</span>
+                        <span className="us-actions">
+                          <span className="us-self"><i className="fa-solid fa-user-check" /> Siz</span>
+                          <button className="us-reset" onClick={() => setEditFor(u)} title="Ma'lumotlarni tahrirlash" aria-label="Tahrirlash">
+                            <i className="fa-solid fa-pen" /> <span>Tahrirlash</span>
+                          </button>
+                        </span>
                       ) : (
                         <span className="us-actions">
+                          <button className="us-reset" onClick={() => setEditFor(u)} title="Ma'lumotlarni tahrirlash (rol, filial…)" aria-label="Tahrirlash">
+                            <i className="fa-solid fa-pen" /> <span>Tahrirlash</span>
+                          </button>
                           <button className="us-reset" onClick={() => { setResetError(null); setConfirm(u); }} title="Parolni tiklash (vaqtinchalik parol)" aria-label="Parolni tiklash">
                             <i className="fa-solid fa-key" /> <span>Tiklash</span>
                           </button>
@@ -333,9 +349,18 @@ export default function UsersView({ self }: { self: string }) {
       )}
 
       {creating && users && (
-        <CreateUserDialog users={users} onClose={() => setCreating(false)}
+        <UserFormDialog mode="create" self={self} users={users} onClose={() => setCreating(false)}
           onCreated={(u, password) => { setCreating(false); setCopied(false); setIssued({ ...u, password, created: true }); void load(); }} />
       )}
+      {editFor && users && (
+        <UserFormDialog mode="edit" user={editFor} self={self} users={users} onClose={() => setEditFor(null)}
+          onSaved={(revoked) => {
+            setEditFor(null);
+            setToast(revoked ? "Saqlandi. Xodim bir daqiqa ichida qayta kirishi so'raladi." : "Ma'lumotlar saqlandi.");
+            void load();
+          }} />
+      )}
+      {toast && <div className="us-toast" role="status"><i className="fa-solid fa-circle-check" /> {toast}</div>}
       {blockFor && <BlockDialog user={blockFor} onClose={() => setBlockFor(null)} onDone={() => { setBlockFor(null); void load(); }} />}
       {unblockFor && <UnblockDialog user={unblockFor} onClose={() => setUnblockFor(null)} onDone={() => { setUnblockFor(null); void load(); }} />}
 

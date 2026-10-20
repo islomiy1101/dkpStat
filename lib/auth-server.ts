@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "./config";
 import { MOCK } from "./mock";
+import { cached } from "./cache";
 import { parseRole, type Role } from "./roles";
 import { isStrongPassword, passwordProblem } from "./password-policy";
 
@@ -25,7 +26,7 @@ export type LogRow = {
 
 type ScriptRes<T> = { success: boolean; message?: string } & T;
 
-async function callAuthScript<T>(payload: Record<string, unknown>): Promise<ScriptRes<T>> {
+async function callAuthScript<T>(payload: Record<string, unknown>, opts: { timeoutMs?: number } = {}): Promise<ScriptRes<T>> {
   if (!config.authAppsScriptUrl || !config.authApiSecret) {
     return { success: false, message: "AUTH_APPS_SCRIPT_URL / AUTH_APPS_SCRIPT_SECRET sozlanmagan" } as ScriptRes<T>;
   }
@@ -35,6 +36,7 @@ async function callAuthScript<T>(payload: Record<string, unknown>): Promise<Scri
     headers: { "Content-Type": "text/plain;charset=utf-8" },
     body: JSON.stringify({ ...payload, secret: config.authApiSecret }),
     cache: "no-store",
+    signal: opts.timeoutMs ? AbortSignal.timeout(opts.timeoutMs) : undefined,
   });
   const text = await res.text();
   try {
@@ -64,14 +66,19 @@ type MockState = {
   pw: Map<string, { password: string; mustChange: boolean; changedAt: string }>;
   created: MockUser[];
   block: Map<string, { until: number; reason: string; revokedAt: number }>;
+  edits: Map<string, Partial<Pick<MockUser, "fullName" | "branch" | "department" | "role">>>;
 };
-const mockState: MockState = ((globalThis as { __dkpAuthMock?: MockState }).__dkpAuthMock ??= { pw: new Map(), created: [], block: new Map() });
+const mockState: MockState = ((globalThis as { __dkpAuthMock?: MockState }).__dkpAuthMock ??= { pw: new Map(), created: [], block: new Map(), edits: new Map() });
 const mockPw = mockState.pw;
 const mockCreated = mockState.created;
 const mockBlock = mockState.block;
 async function mockUsers(): Promise<MockUser[]> {
   const list: MockUser[] = JSON.parse(await fs.readFile(path.join(process.cwd(), "mock", "auth_users.json"), "utf8"));
-  return [...list, ...mockCreated].map((u) => ({ ...u, password: mockPw.get(u.login.toLowerCase())?.password ?? u.password }));
+  return [...list, ...mockCreated].map((u) => ({
+    ...u,
+    ...mockState.edits.get(u.login.toLowerCase()),
+    password: mockPw.get(u.login.toLowerCase())?.password ?? u.password,
+  }));
 }
 const mockBlockOf = (login: string) => {
   const b = mockBlock.get(login.toLowerCase());
@@ -209,6 +216,33 @@ export async function regtestResultRows(): Promise<string[][]> {
   return r.rows;
 }
 
+/** Code.gs → REGTEST_VERSION: deadlineRepair shu versiyadan boshlab bor */
+const DEADLINE_REPAIR_VERSION = 9;
+
+/**
+ * Rollar kesimi: eski usulda yuklangan ma'lumotni tuzatish (xom varaqni tuman bo'yicha saralash + svod'ga oraliqlar).
+ * Uzoq ishlashi mumkin — `timeoutMs` dan keyin kutish to'xtatiladi ("running"), Apps Script esa ishini tugatadi.
+ */
+export async function deadlineRepair(spreadsheetId: string, raw: string, svod: string, timeoutMs: number): Promise<"done" | "running"> {
+  // Eski Apps Script bu amalni bilmaydi — sekin javobni "ishlayapti" deb adashmaslik uchun versiya oldindan tekshiriladi
+  const ver = await cached("auth:scriptVersion", 10 * 60_000, async () => {
+    const r = await callAuthScript<{ regtestVersion?: number }>({ action: "ping" }, { timeoutMs: 8000 });
+    return Number(r.regtestVersion) || 0;
+  });
+  if (ver < DEADLINE_REPAIR_VERSION) {
+    throw new Error("Apps Script eski versiyada — apps-script/auth/Code.gs ni qo'yib, yangi versiya qilib deploy qiling");
+  }
+  try {
+    const r = await callAuthScript<{ running?: boolean }>({ action: "deadlineRepair", spreadsheetId, raw, svod }, { timeoutMs });
+    if (r.success) return "done";
+    if (r.running) return "running";
+    throw new Error(r.message || "Tuzatib bo'lmadi");
+  } catch (e) {
+    if ((e as Error).name === "TimeoutError" || (e as Error).name === "AbortError") return "running";
+    throw e;
+  }
+}
+
 /** Parolni qayta tekshirish (Logs'ga yozilmaydi); MOCK — mock/auth_users.json */
 export async function verifyPassword(login: string, password: string): Promise<{ success: boolean; message?: string }> {
   if (MOCK) {
@@ -318,4 +352,25 @@ export async function fetchAuthState(): Promise<AuthStateRow[]> {
   const r = await callAuthScript<{ state?: AuthStateRow[] }>({ action: "authState" });
   if (!r.success || !r.state) throw new Error(r.message || "authState o'qilmadi");
   return r.state;
+}
+
+export type UserChanges = { fullName: string; branch: string; department: string; role: Role };
+
+/** Superadmin: ma'lumotlarni tahrirlash (login o'zgarmaydi); rol yoki filial o'zgarsa — xodimning sessiyalari yopiladi */
+export async function updateUser(admin: string, login: string, changes: UserChanges): Promise<PwResult & { revoked?: boolean }> {
+  if (MOCK) {
+    const key = login.toLowerCase();
+    const u = (await mockUsers()).find((x) => x.login.toLowerCase() === key);
+    if (!u) return { success: false, message: "Foydalanuvchi topilmadi" };
+    const roleChanged = parseRole(u.role) !== changes.role;
+    if (roleChanged && key === admin.toLowerCase()) return { success: false, message: "O'z rolingizni o'zgartira olmaysiz" };
+    const revoke = roleChanged || u.branch !== changes.branch;
+    mockState.edits.set(key, { ...changes });
+    if (revoke) {
+      const b = mockBlock.get(key);
+      mockBlock.set(key, { until: b?.until ?? 0, reason: b?.reason ?? "", revokedAt: Date.now() });
+    }
+    return { success: true, revoked: revoke };
+  }
+  return callAuthScript<{ revoked?: boolean }>({ action: "updateUser", admin, login, changes });
 }

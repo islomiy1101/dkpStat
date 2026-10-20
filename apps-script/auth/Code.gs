@@ -33,6 +33,8 @@
  *  YANGI XODIM (sayt → Foydalanuvchilar → "Yangi foydalanuvchi", yoki shu varaqqa qo'lda):
  *         Branch, FullName, Department, Login, Role va Password'ga istalgan vaqtinchalik parol yoziladi —
  *         xodim birinchi kirishda uni yangi murakkab parolga almashtiradi.
+ *  TAHRIRLASH (sayt → Foydalanuvchilar → ✏️): F.I.O., filial, bo'lim, rol; rol yoki filial o'zgarsa
+ *         xodimning ochiq sessiyalari yopiladi va u qayta kirganda yangi huquqlar bilan ishlaydi.
  *  BLOKLASH (sayt → Foydalanuvchilar → "Bloklash", yoki qo'lda): BlockedUntil = "2026-10-25 18:00" yoki "muddatsiz".
  *         Muddat o'tgach avtomatik ochiladi; ochiq sessiyalar ~1 daqiqada yopiladi (SessionsRevokedAt).
  *  Logs : Branch | FullName | Department | Login | DateTime | Ip | Location | Accuracy
@@ -73,7 +75,7 @@ const REGTEST_RESULTS_SHEET = "Натижалар";
 /** Bitta PINFL — shuncha soatda bir marta (boshlangan test bo'yicha) */
 const REGTEST_RETAKE_HOURS = 2;
 /** Sayt shu raqamga qarab skript eskirganini aniqlaydi (ping → regtestVersion) */
-const REGTEST_VERSION = 7;
+const REGTEST_VERSION = 9;
 // Registratordan faqat login (u tizimga kirib beradi); qolgani — test yechgan xodimniki (PINFL)
 const REGTEST_HEADERS = ["Sana", "Vaqt", "Login", "PINFL", "F.I.O.", "Savol soni", "To'g'ri", "Noto'g'ri", "Javobsiz", "Ball",
   "Sarflangan vaqt", "Holat", "Qoidabuzarlik", "Test ID"];
@@ -94,6 +96,8 @@ function doPost(e) {
       result = getLogs_(Number(req.limit) || 5000);
     } else if (req.action === "importSheets") {
       result = importSheets_(req.spreadsheetId, req.sheets, req.meta || {});
+    } else if (req.action === "deadlineRepair") {
+      result = deadlineRepair_(req.spreadsheetId, req.raw, req.svod);
     } else if (req.action === "importChunk") {
       result = importChunk_(req.spreadsheetId, req.name, req.chunk || {}, req.meta || {});
     } else if (req.action === "regtestQuestions") {
@@ -114,6 +118,8 @@ function doPost(e) {
       result = listUsers_(req.admin);
     } else if (req.action === "createUser") {
       result = createUser_(req.admin, req.user || {});
+    } else if (req.action === "updateUser") {
+      result = updateUser_(req.admin, req.login, req.changes || {});
     } else if (req.action === "blockUser") {
       result = blockUser_(req.admin, req.login, req.until, req.reason);
     } else if (req.action === "unblockUser") {
@@ -1046,4 +1052,110 @@ function authState_() {
     out.push({ login: login, until: blocked ? (until === Infinity ? null : until) : 0, revokedAt: rev });
   }
   return { success: true, state: out };
+}
+
+/**
+ * Superadmin: xodim ma'lumotlarini tahrirlash (login o'zgarmaydi). Rol yoki filial o'zgarsa — sessiyalari yopiladi.
+ * O'z rolini o'zgartirish va oxirgi superadmin'ni tushirish taqiqlanadi.
+ */
+function updateUser_(admin, login, changes) {
+  login = clean_(login).toLowerCase();
+  if (!login) return { success: false, message: "Login ko'rsatilmagan" };
+  const next = {};
+  if (changes.fullName != null) next.FullName = clean_(changes.fullName).replace(/\s+/g, " ");
+  if (changes.branch != null) next.Branch = clean_(changes.branch);
+  if (changes.department != null) next.Department = clean_(changes.department);
+  if (changes.role != null) next.Role = clean_(changes.role);
+  if (next.FullName !== undefined && (!next.FullName || next.FullName.length > 120)) return { success: false, message: "F.I.O.ni kiriting" };
+  if (next.Branch !== undefined && (!next.Branch || next.Branch.length > 120)) return { success: false, message: "Filialni kiriting" };
+  if (next.Department !== undefined && next.Department.length > 120) return { success: false, message: "Bo'lim nomi juda uzun" };
+  if (next.Role !== undefined && USER_ROLES.indexOf(next.Role) === -1) return { success: false, message: "Rol noto'g'ri" };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const t = usersTable_();
+    if (!t) return { success: false, message: "Users varag'i topilmadi" };
+    if (!requireSuper_(t, admin)) return { success: false, message: "Ruxsat yo'q" };
+    const r = findUserRow_(t, login);
+    if (r < 0) return { success: false, message: "Foydalanuvchi topilmadi" };
+    const row = t.data[r];
+
+    const changed = Object.keys(next).filter(function (k) { return clean_(row[t.col(k)]) !== next[k]; });
+    if (!changed.length) return { success: true, revoked: false };
+
+    if (changed.indexOf("Role") !== -1) {
+      if (login === clean_(admin).toLowerCase()) return { success: false, message: "O'z rolingizni o'zgartira olmaysiz" };
+      if (isSuperRole_(row[t.col("Role")]) && !isSuperRole_(next.Role)) {
+        let supers = 0;
+        for (let i = 1; i < t.data.length; i++) if (isSuperRole_(t.data[i][t.col("Role")]) && clean_(t.data[i][t.col("Login")])) supers++;
+        if (supers <= 1) return { success: false, message: "Bu yagona superadmin — rolini o'zgartirib bo'lmaydi" };
+      }
+    }
+    changed.forEach(function (k) { t.sheet.getRange(r + 1, t.col(k) + 1).setValue(next[k]); });
+    // Rol va filial sessiya cookie'sida — o'zgarsa, xodim qayta kirib yangi huquqlarni oladi
+    const revoke = changed.indexOf("Role") !== -1 || changed.indexOf("Branch") !== -1;
+    if (revoke) revokeSessions_(t, r);
+    return { success: true, revoked: revoke };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ---------------- Rollar kesimi: eski usulda yuklangan ma'lumotni tuzatish ---------------- */
+
+const SVOD_SPAN_MARK = "#qatorlar";
+
+/**
+ * Eski sahifa orqali yuklangan Rollar kesimi ma'lumoti (xom qatorlar saralanmagan, svod'da tuman oraliqlari yo'q):
+ * xom varaq tuman (B) bo'yicha saralanadi va svod'ga har bir tumanning qator oralig'i qo'shiladi.
+ * Ma'lumot o'zgarmaydi — faqat qatorlar tartibi. Sayt buni o'zi chaqiradi (lib/deadline-server.ts), qayta yuklash shart emas.
+ */
+function deadlineRepair_(spreadsheetId, rawName, svodName) {
+  rawName = String(rawName || "");
+  svodName = String(svodName || "");
+  const denied = checkImportTarget_(spreadsheetId, [rawName, svodName]);
+  if (denied) return { success: false, message: denied };
+
+  const cache = CacheService.getScriptCache();
+  const flag = "repair_" + svodName;
+  if (cache.get(flag)) return { success: false, running: true, message: "Tayyorlanmoqda" };
+  cache.put(flag, "1", 600);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    const raw = ss.getSheetByName(rawName);
+    const svod = ss.getSheetByName(svodName);
+    if (!raw || !svod) return { success: false, message: "Varaq topilmadi" };
+
+    // Allaqachon tuzatilgan yoki yangi usulda yuklangan
+    const svodB = svod.getRange(1, 2, Math.max(1, svod.getLastRow()), 1).getDisplayValues();
+    if (svodB.some(function (r) { return clean_(r[0]) === SVOD_SPAN_MARK; })) return { success: true, spans: 0, already: true };
+
+    const last = raw.getLastRow();
+    if (last < 3) return { success: true, spans: 0 };
+    raw.getRange(3, 1, last - 2, raw.getLastColumn()).sort({ column: 2, ascending: true });
+    SpreadsheetApp.flush();
+
+    const tum = raw.getRange(3, 2, last - 2, 1).getDisplayValues();
+    const spans = [];
+    let cur = null;
+    tum.forEach(function (r, i) {
+      const t = clean_(r[0]);
+      if (!t) { cur = null; return; }
+      if (cur && cur[0] === t) cur[4] = String(i + 3);
+      else { cur = [t, SVOD_SPAN_MARK, "", String(i + 3), String(i + 3)]; spans.push(cur); }
+    });
+    if (!spans.length) return { success: true, spans: 0 };
+
+    const width = Math.max(5, svod.getLastColumn());
+    const rows = spans.map(function (r) { return r.concat(new Array(width - r.length).fill("")); });
+    svod.insertRowsAfter(1, rows.length);
+    svod.getRange(2, 1, rows.length, width).setNumberFormat("@").setValues(rows);
+    return { success: true, spans: rows.length };
+  } finally {
+    lock.releaseLock();
+    cache.remove(flag);
+  }
 }

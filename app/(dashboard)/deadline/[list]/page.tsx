@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { guardPage } from "@/lib/auth";
+import { canSee } from "@/lib/roles";
 import DeadlineView from "@/features/deadline/DeadlineView";
 import { DEADLINE_LISTS, isDeadlineList } from "@/features/deadline/source";
 
@@ -11,8 +12,8 @@ export async function generateMetadata({ params }: { params: Promise<{ list: str
 }
 
 export default async function Page({ params }: { params: Promise<{ list: string }> }) {
-  await guardPage("deadline");
+  const u = await guardPage("deadline");
   const { list } = await params;
   if (!isDeadlineList(list)) notFound();
-  return <DeadlineView list={list} />;
+  return <DeadlineView list={list} canUpload={canSee(u.role, "upload")} />;
 }
