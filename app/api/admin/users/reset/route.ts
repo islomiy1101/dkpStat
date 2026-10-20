@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireSuperadmin } from "@/lib/auth";
+import { AUTH_STATE_KEY, requireSuperadmin } from "@/lib/auth";
+import { invalidate } from "@/lib/cache";
 import { resetPassword } from "@/lib/auth-server";
 
 /**
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
   try {
     const r = await resetPassword(u.login, login);
     if (!r.success || !r.password) return NextResponse.json({ success: false, message: r.message || "Parolni tiklab bo'lmadi" }, { status: 400 });
+    invalidate(AUTH_STATE_KEY); // xodimning boshqa qurilmalardagi sessiyalari darhol yopilsin
     return NextResponse.json({ success: true, password: r.password }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("[auth] reset:", e);

@@ -7,7 +7,17 @@ import { isStrongPassword, passwordProblem } from "./password-policy";
 
 export type LoginUser = { login: string; fullName: string; branch: string; department: string; role: Role };
 /** "Foydalanuvchilar" sahifasi uchun (parolsiz) */
-export type UserRow = LoginUser & { mustChange: boolean; changedAt: string };
+export type UserRow = LoginUser & {
+  mustChange: boolean;
+  changedAt: string;
+  blocked: boolean;
+  /** "yyyy-MM-dd HH:mm" (Toshkent) yoki "muddatsiz" */
+  blockedUntil: string;
+  blockReason: string;
+};
+/** Bloklangan / sessiyasi bekor qilingan foydalanuvchi (sessiyani tekshirish uchun, lib/auth.ts) */
+export type AuthStateRow = { login: string; until: number | null; revokedAt: number };
+export const BLOCK_FOREVER = "muddatsiz";
 export type LogRow = {
   branch: string; fullName: string; department: string; login: string;
   dateTime: string; ip: string; location: string; accuracy: string;
@@ -48,12 +58,30 @@ async function callAuthScript<T>(payload: Record<string, unknown>): Promise<Scri
 type MockUser = LoginUser & { password: string };
 const mockLogs: LogRow[] = [];
 let mockLoaded = false;
-/** Demo: sayt orqali o'zgartirilgan parollar xotirada (mock/auth_users.json o'zgartirilmaydi) */
-const mockPw = new Map<string, { password: string; mustChange: boolean; changedAt: string }>();
+/** Demo: sayt orqali o'zgartirilgan parollar, yangi foydalanuvchilar va bloklar xotirada (mock/auth_users.json o'zgartirilmaydi) */
+// globalThis'da — dev server route'larni alohida yuklaganda ham demo holati bitta bo'lsin
+type MockState = {
+  pw: Map<string, { password: string; mustChange: boolean; changedAt: string }>;
+  created: MockUser[];
+  block: Map<string, { until: number; reason: string; revokedAt: number }>;
+};
+const mockState: MockState = ((globalThis as { __dkpAuthMock?: MockState }).__dkpAuthMock ??= { pw: new Map(), created: [], block: new Map() });
+const mockPw = mockState.pw;
+const mockCreated = mockState.created;
+const mockBlock = mockState.block;
 async function mockUsers(): Promise<MockUser[]> {
   const list: MockUser[] = JSON.parse(await fs.readFile(path.join(process.cwd(), "mock", "auth_users.json"), "utf8"));
-  return list.map((u) => ({ ...u, password: mockPw.get(u.login.toLowerCase())?.password ?? u.password }));
+  return [...list, ...mockCreated].map((u) => ({ ...u, password: mockPw.get(u.login.toLowerCase())?.password ?? u.password }));
 }
+const mockBlockOf = (login: string) => {
+  const b = mockBlock.get(login.toLowerCase());
+  return b && b.until > Date.now() ? b : null;
+};
+const fmtUntil = (ms: number) => {
+  if (ms === Infinity) return BLOCK_FOREVER;
+  const d = new Date(ms + 5 * 3600_000);
+  return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+};
 const mockMustChange = (login: string, password: string) =>
   mockPw.get(login.toLowerCase())?.mustChange ?? !isStrongPassword(password, login);
 async function mockLogList() {
@@ -74,6 +102,8 @@ export async function loginWithSheet(login: string, password: string, ip: string
   if (MOCK) {
     const u = (await mockUsers()).find((x) => x.login.toLowerCase() === login.trim().toLowerCase() && x.password === password.trim());
     if (!u) return { success: false as const, message: "Login yoki parol noto'g'ri!" };
+    const b = mockBlockOf(u.login);
+    if (b) return { success: false as const, message: `Hisobingiz ${b.until === Infinity ? "" : fmtUntil(b.until) + " gacha "}bloklangan.${b.reason ? " Sabab: " + b.reason + "." : ""} Administratorga murojaat qiling.` };
     const { password: _p, ...user } = u;
     void _p;
     const { role: _r, ...who } = user;
@@ -213,6 +243,8 @@ export async function resetPassword(admin: string, login: string): Promise<PwRes
     if (!u) return { success: false, message: "Foydalanuvchi topilmadi" };
     const temp = "Tmp" + Math.random().toString(36).slice(2, 7) + "#7";
     mockPw.set(login.toLowerCase(), { password: temp, mustChange: true, changedAt: nowStr() });
+    const b = mockBlock.get(login.toLowerCase());
+    mockBlock.set(login.toLowerCase(), { until: b?.until ?? 0, reason: b?.reason ?? "", revokedAt: Date.now() });
     return { success: true, password: temp };
   }
   return callAuthScript<{ password?: string }>({ action: "resetPassword", admin, login });
@@ -220,14 +252,70 @@ export async function resetPassword(admin: string, login: string): Promise<PwRes
 
 export async function listUsers(admin: string): Promise<UserRow[]> {
   if (MOCK) {
-    return (await mockUsers()).map(({ password, ...u }) => ({
-      ...u,
-      role: parseRole(u.role),
-      mustChange: mockMustChange(u.login, password),
-      changedAt: mockPw.get(u.login.toLowerCase())?.changedAt || "",
-    }));
+    return (await mockUsers()).map(({ password, ...u }) => {
+      const b = mockBlockOf(u.login);
+      return {
+        ...u,
+        role: parseRole(u.role),
+        mustChange: mockMustChange(u.login, password),
+        changedAt: mockPw.get(u.login.toLowerCase())?.changedAt || "",
+        blocked: !!b,
+        blockedUntil: b ? fmtUntil(b.until) : "",
+        blockReason: b?.reason || "",
+      };
+    });
   }
   const r = await callAuthScript<{ users?: (Omit<UserRow, "role"> & { role: string })[] }>({ action: "listUsers", admin });
   if (!r.success || !r.users) throw new Error(r.message || "Foydalanuvchilarni o'qib bo'lmadi");
   return r.users.map((u) => ({ ...u, role: parseRole(u.role) }));
+}
+
+/* ---------- Foydalanuvchi qo'shish va bloklash (faqat superadmin; Apps Script ham qayta tekshiradi) ---------- */
+
+export type NewUser = { fullName: string; branch: string; department: string; login: string; role: Role };
+
+export async function createUser(admin: string, user: NewUser): Promise<{ success: boolean; message?: string; password?: string; exists?: boolean }> {
+  if (MOCK) {
+    if ((await mockUsers()).some((x) => x.login.toLowerCase() === user.login.toLowerCase())) {
+      return { success: false, exists: true, message: `Bu login band: ${user.login}` };
+    }
+    const temp = "Tmp" + Math.random().toString(36).slice(2, 7) + "#7";
+    mockCreated.push({ ...user, password: temp });
+    mockPw.set(user.login.toLowerCase(), { password: temp, mustChange: true, changedAt: nowStr() });
+    return { success: true, password: temp };
+  }
+  return callAuthScript<{ password?: string; exists?: boolean }>({ action: "createUser", admin, user });
+}
+
+/** until — ms (kelajakda) yoki "muddatsiz" */
+export async function blockUser(admin: string, login: string, until: number | typeof BLOCK_FOREVER, reason: string): Promise<PwResult> {
+  if (MOCK) {
+    if (!(await mockUsers()).some((x) => x.login.toLowerCase() === login.toLowerCase())) return { success: false, message: "Foydalanuvchi topilmadi" };
+    mockBlock.set(login.toLowerCase(), { until: until === BLOCK_FOREVER ? Infinity : until, reason, revokedAt: Date.now() });
+    return { success: true };
+  }
+  return callAuthScript({ action: "blockUser", admin, login, until: String(until), reason });
+}
+
+export async function unblockUser(admin: string, login: string): Promise<PwResult> {
+  if (MOCK) {
+    const b = mockBlock.get(login.toLowerCase());
+    if (b) mockBlock.set(login.toLowerCase(), { ...b, until: 0, reason: "" });
+    return { success: true };
+  }
+  return callAuthScript({ action: "unblockUser", admin, login });
+}
+
+/** Bloklanganlar va sessiyasi bekor qilinganlar (lib/auth.ts har daqiqada keshlab o'qiydi) */
+export async function fetchAuthState(): Promise<AuthStateRow[]> {
+  if (MOCK) {
+    return [...mockBlock.entries()].map(([login, b]) => ({
+      login,
+      until: b.until > Date.now() ? (b.until === Infinity ? null : b.until) : 0,
+      revokedAt: b.revokedAt,
+    }));
+  }
+  const r = await callAuthScript<{ state?: AuthStateRow[] }>({ action: "authState" });
+  if (!r.success || !r.state) throw new Error(r.message || "authState o'qilmadi");
+  return r.state;
 }

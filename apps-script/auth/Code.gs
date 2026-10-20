@@ -26,9 +26,15 @@
  *     va "Натижалар" (sarlavhasini skript o'zi yozadi): registratordan faqat Login, qolgani — test yechgan xodim (PINFL, F.I.O.).
  *
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
- *  Users: Branch | FullName | Department | Login | Password | Role | MustChangePassword | PasswordChangedAt
- *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | registrator | superadmin
- *         MustChangePassword (1 — keyingi kirishda parolni almashtirishi shart) va PasswordChangedAt avtomatik qo'shiladi.
+ *  Users: Branch | FullName | Department | Login | Password | Role
+ *         | MustChangePassword | PasswordChangedAt | BlockedUntil | BlockReason | SessionsRevokedAt  (avtomatik qo'shiladi)
+ *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | reception | registrator | superadmin
+ *
+ *  YANGI XODIM (sayt → Foydalanuvchilar → "Yangi foydalanuvchi", yoki shu varaqqa qo'lda):
+ *         Branch, FullName, Department, Login, Role va Password'ga istalgan vaqtinchalik parol yoziladi —
+ *         xodim birinchi kirishda uni yangi murakkab parolga almashtiradi.
+ *  BLOKLASH (sayt → Foydalanuvchilar → "Bloklash", yoki qo'lda): BlockedUntil = "2026-10-25 18:00" yoki "muddatsiz".
+ *         Muddat o'tgach avtomatik ochiladi; ochiq sessiyalar ~1 daqiqada yopiladi (SessionsRevokedAt).
  *  Logs : Branch | FullName | Department | Login | DateTime | Ip | Location | Accuracy
  *         (Accuracy — joylashuv xatoligi, metr; ustun bo'lmasa avtomatik qo'shiladi)
  *
@@ -67,7 +73,7 @@ const REGTEST_RESULTS_SHEET = "Натижалар";
 /** Bitta PINFL — shuncha soatda bir marta (boshlangan test bo'yicha) */
 const REGTEST_RETAKE_HOURS = 2;
 /** Sayt shu raqamga qarab skript eskirganini aniqlaydi (ping → regtestVersion) */
-const REGTEST_VERSION = 6;
+const REGTEST_VERSION = 7;
 // Registratordan faqat login (u tizimga kirib beradi); qolgani — test yechgan xodimniki (PINFL)
 const REGTEST_HEADERS = ["Sana", "Vaqt", "Login", "PINFL", "F.I.O.", "Savol soni", "To'g'ri", "Noto'g'ri", "Javobsiz", "Ball",
   "Sarflangan vaqt", "Holat", "Qoidabuzarlik", "Test ID"];
@@ -106,6 +112,14 @@ function doPost(e) {
       result = resetPassword_(req.admin, req.login);
     } else if (req.action === "listUsers") {
       result = listUsers_(req.admin);
+    } else if (req.action === "createUser") {
+      result = createUser_(req.admin, req.user || {});
+    } else if (req.action === "blockUser") {
+      result = blockUser_(req.admin, req.login, req.until, req.reason);
+    } else if (req.action === "unblockUser") {
+      result = unblockUser_(req.admin, req.login);
+    } else if (req.action === "authState") {
+      result = authState_();
     } else if (req.action === "ping") {
       // Sayt "Bazaga yuklash" sahifasida shu jadvalga havola ko'rsatadi (AUTH_SHEET_ID berilmagan bo'lsa)
       result = { success: true, spreadsheetId: ss_().getId(), regtestVersion: REGTEST_VERSION };
@@ -226,11 +240,51 @@ function ensureHeaders_(sheet, names) {
   if (missing.length) sheet.getRange(1, sheet.getLastColumn() + 1, 1, missing.length).setValues([missing]);
 }
 
-/** Users varag'i: ma'lumot va ustun indekslari (MustChangePassword, PasswordChangedAt bo'lmasa qo'shiladi) */
+const USERS_EXTRA_HEADERS = ["MustChangePassword", "PasswordChangedAt", "BlockedUntil", "BlockReason", "SessionsRevokedAt"];
+const BLOCK_FOREVER = "muddatsiz";
+
+/** Ixtiyoriy ustun indeksi (yo'q bo'lsa -1) — login_ varaqqa ustun qo'shmasdan o'qiydi */
+function optCol_(header, name) {
+  return header.map(function (h) { return clean_(h).toLowerCase(); }).indexOf(name.toLowerCase());
+}
+
+/**
+ * BlockedUntil → ms: "muddatsiz" — Infinity, bo'sh/noto'g'ri — 0.
+ * Qo'lda yozilganda ham tushunadi: "2026-10-25 18:00", "25.10.2026 18:00", sana katakchasi (Date).
+ */
+function blockedUntilMs_(v) {
+  if (v instanceof Date) return v.getTime();
+  const s = clean_(v);
+  if (!s) return 0;
+  if (s.toLowerCase() === BLOCK_FOREVER) return Infinity;
+  let m = /^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/.exec(s);
+  let y, mo, d, h = "0", mi = "0";
+  if (m) { y = m[1]; mo = m[2]; d = m[3]; h = m[4] || "23"; mi = m[5] || "59"; }
+  else if ((m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/.exec(s))) { y = m[3]; mo = m[2]; d = m[1]; h = m[4] || "23"; mi = m[5] || "59"; }
+  else return 0;
+  const pad = function (n) { return ("0" + n).slice(-2); };
+  const t = Date.parse(y + "-" + pad(mo) + "-" + pad(d) + "T" + pad(h) + ":" + pad(mi) + ":00+05:00");
+  return isNaN(t) ? 0 : t;
+}
+
+/** Hozir bloklanganmi; matn — foydalanuvchiga xabar uchun */
+function blockInfo_(untilCell, reasonCell) {
+  const until = blockedUntilMs_(untilCell);
+  if (!(until > Date.now())) return null;
+  const reason = clean_(reasonCell);
+  const when = until === Infinity ? "" : Utilities.formatDate(new Date(until), TZ, "dd.MM.yyyy HH:mm");
+  return {
+    until: until,
+    text: (when ? "Hisobingiz " + when + " gacha bloklangan." : "Hisobingiz bloklangan.") +
+      (reason ? " Sabab: " + reason + "." : "") + " Administratorga murojaat qiling.",
+  };
+}
+
+/** Users varag'i: ma'lumot va ustun indekslari (yetishmagan qo'shimcha ustunlar qo'shiladi) */
 function usersTable_() {
   const sheet = ss_().getSheetByName(USERS_SHEET);
   if (!sheet) return null;
-  ensureHeaders_(sheet, ["MustChangePassword", "PasswordChangedAt"]);
+  ensureHeaders_(sheet, USERS_EXTRA_HEADERS);
   const data = sheet.getDataRange().getValues();
   return { sheet: sheet, data: data, col: headerIndex_(data[0]) };
 }
@@ -280,6 +334,10 @@ function login_(login, password, ip, location, accuracy) {
     if (!passwordMatches_(row[cPass], password)) break;
 
     cache.remove(failKey);
+    // Bloklangan (muddati o'tmagan) — kirish yo'q; muddati o'tgan blok e'tiborga olinmaydi
+    const cBlock = optCol_(data[0], "BlockedUntil");
+    const block = cBlock < 0 ? null : blockInfo_(row[cBlock], row[optCol_(data[0], "BlockReason")]);
+    if (block) return { success: false, blocked: true, message: block.text };
     // Rol nomi xom holda qaytariladi; Next.js (lib/roles.ts → parseRole) uni normalizatsiya qiladi
     const role = clean_(row[col("Role")]);
     const user = {
@@ -837,7 +895,8 @@ function resetPassword_(admin, login) {
     if (r < 0) return { success: false, message: "Foydalanuvchi topilmadi" };
     const temp = tempPassword_();
     writePassword_(t, r, temp, true);
-    CacheService.getScriptCache().remove("fail_" + login); // bloklangan bo'lsa ochiladi
+    revokeSessions_(t, r);
+    CacheService.getScriptCache().remove("fail_" + login); // ko'p xato urinish bloki ochiladi
     return { success: true, password: temp };
   } finally {
     lock.releaseLock();
@@ -856,6 +915,7 @@ function listUsers_(admin) {
     const login = clean_(row[c("Login")]);
     if (!login) continue;
     const at = row[c("PasswordChangedAt")];
+    const block = blockInfo_(row[c("BlockedUntil")], row[c("BlockReason")]);
     users.push({
       login: login,
       fullName: clean_(row[c("FullName")]),
@@ -864,7 +924,126 @@ function listUsers_(admin) {
       role: clean_(row[c("Role")]),
       mustChange: mustChange_(row, c, null, login),
       changedAt: at instanceof Date ? Utilities.formatDate(at, TZ, "yyyy-MM-dd HH:mm:ss") : clean_(at),
+      blocked: !!block,
+      blockedUntil: !block ? "" : block.until === Infinity ? BLOCK_FOREVER : Utilities.formatDate(new Date(block.until), TZ, "yyyy-MM-dd HH:mm"),
+      blockReason: block ? clean_(row[c("BlockReason")]) : "",
     });
   }
   return { success: true, users: users };
+}
+
+/* ---------------- foydalanuvchi qo'shish va bloklash ---------------- */
+
+const USER_ROLES = ["engineer", "advicer", "accountant", "branchManager", "headOfDepartment", "reception", "registrator", "superadmin"];
+
+/** Sessiyalarni bekor qilish: shu vaqtdan oldin ochilgan barcha sessiyalar yopiladi (sayt authState orqali tekshiradi) */
+function revokeSessions_(t, r) {
+  t.sheet.getRange(r + 1, t.col("SessionsRevokedAt") + 1).setNumberFormat("@").setValue(String(Date.now()));
+}
+
+/** Superadmin: yangi xodim — vaqtinchalik parol bilan (birinchi kirishda almashtirishi shart) */
+function createUser_(admin, u) {
+  const login = clean_(u.login);
+  const fullName = clean_(u.fullName).replace(/\s+/g, " ");
+  const branch = clean_(u.branch);
+  const department = clean_(u.department);
+  const role = clean_(u.role);
+  if (!fullName || fullName.length > 120) return { success: false, message: "F.I.O.ni kiriting" };
+  if (!branch || branch.length > 120) return { success: false, message: "Filialni kiriting" };
+  if (!/^[^\s]{3,64}$/.test(login)) return { success: false, message: "Login 3–64 belgidan iborat, probelsiz bo'lishi kerak" };
+  if (USER_ROLES.indexOf(role) === -1) return { success: false, message: "Rol noto'g'ri" };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const t = usersTable_();
+    if (!t) return { success: false, message: "Users varag'i topilmadi" };
+    if (!requireSuper_(t, admin)) return { success: false, message: "Ruxsat yo'q" };
+    if (findUserRow_(t, login.toLowerCase()) >= 0) return { success: false, exists: true, message: "Bu login band: " + login };
+
+    const temp = tempPassword_();
+    const header = t.data[0];
+    const row = new Array(header.length).fill("");
+    row[t.col("Branch")] = branch;
+    row[t.col("FullName")] = fullName;
+    row[t.col("Department")] = department;
+    row[t.col("Role")] = role;
+    row[t.col("Password")] = hashPasswordStrong_(temp);
+    row[t.col("MustChangePassword")] = 1;
+    row[t.col("PasswordChangedAt")] = Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd HH:mm:ss");
+    const at = t.sheet.getLastRow() + 1;
+    t.sheet.getRange(at, 1, 1, row.length).setValues([row]);
+    // Login matn sifatida (raqamli loginlar — PINFL — songa aylanib ketmasin)
+    t.sheet.getRange(at, t.col("Login") + 1).setNumberFormat("@").setValue(login);
+    return { success: true, password: temp };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Superadmin: bloklash. until — ms (kelajakda) yoki "muddatsiz"; ochiq sessiyalar ham yopiladi */
+function blockUser_(admin, login, until, reason) {
+  login = clean_(login).toLowerCase();
+  if (!login) return { success: false, message: "Login ko'rsatilmagan" };
+  if (login === clean_(admin).toLowerCase()) return { success: false, message: "O'zingizni bloklay olmaysiz" };
+  const forever = clean_(until).toLowerCase() === BLOCK_FOREVER;
+  const ms = Number(until);
+  if (!forever && !(ms > Date.now())) return { success: false, message: "Blok muddati kelajakda bo'lishi kerak" };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const t = usersTable_();
+    if (!t) return { success: false, message: "Users varag'i topilmadi" };
+    if (!requireSuper_(t, admin)) return { success: false, message: "Ruxsat yo'q" };
+    const r = findUserRow_(t, login);
+    if (r < 0) return { success: false, message: "Foydalanuvchi topilmadi" };
+    const text = forever ? BLOCK_FOREVER : Utilities.formatDate(new Date(ms), TZ, "yyyy-MM-dd HH:mm");
+    t.sheet.getRange(r + 1, t.col("BlockedUntil") + 1).setNumberFormat("@").setValue(text);
+    t.sheet.getRange(r + 1, t.col("BlockReason") + 1).setValue(clean_(reason).slice(0, 200));
+    revokeSessions_(t, r);
+    return { success: true, blockedUntil: text };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function unblockUser_(admin, login) {
+  login = clean_(login).toLowerCase();
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const t = usersTable_();
+    if (!t) return { success: false, message: "Users varag'i topilmadi" };
+    if (!requireSuper_(t, admin)) return { success: false, message: "Ruxsat yo'q" };
+    const r = findUserRow_(t, login);
+    if (r < 0) return { success: false, message: "Foydalanuvchi topilmadi" };
+    t.sheet.getRange(r + 1, t.col("BlockedUntil") + 1, 1, 2).setValues([["", ""]]);
+    return { success: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * Sayt har daqiqada so'raydi: faqat hozir bloklanganlar va sessiyalari bekor qilinganlar (oxirgi 30 kun).
+ * until: ms yoki null (muddatsiz); revokedAt: ms yoki 0.
+ */
+function authState_() {
+  const sheet = ss_().getSheetByName(USERS_SHEET);
+  if (!sheet) return { success: false, message: "Users varag'i topilmadi" };
+  const data = sheet.getDataRange().getValues();
+  const h = data[0];
+  const cLogin = optCol_(h, "Login"), cUntil = optCol_(h, "BlockedUntil"), cRev = optCol_(h, "SessionsRevokedAt");
+  const since = Date.now() - 30 * 86400000;
+  const out = [];
+  for (let r = 1; r < data.length; r++) {
+    const login = clean_(data[r][cLogin]).toLowerCase();
+    if (!login) continue;
+    const until = cUntil < 0 ? 0 : blockedUntilMs_(data[r][cUntil]);
+    const rev = cRev < 0 ? 0 : Number(clean_(data[r][cRev])) || 0;
+    const blocked = until > Date.now();
+    if (!blocked && rev < since) continue;
+    out.push({ login: login, until: blocked ? (until === Infinity ? null : until) : 0, revokedAt: rev });
+  }
+  return { success: true, state: out };
 }
