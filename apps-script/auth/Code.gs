@@ -42,7 +42,7 @@
  *
  * Parol formatlari: oddiy matn, "sha256:<hex>" (eski) yoki "pbkdf:<iter>:<salt>:<hex>" (sayt orqali o'rnatilgan).
  * Oddiy matn va sha256 parollar ishlaydi, lekin keyingi kirishda yangi murakkab parol so'raladi.
- * Parol talablari — passwordProblem_ (lib/password-policy.ts bilan bir xil).
+ * Parol talabi — kamida 8 belgi: passwordProblem_ (lib/password-policy.ts bilan bir xil).
  */
 
 const USERS_SHEET = "Users";
@@ -198,7 +198,7 @@ function passwordMatches_(stored, input) {
   return stored === input;
 }
 
-/* ---------------- parol talablari (lib/password-policy.ts bilan bir xil) ---------------- */
+/* ---------------- parol talablari (lib/password-policy.ts bilan bir xil): faqat uzunlik ---------------- */
 
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 64;
@@ -206,15 +206,9 @@ const PASSWORD_MAX = 64;
 /** Birinchi bajarilmagan talab yoki null */
 function passwordProblem_(pw, login) {
   pw = String(pw == null ? "" : pw);
-  const lg = clean_(login).toLowerCase();
   if (pw.length < PASSWORD_MIN) return "Parol kamida " + PASSWORD_MIN + " ta belgidan iborat bo'lishi kerak";
   if (pw.length > PASSWORD_MAX) return "Parol " + PASSWORD_MAX + " belgidan oshmasligi kerak";
-  if (!/^[A-Za-z0-9!@#$%^&*()_+\-=[\]{};:'",.<>/?\\|`~]+$/.test(pw)) return "Parolda faqat lotin harflari, raqam va belgilar bo'lishi kerak (kirill va probelsiz)";
-  if (!/[a-z]/.test(pw)) return "Parolda kichik lotin harfi bo'lishi kerak";
-  if (!/[A-Z]/.test(pw)) return "Parolda katta lotin harfi bo'lishi kerak";
-  if (!/[0-9]/.test(pw)) return "Parolda raqam bo'lishi kerak";
-  if (!/[!@#$%^&*()_+\-=[\]{};:'",.<>/?\\|`~]/.test(pw)) return "Parolda belgi (! @ # $ % & * …) bo'lishi kerak";
-  if (lg && pw.toLowerCase().indexOf(lg) !== -1) return "Parolda login bo'lmasligi kerak";
+  if (/\s/.test(pw)) return "Parolda probel bo'lmasligi kerak";
   return null;
 }
 
