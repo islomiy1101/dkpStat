@@ -10,7 +10,7 @@ export type Role = (typeof ROLES)[number];
 
 /** Sidebar'dagi barcha sahifalar: ma'lumot bo'limlari + admin sahifalari */
 /** Ma'lumot bo'limlari + admin sahifalari + RegTest (registrator testi — DataProvider'ga bog'lanmagan) */
-export type AreaId = SectionId | "logs" | "upload" | "regtest";
+export type AreaId = SectionId | "logs" | "upload" | "regtest" | "users";
 
 const ACCESS: Record<Role, readonly AreaId[]> = {
   engineer: ["payment"],
@@ -21,7 +21,7 @@ const ACCESS: Record<Role, readonly AreaId[]> = {
   reception: ["reception"],
   /** Faqat RegTest — boshqa hech bir bo'lim ko'rinmaydi */
   registrator: ["regtest"],
-  superadmin: ["deadline", "etirof", "xatlov", "payment", "advice", "reception", "regtest", "logs", "upload"],
+  superadmin: ["deadline", "etirof", "xatlov", "payment", "advice", "reception", "regtest", "logs", "upload", "users"],
 };
 
 /** Bo'lim bo'yicha ma'lumot doirasi: "region" — viloyat bo'yicha to'liq, "branch" — faqat o'z filiali */
@@ -63,6 +63,7 @@ const HREF: Record<AreaId, string> = {
   logs: "/logs",
   upload: "/upload",
   regtest: "/regtest/test",
+  users: "/users",
 };
 export const firstAllowedHref = (role: Role) => HREF[ACCESS[role][0]];
 

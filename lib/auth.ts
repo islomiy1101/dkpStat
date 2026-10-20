@@ -16,7 +16,12 @@ export type AppUser = {
   department: string;
   role: Role;
   loginTime: number;
+  /** Parol talabga javob bermaydi yoki superadmin tiklagan — yangi parol o'rnatmaguncha faqat /account/password ochiq */
+  mustChange?: boolean;
 };
+
+/** Majburiy parol almashtirish sahifasi */
+export const PASSWORD_PAGE = "/account/password";
 
 export const AUTH_COOKIE = "dkp_auth";
 const ttlMs = () => config.authSessionHours * 60 * 60 * 1000;
@@ -72,6 +77,9 @@ export function authError() {
 export function forbidden() {
   return Response.json({ error: "forbidden", message: "Ruxsat yo'q" }, { status: 403 });
 }
+export function mustChangeError() {
+  return Response.json({ error: "must_change", message: "Avval yangi parol o'rnating." }, { status: 403 });
+}
 
 /**
  * API route'lar uchun: foydalanuvchi shu bo'limga kira oladimi.
@@ -80,7 +88,17 @@ export function forbidden() {
 export async function requireArea(id: AreaId): Promise<AppUser | Response> {
   const u = await getUser();
   if (!u) return authError();
+  if (u.mustChange) return mustChangeError();
   if (!canSee(u.role, id)) return forbidden();
+  return u;
+}
+
+/** Faqat superadmin (foydalanuvchilar va parollarni boshqarish) */
+export async function requireSuperadmin(): Promise<AppUser | Response> {
+  const u = await getUser();
+  if (!u) return authError();
+  if (u.mustChange) return mustChangeError();
+  if (u.role !== "superadmin") return forbidden();
   return u;
 }
 
@@ -88,6 +106,7 @@ export async function requireArea(id: AreaId): Promise<AppUser | Response> {
 export async function guardPage(id: AreaId) {
   const u = await getUser();
   if (!u) redirect("/login");
+  if (u.mustChange) redirect(PASSWORD_PAGE);
   if (!canSee(u.role, id)) redirect(firstAllowedHref(u.role));
   return u;
 }

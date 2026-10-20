@@ -26,13 +26,15 @@
  *     va "Натижалар" (sarlavhasini skript o'zi yozadi): registratordan faqat Login, qolgani — test yechgan xodim (PINFL, F.I.O.).
  *
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
- *  Users: Branch | FullName | Department | Login | Password | Role
+ *  Users: Branch | FullName | Department | Login | Password | Role | MustChangePassword | PasswordChangedAt
  *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | registrator | superadmin
+ *         MustChangePassword (1 — keyingi kirishda parolni almashtirishi shart) va PasswordChangedAt avtomatik qo'shiladi.
  *  Logs : Branch | FullName | Department | Login | DateTime | Ip | Location | Accuracy
  *         (Accuracy — joylashuv xatoligi, metr; ustun bo'lmasa avtomatik qo'shiladi)
  *
- * Parol oddiy matn yoki "sha256:<hex>" ko'rinishida bo'lishi mumkin
- * (hash olish uchun pastdagi hashPassword_ funksiyasini Apps Script'da ishga tushiring).
+ * Parol formatlari: oddiy matn, "sha256:<hex>" (eski) yoki "pbkdf:<iter>:<salt>:<hex>" (sayt orqali o'rnatilgan).
+ * Oddiy matn va sha256 parollar ishlaydi, lekin keyingi kirishda yangi murakkab parol so'raladi.
+ * Parol talablari — passwordProblem_ (lib/password-policy.ts bilan bir xil).
  */
 
 const USERS_SHEET = "Users";
@@ -65,7 +67,7 @@ const REGTEST_RESULTS_SHEET = "Натижалар";
 /** Bitta PINFL — shuncha soatda bir marta (boshlangan test bo'yicha) */
 const REGTEST_RETAKE_HOURS = 2;
 /** Sayt shu raqamga qarab skript eskirganini aniqlaydi (ping → regtestVersion) */
-const REGTEST_VERSION = 5;
+const REGTEST_VERSION = 6;
 // Registratordan faqat login (u tizimga kirib beradi); qolgani — test yechgan xodimniki (PINFL)
 const REGTEST_HEADERS = ["Sana", "Vaqt", "Login", "PINFL", "F.I.O.", "Savol soni", "To'g'ri", "Noto'g'ri", "Javobsiz", "Ball",
   "Sarflangan vaqt", "Holat", "Qoidabuzarlik", "Test ID"];
@@ -98,6 +100,12 @@ function doPost(e) {
       result = regtestResults_();
     } else if (req.action === "verifyPassword") {
       result = verifyPassword_(req.login, req.password);
+    } else if (req.action === "changePassword") {
+      result = changePassword_(req.login, req.current, req.next);
+    } else if (req.action === "resetPassword") {
+      result = resetPassword_(req.admin, req.login);
+    } else if (req.action === "listUsers") {
+      result = listUsers_(req.admin);
     } else if (req.action === "ping") {
       // Sayt "Bazaga yuklash" sahifasida shu jadvalga havola ko'rsatadi (AUTH_SHEET_ID berilmagan bo'lsa)
       result = { success: true, spreadsheetId: ss_().getId(), regtestVersion: REGTEST_VERSION };
@@ -137,10 +145,71 @@ function sha256Hex_(text) {
   return bytes.map(function (b) { return ("0" + (b & 0xff).toString(16)).slice(-2); }).join("");
 }
 
+function bytesHex_(bytes) {
+  return bytes.map(function (b) { return ("0" + (b & 0xff).toString(16)).slice(-2); }).join("");
+}
+
+/** PBKDF2-HMAC-SHA256 (bitta blok): har bir foydalanuvchiga alohida salt, iter marta takrorlanadi */
+function pbkdf_(password, salt, iter) {
+  const key = Utilities.newBlob(password).getBytes();
+  let u = Utilities.computeHmacSha256Signature(Utilities.newBlob(salt).getBytes().concat([0, 0, 0, 1]), key);
+  const out = u.slice();
+  for (let i = 1; i < iter; i++) {
+    u = Utilities.computeHmacSha256Signature(u, key);
+    for (let j = 0; j < out.length; j++) out[j] ^= u[j];
+  }
+  return bytesHex_(out);
+}
+
+const PBKDF_ITER = 500;
+
+function hashPasswordStrong_(password) {
+  const salt = Utilities.getUuid().replace(/-/g, "");
+  return "pbkdf:" + PBKDF_ITER + ":" + salt + ":" + pbkdf_(password, salt, PBKDF_ITER);
+}
+
 function passwordMatches_(stored, input) {
   stored = clean_(stored);
+  if (stored.indexOf("pbkdf:") === 0) {
+    const p = stored.split(":");
+    return p.length === 4 && pbkdf_(input, p[2], Number(p[1]) || PBKDF_ITER) === p[3].toLowerCase();
+  }
   if (stored.indexOf("sha256:") === 0) return stored.slice(7).toLowerCase() === sha256Hex_(input);
   return stored === input;
+}
+
+/* ---------------- parol talablari (lib/password-policy.ts bilan bir xil) ---------------- */
+
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 64;
+
+/** Birinchi bajarilmagan talab yoki null */
+function passwordProblem_(pw, login) {
+  pw = String(pw == null ? "" : pw);
+  const lg = clean_(login).toLowerCase();
+  if (pw.length < PASSWORD_MIN) return "Parol kamida " + PASSWORD_MIN + " ta belgidan iborat bo'lishi kerak";
+  if (pw.length > PASSWORD_MAX) return "Parol " + PASSWORD_MAX + " belgidan oshmasligi kerak";
+  if (!/^[A-Za-z0-9!@#$%^&*()_+\-=[\]{};:'",.<>/?\\|`~]+$/.test(pw)) return "Parolda faqat lotin harflari, raqam va belgilar bo'lishi kerak (kirill va probelsiz)";
+  if (!/[a-z]/.test(pw)) return "Parolda kichik lotin harfi bo'lishi kerak";
+  if (!/[A-Z]/.test(pw)) return "Parolda katta lotin harfi bo'lishi kerak";
+  if (!/[0-9]/.test(pw)) return "Parolda raqam bo'lishi kerak";
+  if (!/[!@#$%^&*()_+\-=[\]{};:'",.<>/?\\|`~]/.test(pw)) return "Parolda belgi (! @ # $ % & * …) bo'lishi kerak";
+  if (lg && pw.toLowerCase().indexOf(lg) !== -1) return "Parolda login bo'lmasligi kerak";
+  return null;
+}
+
+/** Talablarga mos tasodifiy vaqtinchalik parol (o'xshash belgilar — 0/O, 1/l/I — ishlatilmaydi) */
+function tempPassword_() {
+  const sets = ["abcdefghijkmnpqrstuvwxyz", "ABCDEFGHJKLMNPQRSTUVWXYZ", "23456789", "!@#$%&*?"];
+  const all = sets.join("");
+  const pick = function (set) { return set.charAt(Math.floor(Math.random() * set.length)); };
+  const chars = sets.map(pick);
+  while (chars.length < 10) chars.push(pick(all));
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = chars[i]; chars[i] = chars[j]; chars[j] = t;
+  }
+  return chars.join("");
 }
 
 /** Apps Script muharririda qo'lda ishga tushiring: parolning hash'ini log'ga chiqaradi */
@@ -156,6 +225,34 @@ function ensureHeaders_(sheet, names) {
   const missing = names.filter(function (n) { return header.indexOf(n.toLowerCase()) === -1; });
   if (missing.length) sheet.getRange(1, sheet.getLastColumn() + 1, 1, missing.length).setValues([missing]);
 }
+
+/** Users varag'i: ma'lumot va ustun indekslari (MustChangePassword, PasswordChangedAt bo'lmasa qo'shiladi) */
+function usersTable_() {
+  const sheet = ss_().getSheetByName(USERS_SHEET);
+  if (!sheet) return null;
+  ensureHeaders_(sheet, ["MustChangePassword", "PasswordChangedAt"]);
+  const data = sheet.getDataRange().getValues();
+  return { sheet: sheet, data: data, col: headerIndex_(data[0]) };
+}
+
+function findUserRow_(t, login) {
+  const cLogin = t.col("Login");
+  for (let r = 1; r < t.data.length; r++) {
+    if (clean_(t.data[r][cLogin]).toLowerCase() === login) return r;
+  }
+  return -1;
+}
+
+const truthy_ = function (v) { return /^(1|true|ha|yes)$/i.test(clean_(v)); };
+
+/** Parolni almashtirish shartmi: belgilangan, eski formatda saqlangan yoki talabga javob bermaydi */
+function mustChange_(row, col, inputPassword, login) {
+  if (truthy_(row[col("MustChangePassword")])) return true;
+  if (clean_(row[col("Password")]).indexOf("pbkdf:") !== 0) return true;
+  return inputPassword != null && passwordProblem_(inputPassword, login) !== null;
+}
+
+const isSuperRole_ = function (role) { return /^(superadmin|admin)$/.test(clean_(role).toLowerCase().replace(/[\s_\-]/g, "")); };
 
 /* ---------------- login ---------------- */
 
@@ -193,7 +290,11 @@ function login_(login, password, ip, location, accuracy) {
       role: role,
     };
     appendLog_(user, ip, location, accuracy);
-    return { success: true, user: user };
+    // Ustunlar hali qo'shilmagan bo'lishi mumkin — faqat parol formati va talablar bo'yicha
+    const hasMust = data[0].some(function (h) { return clean_(h).toLowerCase() === "mustchangepassword"; });
+    const must = (hasMust && truthy_(row[col("MustChangePassword")])) ||
+      clean_(row[cPass]).indexOf("pbkdf:") !== 0 || passwordProblem_(password, login) !== null;
+    return { success: true, user: user, mustChange: must };
   }
 
   cache.put(failKey, String(fails + 1), LOCK_SECONDS);
@@ -671,4 +772,99 @@ function verifyPassword_(login, password) {
   }
   cache.put(failKey, String(fails + 1), LOCK_SECONDS);
   return { success: false, message: "Parol noto'g'ri" };
+}
+
+/* ---------------- parolni almashtirish ---------------- */
+
+/** Foydalanuvchi o'z parolini almashtiradi: joriy parol tekshiriladi (login bilan umumiy xato urinishlar hisobi) */
+function changePassword_(login, current, next) {
+  login = clean_(login).toLowerCase();
+  current = clean_(current);
+  next = String(next == null ? "" : next);
+  if (!login || !current) return { success: false, message: "Joriy parolni kiriting" };
+
+  const cache = CacheService.getScriptCache();
+  const failKey = "fail_" + login;
+  const fails = Number(cache.get(failKey) || 0);
+  if (fails >= MAX_FAILS) return { success: false, message: "Juda ko'p noto'g'ri urinish. 10 daqiqadan so'ng qayta urinib ko'ring." };
+
+  const problem = passwordProblem_(next, login);
+  if (problem) return { success: false, message: problem };
+  if (next === current) return { success: false, message: "Yangi parol joriy paroldan farq qilishi kerak" };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const t = usersTable_();
+    if (!t) return { success: false, message: "Users varag'i topilmadi" };
+    const r = findUserRow_(t, login);
+    if (r < 0 || !passwordMatches_(t.data[r][t.col("Password")], current)) {
+      cache.put(failKey, String(fails + 1), LOCK_SECONDS);
+      return { success: false, wrongCurrent: true, message: "Joriy parol noto'g'ri" };
+    }
+    cache.remove(failKey);
+    writePassword_(t, r, next, false);
+    return { success: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function writePassword_(t, r, password, mustChange) {
+  const row = r + 1;
+  t.sheet.getRange(row, t.col("Password") + 1).setNumberFormat("@").setValue(hashPasswordStrong_(password));
+  t.sheet.getRange(row, t.col("MustChangePassword") + 1).setValue(mustChange ? 1 : 0);
+  t.sheet.getRange(row, t.col("PasswordChangedAt") + 1).setValue(Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd HH:mm:ss"));
+}
+
+/** So'rov yuborgan foydalanuvchi superadmin ekanini Users varag'idan qayta tekshirish (cookie'ga ishonmaslik uchun) */
+function requireSuper_(t, admin) {
+  const r = findUserRow_(t, clean_(admin).toLowerCase());
+  return r >= 0 && isSuperRole_(t.data[r][t.col("Role")]);
+}
+
+/** Superadmin: xodimga vaqtinchalik parol (keyingi kirishda almashtirishi shart). Parol faqat bir marta qaytariladi */
+function resetPassword_(admin, login) {
+  login = clean_(login).toLowerCase();
+  if (!login) return { success: false, message: "Login ko'rsatilmagan" };
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const t = usersTable_();
+    if (!t) return { success: false, message: "Users varag'i topilmadi" };
+    if (!requireSuper_(t, admin)) return { success: false, message: "Ruxsat yo'q" };
+    const r = findUserRow_(t, login);
+    if (r < 0) return { success: false, message: "Foydalanuvchi topilmadi" };
+    const temp = tempPassword_();
+    writePassword_(t, r, temp, true);
+    CacheService.getScriptCache().remove("fail_" + login); // bloklangan bo'lsa ochiladi
+    return { success: true, password: temp };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/** Superadmin: foydalanuvchilar ro'yxati (parollarsiz) */
+function listUsers_(admin) {
+  const t = usersTable_();
+  if (!t) return { success: false, message: "Users varag'i topilmadi" };
+  if (!requireSuper_(t, admin)) return { success: false, message: "Ruxsat yo'q" };
+  const c = t.col;
+  const users = [];
+  for (let r = 1; r < t.data.length; r++) {
+    const row = t.data[r];
+    const login = clean_(row[c("Login")]);
+    if (!login) continue;
+    const at = row[c("PasswordChangedAt")];
+    users.push({
+      login: login,
+      fullName: clean_(row[c("FullName")]),
+      branch: clean_(row[c("Branch")]),
+      department: clean_(row[c("Department")]),
+      role: clean_(row[c("Role")]),
+      mustChange: mustChange_(row, c, null, login),
+      changedAt: at instanceof Date ? Utilities.formatDate(at, TZ, "yyyy-MM-dd HH:mm:ss") : clean_(at),
+    });
+  }
+  return { success: true, users: users };
 }

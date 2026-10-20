@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
+import { PASSWORD_PAGE, getUser } from "@/lib/auth";
 import { SECTIONS } from "@/lib/sections";
 import { canSee } from "@/lib/roles";
 import Sidebar from "@/components/Sidebar";
@@ -9,6 +9,7 @@ import { DataProvider } from "@/components/DataProvider";
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser();
   if (!user) redirect("/login");
+  if (user.mustChange) redirect(PASSWORD_PAGE);
   const { login, fullName, branch, department, role } = user;
   // Faqat ruxsat etilgan bo'limlar yuklanadi va sidebar'da ko'rinadi
   const allowed = SECTIONS.filter((s) => canSee(role, s.id)).map((s) => s.id);

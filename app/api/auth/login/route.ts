@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   try {
     const r = await loginWithSheet(login, password, clientIp(req), location, Math.round(accuracy));
     if (!r.success) return NextResponse.json({ success: false, message: r.message }, { status: 401 });
-    const user = { ...r.user, loginTime: Date.now() };
+    const user = { ...r.user, loginTime: Date.now(), mustChange: r.mustChange || undefined };
     await setUser(user, isHttps(req));
     invalidate("auth:logs");
     return NextResponse.json({ success: true, user });

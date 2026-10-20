@@ -3,8 +3,11 @@ import path from "node:path";
 import { config } from "./config";
 import { MOCK } from "./mock";
 import { parseRole, type Role } from "./roles";
+import { isStrongPassword, passwordProblem } from "./password-policy";
 
 export type LoginUser = { login: string; fullName: string; branch: string; department: string; role: Role };
+/** "Foydalanuvchilar" sahifasi uchun (parolsiz) */
+export type UserRow = LoginUser & { mustChange: boolean; changedAt: string };
 export type LogRow = {
   branch: string; fullName: string; department: string; login: string;
   dateTime: string; ip: string; location: string; accuracy: string;
@@ -45,9 +48,14 @@ async function callAuthScript<T>(payload: Record<string, unknown>): Promise<Scri
 type MockUser = LoginUser & { password: string };
 const mockLogs: LogRow[] = [];
 let mockLoaded = false;
+/** Demo: sayt orqali o'zgartirilgan parollar xotirada (mock/auth_users.json o'zgartirilmaydi) */
+const mockPw = new Map<string, { password: string; mustChange: boolean; changedAt: string }>();
 async function mockUsers(): Promise<MockUser[]> {
-  return JSON.parse(await fs.readFile(path.join(process.cwd(), "mock", "auth_users.json"), "utf8"));
+  const list: MockUser[] = JSON.parse(await fs.readFile(path.join(process.cwd(), "mock", "auth_users.json"), "utf8"));
+  return list.map((u) => ({ ...u, password: mockPw.get(u.login.toLowerCase())?.password ?? u.password }));
 }
+const mockMustChange = (login: string, password: string) =>
+  mockPw.get(login.toLowerCase())?.mustChange ?? !isStrongPassword(password, login);
 async function mockLogList() {
   if (!mockLoaded) {
     mockLogs.push(...JSON.parse(await fs.readFile(path.join(process.cwd(), "mock", "auth_logs.json"), "utf8")));
@@ -71,9 +79,9 @@ export async function loginWithSheet(login: string, password: string, ip: string
     const { role: _r, ...who } = user;
     void _r;
     (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location, accuracy: String(accuracy) });
-    return { success: true as const, user: { ...user, role: parseRole(user.role) } };
+    return { success: true as const, user: { ...user, role: parseRole(user.role) }, mustChange: mockMustChange(u.login, password.trim()) };
   }
-  const r = await callAuthScript<{ user?: LoginUser }>({ action: "login", login, password, ip, location, accuracy });
+  const r = await callAuthScript<{ user?: LoginUser; mustChange?: boolean }>({ action: "login", login, password, ip, location, accuracy });
   if (!r.success || !r.user) {
     if (r.message && r.message.startsWith("Forbidden")) console.error("[auth]", r.message);
     return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
@@ -81,7 +89,9 @@ export async function loginWithSheet(login: string, password: string, ip: string
   if (r.user.role === undefined) {
     console.error("[auth] Apps Script javobida role yo'q — eski deploy versiyasi? (Manage deployments → New version)");
   }
-  return { success: true as const, user: { ...r.user, role: parseRole(r.user.role) } };
+  // Eski Apps Script (mustChange qaytarmaydi) — parolning o'zi talabga javob bermasa ham almashtirish so'raladi
+  const mustChange = r.mustChange ?? !isStrongPassword(password, login);
+  return { success: true as const, user: { ...r.user, role: parseRole(r.user.role) }, mustChange };
 }
 
 export async function fetchLogs(limit = 5000): Promise<LogRow[]> {
@@ -176,4 +186,48 @@ export async function verifyPassword(login: string, password: string): Promise<{
     return u && u.password === password ? { success: true } : { success: false, message: "Parol noto'g'ri" };
   }
   return callAuthScript({ action: "verifyPassword", login, password });
+}
+
+/* ---------- Parollar ---------- */
+
+type PwResult = { success: boolean; message?: string; wrongCurrent?: boolean };
+
+/** Foydalanuvchi o'z parolini almashtiradi (joriy parol bilan). Talablar serverda ham, Apps Script'da ham tekshiriladi */
+export async function changePassword(login: string, current: string, next: string): Promise<PwResult> {
+  const problem = passwordProblem(next, login);
+  if (problem) return { success: false, message: problem };
+  if (next === current) return { success: false, message: "Yangi parol joriy paroldan farq qilishi kerak" };
+  if (MOCK) {
+    const u = (await mockUsers()).find((x) => x.login.toLowerCase() === login.toLowerCase());
+    if (!u || u.password !== current) return { success: false, wrongCurrent: true, message: "Joriy parol noto'g'ri" };
+    mockPw.set(login.toLowerCase(), { password: next, mustChange: false, changedAt: nowStr() });
+    return { success: true };
+  }
+  return callAuthScript({ action: "changePassword", login, current, next });
+}
+
+/** Superadmin: vaqtinchalik parol (keyingi kirishda almashtirish shart). Apps Script superadmin'ni o'zi qayta tekshiradi */
+export async function resetPassword(admin: string, login: string): Promise<PwResult & { password?: string }> {
+  if (MOCK) {
+    const u = (await mockUsers()).find((x) => x.login.toLowerCase() === login.toLowerCase());
+    if (!u) return { success: false, message: "Foydalanuvchi topilmadi" };
+    const temp = "Tmp" + Math.random().toString(36).slice(2, 7) + "#7";
+    mockPw.set(login.toLowerCase(), { password: temp, mustChange: true, changedAt: nowStr() });
+    return { success: true, password: temp };
+  }
+  return callAuthScript<{ password?: string }>({ action: "resetPassword", admin, login });
+}
+
+export async function listUsers(admin: string): Promise<UserRow[]> {
+  if (MOCK) {
+    return (await mockUsers()).map(({ password, ...u }) => ({
+      ...u,
+      role: parseRole(u.role),
+      mustChange: mockMustChange(u.login, password),
+      changedAt: mockPw.get(u.login.toLowerCase())?.changedAt || "",
+    }));
+  }
+  const r = await callAuthScript<{ users?: (Omit<UserRow, "role"> & { role: string })[] }>({ action: "listUsers", admin });
+  if (!r.success || !r.users) throw new Error(r.message || "Foydalanuvchilarni o'qib bo'lmadi");
+  return r.users.map((u) => ({ ...u, role: parseRole(u.role) }));
 }

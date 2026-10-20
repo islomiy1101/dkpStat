@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { SECTIONS } from "@/lib/sections";
 import { canSee, ROLE_LABEL, type AreaId, type Role } from "@/lib/roles";
 import { useData, type SlotStatus } from "./DataProvider";
+import PasswordForm from "@/features/account/PasswordForm";
 
 const STATUS_LABEL: Record<SlotStatus, string> = {
   idle: "Kutilmoqda",
@@ -70,6 +71,7 @@ function NavGroup({ id, inner, tip, items, isActive, isOpen, onToggle, pathname,
 const ADMIN_LINKS: { id: AreaId; href: string; title: string; subtitle: string; icon: string }[] = [
   { id: "upload", href: "/upload", title: "Bazaga yuklash", subtitle: "Excel → Google Sheets", icon: "fa-solid fa-file-arrow-up" },
   { id: "logs", href: "/logs", title: "Log", subtitle: "Kirishlar tarixi", icon: "fa-solid fa-clock-rotate-left" },
+  { id: "users", href: "/users", title: "Foydalanuvchilar", subtitle: "Parollarni tiklash", icon: "fa-solid fa-users-gear" },
 ];
 
 const initials = (name: string) =>
@@ -92,6 +94,15 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
   const [confirmOut, setConfirmOut] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const [pwOpen, setPwOpen] = useState(false);
+  const [pwDone, setPwDone] = useState(false);
+
+  useEffect(() => {
+    if (!pwOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setPwOpen(false);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [pwOpen]);
 
   // Escape bilan yopish
   useEffect(() => {
@@ -176,9 +187,15 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
             {user.department && <span className="sb-user-dept">{user.department}</span>}
             <span className="sb-role">{ROLE_LABEL[user.role]}</span>
           </div>
-          <button className="sb-logout" onClick={() => { setMobileOpen(false); setConfirmOut(true); }} title="Tizimdan chiqish" aria-label="Tizimdan chiqish">
-            <i className="fa-solid fa-right-from-bracket" />
-          </button>
+          <div className="sb-user-actions">
+            <button className="sb-logout" onClick={() => { setMobileOpen(false); setConfirmOut(true); }} title="Tizimdan chiqish" aria-label="Tizimdan chiqish">
+              <i className="fa-solid fa-right-from-bracket" />
+            </button>
+            <button className="sb-logout sb-key" onClick={() => { setMobileOpen(false); setPwDone(false); setPwOpen(true); }}
+              title="Parolni o'zgartirish" aria-label="Parolni o'zgartirish">
+              <i className="fa-solid fa-key" />
+            </button>
+          </div>
         </div>
 
         <div className="sb-label">Bo&apos;limlar</div>
@@ -255,6 +272,26 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
         </div>
         )}
       </aside>
+
+      {pwOpen && (
+        <div className="sb-confirm" role="dialog" aria-modal="true" aria-labelledby="sb-pw-title"
+          onClick={(e) => e.target === e.currentTarget && setPwOpen(false)}>
+          <div className="sb-confirm-card sb-pw-card">
+            <button type="button" className="sb-pw-x" onClick={() => setPwOpen(false)} aria-label="Yopish"><i className="fa-solid fa-xmark" /></button>
+            <div className="sb-confirm-icon sb-pw-icon"><i className="fa-solid fa-key" /></div>
+            <h3 id="sb-pw-title">Parolni o&apos;zgartirish</h3>
+            {pwDone ? (
+              <div className="pw-done">
+                <i className="fa-solid fa-circle-check" />
+                <p>Parol muvaffaqiyatli yangilandi.</p>
+                <button type="button" className="auth-submit" onClick={() => setPwOpen(false)}>Yopish</button>
+              </div>
+            ) : (
+              <PasswordForm login={user.login} onDone={() => setPwDone(true)} />
+            )}
+          </div>
+        </div>
+      )}
 
       {confirmOut && (
         <div className="sb-confirm" role="dialog" aria-modal="true" aria-labelledby="sb-confirm-title"
