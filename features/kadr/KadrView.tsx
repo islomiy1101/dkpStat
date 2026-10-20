@@ -110,7 +110,8 @@ export default function KadrView({ canUpload }: { canUpload: boolean }) {
   const filials = useMemo(() => {
     if (!stats) return [];
     const list = [...stats.filials];
-    if (sort.key !== "name") list.sort((a, b) => (a[sort.key] - b[sort.key]) * sort.dir);
+    const key = sort.key;
+    if (key !== "name") list.sort((a, b) => (a[key] - b[key]) * sort.dir);
     else if (sort.dir === -1) list.reverse();
     return list;
   }, [stats, sort]);
