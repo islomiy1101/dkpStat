@@ -1,0 +1,812 @@
+[
+[
+"Filial",
+"Bo'lim",
+"Lavozim",
+"Shtat birligi",
+"Band",
+"Vakant",
+"Toifa",
+"Yuklangan"
+],
+[
+"Viloyat boshqarmasi",
+"Rahbariyat",
+"Boshqarma boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Viloyat boshqarmasi",
+"Rahbariyat",
+"Boshliq o'rinbosari",
+"2",
+"2",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Viloyat boshqarmasi",
+"Ro'yxatga olish bo'limi",
+"Bosh mutaxassis",
+"4",
+"3,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Viloyat boshqarmasi",
+"Ro'yxatga olish bo'limi",
+"Yetakchi mutaxassis",
+"5",
+"4,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Viloyat boshqarmasi",
+"Kadastr bo'limi",
+"Bosh muhandis",
+"3",
+"3",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Viloyat boshqarmasi",
+"Buxgalteriya",
+"Bosh buxgalter",
+"1",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Viloyat boshqarmasi",
+"Buxgalteriya",
+"Buxgalter",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Viloyat boshqarmasi",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"3",
+"3",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Chust tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Chust tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"4,5",
+"4,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chust tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"3",
+"2,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chust tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"1,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chust tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chust tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Pop tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Pop tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"5",
+"5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Pop tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Pop tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"4",
+"4",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Pop tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"0",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Pop tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Namangan shahar filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Namangan shahar filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"5",
+"3",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan shahar filiali",
+"Kadastr bo'limi",
+"Topograf",
+"3",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan shahar filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"0",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan shahar filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan shahar filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Kosonsoy tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Kosonsoy tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"6",
+"6",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Kosonsoy tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Kosonsoy tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Kosonsoy tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Kosonsoy tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"0,5",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Mingbuloq tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Mingbuloq tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"4",
+"4",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Mingbuloq tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"3",
+"3",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Mingbuloq tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Mingbuloq tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Mingbuloq tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Namangan tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"0",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Namangan tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"4,5",
+"4",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"3",
+"3",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"0",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Namangan tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Norin tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Norin tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"6",
+"6",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Norin tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Norin tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"3",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Norin tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"2",
+"0",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Norin tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"To'raqo'rg'on tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"To'raqo'rg'on tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"4,5",
+"4,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"To'raqo'rg'on tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"To'raqo'rg'on tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"To'raqo'rg'on tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"To'raqo'rg'on tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"0",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Uychi tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Uychi tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"4,5",
+"4,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uychi tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uychi tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uychi tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uychi tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Uchqo'rg'on tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"0",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Uchqo'rg'on tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"4",
+"3,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uchqo'rg'on tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uchqo'rg'on tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"3",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uchqo'rg'on tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Uchqo'rg'on tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Chortoq tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Chortoq tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"4,5",
+"4,5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chortoq tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"3",
+"3",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chortoq tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chortoq tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"1",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Chortoq tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+],
+[
+"Yangiqo'rg'on tumani filiali",
+"Rahbariyat",
+"Filial boshlig'i",
+"1",
+"1",
+"",
+"Rahbar",
+"21.10.2026 09:00"
+],
+[
+"Yangiqo'rg'on tumani filiali",
+"Kadastr bo'limi",
+"Kadastr muhandisi",
+"5",
+"5",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Yangiqo'rg'on tumani filiali",
+"Kadastr bo'limi",
+"Topograf",
+"2",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Yangiqo'rg'on tumani filiali",
+"Ro'yxatga olish bo'limi",
+"Registrator",
+"3",
+"2",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Yangiqo'rg'on tumani filiali",
+"Inventarizatsiya",
+"Inventarizatsiya muhandisi",
+"1",
+"0",
+"",
+"Mutaxassis",
+"21.10.2026 09:00"
+],
+[
+"Yangiqo'rg'on tumani filiali",
+"Xo'jalik bo'limi",
+"Haydovchi",
+"1",
+"1",
+"",
+"Texnik xodim",
+"21.10.2026 09:00"
+]
+]

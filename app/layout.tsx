@@ -7,6 +7,7 @@ import "@/styles/reception.css";
 import "@/styles/analytics.css";
 import "@/styles/logs.css";
 import "@/styles/users.css";
+import "@/styles/kadr.css";
 import "@/styles/upload.css";
 import "@/styles/etirof.css";
 import "@/styles/xatlov.css";

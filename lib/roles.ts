@@ -16,12 +16,13 @@ const ACCESS: Record<Role, readonly AreaId[]> = {
   engineer: ["payment"],
   advicer: ["advice"],
   accountant: ["payment"],
-  branchManager: ["deadline", "etirof", "xatlov", "payment", "advice", "reception"],
-  headOfDepartment: ["deadline", "etirof", "xatlov", "payment", "advice", "reception"],
+  // "kadr" birinchi — kirgandan keyin Kadrlar statistikasi ochiladi (firstAllowedHref)
+  branchManager: ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception"],
+  headOfDepartment: ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception"],
   reception: ["reception"],
   /** Faqat RegTest — boshqa hech bir bo'lim ko'rinmaydi */
   registrator: ["regtest"],
-  superadmin: ["deadline", "etirof", "xatlov", "payment", "advice", "reception", "regtest", "logs", "upload", "users"],
+  superadmin: ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception", "regtest", "logs", "upload", "users"],
 };
 
 /** Bo'lim bo'yicha ma'lumot doirasi: "region" — viloyat bo'yicha to'liq, "branch" — faqat o'z filiali */
@@ -30,11 +31,11 @@ const SCOPE: Record<Role, Partial<Record<SectionId, Scope>>> = {
   engineer: { payment: "branch" },
   advicer: { advice: "branch" },
   accountant: { payment: "region" },
-  branchManager: { deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "branch", reception: "branch" },
-  headOfDepartment: { deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "region", reception: "region" },
+  branchManager: { kadr: "branch", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "branch", reception: "branch" },
+  headOfDepartment: { kadr: "region", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "region", reception: "region" },
   reception: { reception: "branch" },
   registrator: {},
-  superadmin: { deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "region", reception: "region" },
+  superadmin: { kadr: "region", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "region", reception: "region" },
 };
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -54,6 +55,7 @@ export const canSee = (role: Role, id: AreaId) => ACCESS[role].includes(id);
 export const isGlobalIn = (role: Role, id: SectionId) => SCOPE[role][id] === "region";
 
 const HREF: Record<AreaId, string> = {
+  kadr: "/kadr",
   deadline: "/deadline",
   etirof: "/etirof",
   xatlov: "/xatlov",

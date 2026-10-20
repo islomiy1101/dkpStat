@@ -48,6 +48,8 @@ export const config = {
   receptionSheetId: (process.env.RECEPTION_SHEET_ID || "").trim(),
   /** RegTest savollari va natijalari (sayt uni Apps Script orqali o'qiydi — bu faqat havola uchun) */
   regtestSheetId: (process.env.REGTEST_SHEET_ID || "").trim(),
+  /** "Kadrlar statistikasi" — kadrlar bo'limining shtat jadvali (Bazaga yuklash → "Shtat" varag'i) */
+  kadrSheetId: (process.env.KADR_SHEET_ID || "").trim(),
 
   /** Server keshi (ms). "Yangilash" tugmasi keshni chetlab o'tadi. */
   cacheTtlMs: Number(process.env.CACHE_TTL_MS || 30_000),

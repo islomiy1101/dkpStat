@@ -3,13 +3,14 @@ import {
 } from "@/features/deadline/source";
 import { SVOD_HEADERS, buildSummary, flattenSummary, type SvodSpans } from "@/features/deadline/aggregate";
 import { DISTRICTS } from "@/features/deadline/model";
+import { KADR_COLS, KADR_SHEET, KADR_TEMPLATE, KADR_UPLOADED_COL, kadrHeaderKey, parseKadr } from "@/features/kadr/model";
 
 /**
  * "Bazaga yuklash" — har bir bo'lim uchun alohida .xlsx fayl va u yoziladigan Google Sheets varaqlari.
  * Klient (ko'rib chiqish) va server (tekshirish + yozish) bir xil qoidalardan foydalanadi.
  * Sheet ID'lar faqat serverda (lib/config.ts) — bu yerda faqat varaq nomlari.
  */
-export type UploadSection = "payment" | "deadline";
+export type UploadSection = "kadr" | "payment" | "deadline";
 
 export type SheetRule = {
   /** Google Sheets'dagi varaq nomi */
@@ -51,6 +52,8 @@ export type UploadTarget = {
   derived?: SheetRule[];
   /** Barcha kataklar matn sifatida yoziladi (gviz ustun turini adashtirib, raqamli ID'larni yo'qotmasligi uchun) */
   asText?: boolean;
+  /** "Shablonni yuklab olish" — tayyor sarlavha va namunaviy qatorlar */
+  template?: { fileName: string; sheet: string; rows: (string | number)[][] };
 };
 
 const normHeader = (s: unknown) => String(s ?? "").trim().toLowerCase().replace(/[`'ʻ’‘ʼ]/g, "'").replace(/\s+/g, " ");
@@ -88,6 +91,24 @@ function validateTolovBaza(values: CellValue[][]) {
 }
 
 export const UPLOAD_TARGETS: Record<UploadSection, UploadTarget> = {
+  kadr: {
+    id: "kadr",
+    title: "Kadrlar statistikasi",
+    icon: "fa-solid fa-people-group",
+    hint:
+      `Varaq: ${KADR_SHEET} (yoki fayldagi yagona varaq). 1-qator sarlavha: ${Object.values(KADR_COLS).join(" · ")} ` +
+      `(Vakant va Toifa ixtiyoriy — Vakant bo'sh bo'lsa Shtat − Band). Bir qator — filialdagi bitta bo'limning bitta lavozimi.`,
+    sheets: [
+      {
+        target: KADR_SHEET,
+        source: KADR_SHEET,
+        singleSheetFallback: true,
+        transform: stampKadr,
+        validate: (values: CellValue[][]) => void parseKadr(values, true),
+      },
+    ],
+    template: { fileName: "Kadrlar_shtat_shablon.xlsx", sheet: KADR_SHEET, rows: KADR_TEMPLATE },
+  },
   payment: {
     id: "payment",
     title: "To'lov va tushumlar",
@@ -137,6 +158,17 @@ export const UPLOAD_TARGETS: Record<UploadSection, UploadTarget> = {
 };
 
 const resolveDistrict = makeTumanResolver(DISTRICTS.map((d) => d.name));
+
+/** Kadrlar: "Yuklangan" ustuni (ma'lumot sanasi) qo'shiladi — sahifada "Ma'lumot holati" bo'lib ko'rinadi */
+function stampKadr(values: CellValue[][]): CellValue[][] {
+  if (!values.length) return values;
+  const head = values[0].map((h) => kadrHeaderKey(h));
+  const drop = head.indexOf(kadrHeaderKey(KADR_UPLOADED_COL));
+  const rows = drop < 0 ? values : values.map((r) => r.filter((_, i) => i !== drop));
+  const d = new Date(Date.now() + 5 * 3600_000); // Toshkent vaqti (server UTC'da ishlaydi)
+  const stamp = `${pad(d.getUTCDate())}.${pad(d.getUTCMonth() + 1)}.${d.getUTCFullYear()} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  return rows.map((r, i) => [...r, i === 0 ? KADR_UPLOADED_COL : stamp]);
+}
 
 /**
  * Rollar kesimi: qatorlar tuman bo'yicha saralanadi (tartibi DISTRICTS bo'yicha, tanilmaganlar oxirida) —

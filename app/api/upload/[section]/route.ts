@@ -6,6 +6,7 @@ import { invalidate } from "@/lib/cache";
 import { MOCK } from "@/lib/mock";
 import { MAX_CHUNK_ROWS, UPLOAD_TARGETS, isUploadSection, parseWorkbook, type CellValue, type UploadSection } from "@/lib/upload-targets";
 import { invalidateDeadline, mockAppendChunk } from "@/lib/deadline-server";
+import { mockSetKadr } from "@/lib/kadr-server";
 import { DEADLINE_LIST_IDS, DEADLINE_LISTS } from "@/features/deadline/source";
 
 /**
@@ -20,6 +21,7 @@ const MAX_BYTES = 20 * 1024 * 1024;
 const MAX_WIDTH = 300;
 
 const SHEET_ID: Record<UploadSection, () => string> = {
+  kadr: () => config.kadrSheetId,
   payment: () => config.paymentSheetId,
   deadline: () => config.deadlineSheetId,
 };
@@ -111,7 +113,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ section: strin
       { section, login: u.login, fullName: u.fullName, fileName: file.name }
     );
     if (!r.success) return fail(r.message || "Google Sheets'ga yozib bo'lmadi", 502);
-    invalidate(section); // "payment" keshi
+    invalidate(section); // "payment" / "kadr" keshi
+    if (MOCK && section === "kadr") mockSetKadr(parsed[0].values);
     const counts = parsed.map((p) => `${p.rule.target}: ${p.values.length - (p.rule.headerRows ?? 1)} qator`).join(", ");
     return NextResponse.json({ success: true, message: `Baza yangilandi (${counts}).${r.message ? ` ${r.message}` : ""}` });
   } catch (e) {

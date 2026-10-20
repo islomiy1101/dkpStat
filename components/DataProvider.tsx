@@ -6,6 +6,7 @@ import { SECTIONS, type SectionId } from "@/lib/sections";
 import { DEADLINE_LIST_IDS, type DeadlineList } from "@/features/deadline/source";
 import { ETIROF_PAGE_IDS, type EtirofPage, type EtirofSvod } from "@/features/etirof/config";
 import type { XatlovData } from "@/features/xatlov/config";
+import type { KadrPayload } from "@/features/kadr/model";
 
 /**
  * Barcha bo'limlar ma'lumotini PARALLEL yuklovchi provider.
@@ -21,7 +22,7 @@ export type ReceptionPayload = ReceptionData & { session: ReceptionSessionInfo }
 export type DeadlinePayload = Partial<Record<DeadlineList, DeadlineData>>;
 /** "E'tirof": 4 ta SVOD bitta slotda; bittasi xato bersa, qolganlari baribir ko'rinadi */
 export type EtirofPayload = Partial<Record<EtirofPage, EtirofSvod | { error: string }>>;
-type DataMap = { deadline: DeadlinePayload; etirof: EtirofPayload; xatlov: XatlovData; payment: PaymentData; advice: AdvicePayload; reception: ReceptionPayload };
+type DataMap = { kadr: KadrPayload; deadline: DeadlinePayload; etirof: EtirofPayload; xatlov: XatlovData; payment: PaymentData; advice: AdvicePayload; reception: ReceptionPayload };
 
 export type SlotStatus = "idle" | "loading" | "ready" | "error";
 export type Slot<T> = {
@@ -81,6 +82,7 @@ const FETCHERS: { [K in SectionId]: (fresh: boolean, onPartial: (d: DataMap[K]) 
       res.map((r, i) => [ETIROF_PAGE_IDS[i], r.status === "fulfilled" ? (r.value as EtirofSvod) : { error: (r.reason as Error).message }])
     ) as EtirofPayload;
   },
+  kadr: async (fresh) => (await getJson(`/api/kadr${fresh ? "?fresh=1" : ""}`)) as KadrPayload,
   xatlov: async (fresh) => (await getJson(`/api/xatlov${fresh ? "?fresh=1" : ""}`)) as XatlovData,
   payment: async (fresh) => (await getJson(`/api/payment${fresh ? "?fresh=1" : ""}`)) as PaymentData,
   advice: async (fresh) => (await getJson(`/api/advice/data${fresh ? "?fresh=1" : ""}`)) as AdvicePayload,
@@ -110,6 +112,7 @@ export function dropCache(id: SectionId) {
 
 export function DataProvider({ children, allowed }: { children: React.ReactNode; allowed: SectionId[] }) {
   const [state, setState] = useState<State>(() => ({
+    kadr: empty(),
     deadline: empty(),
     etirof: empty(),
     xatlov: empty(),
