@@ -4,31 +4,35 @@ import { useMemo, type ReactNode } from "react";
 import { TUMANLAR } from "@/features/advice/utils";
 import type { ReceptionMurojaat } from "@/lib/types";
 import { AreaTrend, BarList, ChartCard, Heatmap, Meter, StatTile, ACCENT, fmtMin, fmtPct } from "@/components/analytics/charts";
-import { PERIODS, WEEKDAYS, buildStats, periodStart, type Period } from "./stats";
+import { PERIODS, WEEKDAYS, buildStats, periodBounds, periodLabel as rangeLabel, type DateRange, type Period } from "./stats";
+import RangeFilter from "@/components/analytics/RangeFilter";
 
 /**
  * "Filial qabulxonasi" — viloyat analitika paneli (headOfDepartment, superadmin).
  * Hamma ko'rsatkich davr va tuman filtridan o'tgan murojaatlardan hisoblanadi;
  * hisobot tugmalari (actions, ReceptionView'dan) ham xuddi shu filtrga bo'ysunadi.
  */
-export default function AdminDashboard({ scoped, today, period, onPeriod, tuman, onTuman, totalAll, actions }: {
+export default function AdminDashboard({ scoped, today, period, onPeriod, range, onRange, tuman, onTuman, totalAll, actions }: {
   scoped: ReceptionMurojaat[];
   today: string;
   period: Period;
   onPeriod: (p: Period) => void;
+  /** Ixtiyoriy sana oralig'i (period === "custom" bo'lganda) */
+  range: DateRange;
+  onRange: (r: DateRange) => void;
   tuman: string;
   onTuman: (t: string) => void;
   totalAll: number;
   /** Hisobot tugmalari — filtr qatorining o'ng tomonida */
   actions?: ReactNode;
 }) {
-  const start = periodStart(period, today);
-  const s = useMemo(() => buildStats(scoped, today, start), [scoped, today, start]);
+  const { start, end } = periodBounds(period, today, range);
+  const s = useMemo(() => buildStats(scoped, today, start, end), [scoped, today, start, end]);
   const spark = s.daily.slice(-14).map((d) => d.count);
   const dayDelta = s.today - s.yesterday;
   const pickTuman = (t: string) => onTuman(tuman === t ? "" : t);
   const peak = s.heat.peak;
-  const periodLabel = PERIODS.find((p) => p.id === period)?.label || "";
+  const periodLabel = rangeLabel(period, range);
 
   return (
     <div className="rc-dash">
@@ -47,6 +51,7 @@ export default function AdminDashboard({ scoped, today, period, onPeriod, tuman,
             </button>
           ))}
         </div>
+        <RangeFilter range={range} onRange={onRange} today={today} active={period === "custom"} />
         <select className="rc-select" value={tuman} onChange={(e) => onTuman(e.target.value)} aria-label="Tuman">
           <option value="">Barcha tumanlar</option>
           {TUMANLAR.map((t) => <option key={t} value={t}>{t}</option>)}

@@ -31,8 +31,8 @@ export type AdviceStats = CommonStats & {
   ketdiYoq: number;
 };
 
-export function buildAdviceStats(list: Murojaat[], today: string, start: string | null): AdviceStats {
-  const common = buildCommon(list, today, start);
+export function buildAdviceStats(list: Murojaat[], today: string, start: string | null, end = today): AdviceStats {
+  const common = buildCommon(list, today, start, end);
   const zero = (): Record<NatijaKey, number> => ({ ijobiy: 0, filial: 0, vakolatsiz: 0, kutilmoqda: 0 });
   const natija = zero();
   const byTuman = new Map<string, Record<NatijaKey, number>>(TUMANLAR.map((t) => [t, zero()]));

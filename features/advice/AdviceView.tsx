@@ -13,7 +13,7 @@ import {
 import { exportRegionalSummary, exportWeekly, generateExcelReportByDates } from "./excel";
 import AdviceDashboard from "./AdviceDashboard";
 import { sameBranch } from "@/lib/roles";
-import { dateKey, filterByPeriod, type Period } from "@/lib/analytics";
+import { EMPTY_RANGE, dateKey, filterByPeriod, type DateRange, type Period } from "@/lib/analytics";
 
 type Alert = { text: string; type: "success" | "danger" } | null;
 type StatusFilter = "all" | "ijobiy" | "filial" | "vakolatsiz";
@@ -104,6 +104,16 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
   const [dateModal, setDateModal] = useState<{ open: boolean; start: string; end: string }>({ open: false, start: "", end: "" });
   // Analitika paneli (faqat admin): davr va tuman filtri
   const [period, setPeriod] = useState<Period>("30");
+  const [range, setRange] = useState<DateRange>(EMPTY_RANGE);
+  // Chip — sana oralig'i tozalanadi; sana tanlansa — "custom", ikkalasi bo'shatilsa — standart davr
+  const choosePeriod = (p: Period) => {
+    setPeriod(p);
+    if (p !== "custom") setRange(EMPTY_RANGE);
+  };
+  const chooseRange = (r: DateRange) => {
+    setRange(r);
+    setPeriod(r.from || r.to ? "custom" : "30");
+  };
   const [tumanFilter, setTumanFilter] = useState("");
 
   // Original applyCombinedFilters()
@@ -140,8 +150,8 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
     if (!isAdmin || !today) return [];
     const daily = getLatestDailyAppeals(all, false);
     const byTuman = tumanFilter ? daily.filter((m) => sameBranch(m.tuman, tumanFilter)) : daily;
-    return filterByPeriod(byTuman, period, today);
-  }, [all, isAdmin, today, tumanFilter, period]);
+    return filterByPeriod(byTuman, period, today, range);
+  }, [all, isAdmin, today, tumanFilter, period, range]);
 
   const manualSync = async () => {
     if (syncing) return;
@@ -293,7 +303,7 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
       </div>
 
       {isAdmin && today && (
-        <AdviceDashboard scoped={scoped} today={today} period={period} onPeriod={setPeriod}
+        <AdviceDashboard scoped={scoped} today={today} period={period} onPeriod={choosePeriod} range={range} onRange={chooseRange}
           tuman={tumanFilter} onTuman={setTumanFilter} totalAll={getLatestDailyAppeals(all, false).length}
           actions={
             <>
