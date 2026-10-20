@@ -110,6 +110,17 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
     document.documentElement.dataset.sidebar = collapsed ? "collapsed" : "open";
   }, [collapsed]);
   useEffect(() => setMobileOpen(false), [pathname]);
+  // Boshqa bo'limga o'tilganda uning guruhi ochiladi (avval qo'lda yopilgan bo'lsa ham); keyin ⌃ bilan yopish mumkin
+  useEffect(() => {
+    const id = [...SECTIONS, ...TOOL_LINKS].find((s) => "children" in s && pathname?.startsWith(s.href))?.id;
+    if (!id) return;
+    setOpenGroups((g) => {
+      if (!(id in g)) return g;
+      const next = { ...g };
+      delete next[id];
+      return next;
+    });
+  }, [pathname]);
 
   const toggle = () => {
     setCollapsed((c) => {
@@ -196,7 +207,8 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
                 </Link>
               );
             }
-            const isOpen = !!(isActive || openGroups[s.id]);
+            // Foydalanuvchi bosgan holat ustun; bosilmagan bo'lsa — faol bo'lim ochiq
+            const isOpen = openGroups[s.id] ?? !!isActive;
             return (
               <NavGroup key={s.id} id={s.id} inner={inner} tip={tip} items={s.children} isActive={!!isActive} isOpen={isOpen}
                 onToggle={() => setOpenGroups((g) => ({ ...g, [s.id]: !isOpen }))} pathname={pathname} collapsed={collapsed} />
@@ -205,7 +217,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
 
           {toolLinks.map((l) => {
             const isActive = !!pathname?.startsWith(l.href);
-            const isOpen = isActive || !!openGroups[l.id];
+            const isOpen = openGroups[l.id] ?? isActive;
             return (
               <NavGroup key={l.id} id={l.id} tip={collapsed ? l.title : undefined} items={l.children} isActive={isActive} isOpen={isOpen}
                 onToggle={() => setOpenGroups((g) => ({ ...g, [l.id]: !isOpen }))} pathname={pathname} collapsed={collapsed}

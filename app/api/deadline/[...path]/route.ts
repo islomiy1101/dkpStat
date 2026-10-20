@@ -1,15 +1,16 @@
 import { requireArea } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { isGlobalIn, sameBranch } from "@/lib/roles";
-import { loadDeadlineSheet, loadDeadlineSummary } from "@/lib/deadline-server";
-import { detailTable, filterDetails } from "@/features/deadline/aggregate";
+import { loadDeadlineSheet, loadDeadlineSummary, warmDeadline } from "@/lib/deadline-server";
+import { VILOYAT_JAMI, detailTable, filterDetails } from "@/features/deadline/aggregate";
 import { DEADLINE_LISTS, isDeadlineList } from "@/features/deadline/source";
 
 /**
  * "Rollar kesimida tahlil": /api/deadline/summary?list=…, /api/deadline/details?list=…
  * list: yakunlangan | jarayonda — Google Sheets'dagi YakunlanganArizalar / JarayondagiArizalar varaqlari.
  * Avval Django API proxy edi; endi xom qatorlar Google Sheets'dan olinib shu yerda hisoblanadi
- * (javob formati o'zgarmagan — DeadlineView avvalgidek ishlaydi).
+ * (javob formati o'zgarmagan — DeadlineView avvalgidek ishlaydi). Jamlanma — svod varaqdan,
+ * details — faqat so'ralgan tumanning qatorlari (lib/deadline-server.ts).
  * Bazani yangilash: /api/upload/deadline (faqat superadmin).
  */
 export const dynamic = "force-dynamic";
@@ -35,16 +36,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
       return NextResponse.json({ status: "success", summary }, { headers: { "Cache-Control": "no-store" } });
     }
 
-    const sheet = await loadDeadlineSheet(list, q.has("fresh"));
-    // Sahifa ochilganda fonda: xom varaqni keshga oldindan yuklab qo'yish (birinchi bosish tezroq ochilsin)
-    if (q.has("warm")) return NextResponse.json({ status: "success" }, { headers: { "Cache-Control": "no-store" } });
-    let rows = sheet.rows;
-    if (!global) rows = rows.filter((r) => sameBranch(r.tuman, u.branch));
-
+    // Sahifa ochilganda fonda: svod va sarlavhalarni keshga oldindan yuklab qo'yish (birinchi bosish tezroq ochilsin)
+    if (q.has("warm")) {
+      await warmDeadline(list);
+      return NextResponse.json({ status: "success" }, { headers: { "Cache-Control": "no-store" } });
+    }
     const tuman = q.get("tuman");
     if (!global && !sameBranch(tuman, u.branch)) {
       return NextResponse.json({ status: "error", message: "Ruxsat yo'q" }, { status: 403 });
     }
+    // Faqat kerakli tuman o'qiladi ("Viloyat jami" — butun viloyat; filial roli — doim o'z tumani)
+    const one = tuman && tuman.trim().toLowerCase() !== VILOYAT_JAMI.toLowerCase() ? tuman : null;
+    const sheet = await loadDeadlineSheet(list, global ? one : one || u.branch || null, q.has("fresh"));
+    let rows = sheet.rows;
+    if (!global) rows = rows.filter((r) => sameBranch(r.tuman, u.branch));
     const { headers, data } = detailTable(sheet, filterDetails(rows, { tuman, manba: q.get("manba"), role: q.get("role"), day: q.get("day") }));
 
     if (q.get("action") === "export") {

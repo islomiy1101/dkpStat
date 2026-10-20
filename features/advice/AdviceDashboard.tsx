@@ -2,7 +2,8 @@
 
 import { useMemo, type ReactNode } from "react";
 import type { Murojaat } from "@/lib/types";
-import { PERIODS, WEEKDAYS, periodStart, type Period } from "@/lib/analytics";
+import { PERIODS, WEEKDAYS, periodBounds, periodLabel as rangeLabel, type DateRange, type Period } from "@/lib/analytics";
+import RangeFilter from "@/components/analytics/RangeFilter";
 import {
   AreaTrend, BarList, ChartCard, Heatmap, SegmentLegend, ShareBar, StackedBarList, StatTile, fmtMin, fmtPct,
 } from "@/components/analytics/charts";
@@ -14,24 +15,27 @@ import { TUMANLAR } from "./utils";
  * Hamma ko'rsatkich davr va tuman filtridan o'tgan murojaatlardan hisoblanadi (bir kunda takrorlangan
  * fuqaro bir marta — getLatestDailyAppeals); hisobot tugmalari (actions, AdviceView'dan) ham shu filtrga bo'ysunadi.
  */
-export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman, onTuman, totalAll, actions }: {
+export default function AdviceDashboard({ scoped, today, period, onPeriod, range, onRange, tuman, onTuman, totalAll, actions }: {
   scoped: Murojaat[];
   today: string;
   period: Period;
   onPeriod: (p: Period) => void;
+  /** Ixtiyoriy sana oralig'i (period === "custom" bo'lganda) */
+  range: DateRange;
+  onRange: (r: DateRange) => void;
   tuman: string;
   onTuman: (t: string) => void;
   totalAll: number;
   /** Hisobot tugmalari — filtr qatorining o'ng tomonida */
   actions?: ReactNode;
 }) {
-  const start = periodStart(period, today);
-  const s = useMemo(() => buildAdviceStats(scoped, today, start), [scoped, today, start]);
+  const { start, end } = periodBounds(period, today, range);
+  const s = useMemo(() => buildAdviceStats(scoped, today, start, end), [scoped, today, start, end]);
   const spark = s.daily.slice(-14).map((d) => d.count);
   const dayDelta = s.today - s.yesterday;
   const pickTuman = (t: string) => onTuman(tuman === t ? "" : t);
   const peak = s.heat.peak;
-  const periodLabel = PERIODS.find((p) => p.id === period)?.label || "";
+  const periodLabel = rangeLabel(period, range);
   const pct = (n: number) => (s.total ? fmtPct(n / s.total) : "—");
 
   return (
@@ -51,6 +55,7 @@ export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman
             </button>
           ))}
         </div>
+        <RangeFilter range={range} onRange={onRange} today={today} active={period === "custom"} />
         <select className="rc-select" value={tuman} onChange={(e) => onTuman(e.target.value)} aria-label="Tuman">
           <option value="">Barcha tumanlar</option>
           {TUMANLAR.map((t) => <option key={t} value={t}>{t}</option>)}

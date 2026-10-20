@@ -16,8 +16,8 @@ export type ReceptionStats = CommonStats & {
   sifat: { passport: number; telefon: number; bosh: number; ketdiYoq: number };
 };
 
-export function buildStats(list: ReceptionMurojaat[], today: string, start: string | null): ReceptionStats {
-  const common = buildCommon(list, today, start);
+export function buildStats(list: ReceptionMurojaat[], today: string, start: string | null, end = today): ReceptionStats {
+  const common = buildCommon(list, today, start, end);
   const total = list.length;
   const share = (n: number) => (total ? n / total : 0);
 

@@ -1,7 +1,7 @@
 import {
   DEADLINE_BASE_HEADERS, DEADLINE_HEADER_ROWS, DEADLINE_LISTS, DEADLINE_LIST_IDS, colLetter, locateColumns, makeTumanResolver, toDeadlineRows,
 } from "@/features/deadline/source";
-import { SVOD_HEADERS, buildSummary, flattenSummary } from "@/features/deadline/aggregate";
+import { SVOD_HEADERS, buildSummary, flattenSummary, type SvodSpans } from "@/features/deadline/aggregate";
 import { DISTRICTS } from "@/features/deadline/model";
 
 /**
@@ -119,6 +119,7 @@ export const UPLOAD_TARGETS: Record<UploadSection, UploadTarget> = {
       source: DEADLINE_LISTS[id].sheet,
       optional: true,
       headerRows: DEADLINE_HEADER_ROWS,
+      transform: sortByTuman,
       validate: (values: CellValue[][]) => void locateColumns(values[0] || [], values[1] || []),
     })),
     derive: deriveDeadlineSvod,
@@ -134,15 +135,45 @@ export const UPLOAD_TARGETS: Record<UploadSection, UploadTarget> = {
   },
 };
 
+const resolveDistrict = makeTumanResolver(DISTRICTS.map((d) => d.name));
+
+/**
+ * Rollar kesimi: qatorlar tuman bo'yicha saralanadi (tartibi DISTRICTS bo'yicha, tanilmaganlar oxirida) —
+ * shunda har bir tuman xom varaqda bitta uzluksiz oraliqda turadi va drilldown faqat o'shani o'qiydi.
+ */
+function sortByTuman(values: CellValue[][]): CellValue[][] {
+  let tumanCol: number;
+  try {
+    tumanCol = locateColumns(values[0] || [], values[1] || []).tuman;
+  } catch {
+    return values; // sarlavha xatosini validate aytadi
+  }
+  const order = new Map(DISTRICTS.map((d, i) => [d.name, i]));
+  const rank = (r: CellValue[]) => order.get(resolveDistrict(String(r[tumanCol] ?? ""))) ?? DISTRICTS.length;
+  const data = values.slice(DEADLINE_HEADER_ROWS).map((r, i) => ({ r, k: rank(r), i }));
+  data.sort((a, b) => a.k - b.k || a.i - b.i);
+  return [...values.slice(0, DEADLINE_HEADER_ROWS), ...data.map((d) => d.r)];
+}
+
 /** Xom varaqdan tayyor jamlanma — sahifa katta varaq o'rniga shuni o'qiydi (lib/deadline-server.ts → loadSvod) */
 function deriveDeadlineSvod(p: ParsedSheet): ParsedSheet | null {
   const id = DEADLINE_LIST_IDS.find((l) => DEADLINE_LISTS[l].sheet === p.rule.target);
   const rule = id && UPLOAD_TARGETS.deadline.derived?.find((r) => r.target === DEADLINE_LISTS[id].svodSheet);
   if (!rule) return null;
   const cols = locateColumns(p.values[0] || [], p.values[1] || []);
-  const rows = toDeadlineRows(p.values.slice(DEADLINE_HEADER_ROWS), cols, makeTumanResolver(DISTRICTS.map((d) => d.name)));
+  const rows = toDeadlineRows(p.values.slice(DEADLINE_HEADER_ROWS), cols, resolveDistrict);
+  // Har bir tumanning xom varaqdagi qatorlari (saralangan — uzluksiz); varaq qatori = indeks + 1
+  const spans: SvodSpans = {};
+  p.values.forEach((r, i) => {
+    if (i < DEADLINE_HEADER_ROWS) return;
+    const t = resolveDistrict(String(r[cols.tuman] ?? ""));
+    if (!DISTRICTS.some((d) => d.name === t)) return;
+    const sp = spans[t];
+    if (sp) sp[1] = i + 1;
+    else spans[t] = [i + 1, i + 1];
+  });
   // Apps Script setValues to'rtburchak massiv talab qiladi
-  const values = flattenSummary(buildSummary(rows)).map((r) => [...r, ...Array(SVOD_HEADERS.length - r.length).fill("")]);
+  const values = flattenSummary(buildSummary(rows), spans).map((r) => [...r, ...Array(SVOD_HEADERS.length - r.length).fill("")]);
   return { rule, sourceName: rule.target, values };
 }
 

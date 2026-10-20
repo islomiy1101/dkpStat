@@ -124,7 +124,11 @@ export const keldiSoat = (keldi: string) => {
 
 /* ---------- davr filtri ---------- */
 
-export type Period = "bugun" | "7" | "30" | "oy" | "all";
+/** "custom" — foydalanuvchi tanlagan sana oralig'i (DateRange) */
+export type Period = "bugun" | "7" | "30" | "oy" | "all" | "custom";
+/** yyyy-MM-dd; bo'sh — chegarasiz */
+export type DateRange = { from: string; to: string };
+export const EMPTY_RANGE: DateRange = { from: "", to: "" };
 export const PERIODS: { id: Period; label: string }[] = [
   { id: "bugun", label: "Bugun" },
   { id: "7", label: "7 kun" },
@@ -142,12 +146,29 @@ export function periodStart(period: Period, today: string): string | null {
   return null;
 }
 
-export function filterByPeriod<T extends { sana: string }>(list: T[], period: Period, today: string) {
-  const start = periodStart(period, today);
-  if (!start) return list;
+/** Davr chegaralari: boshlanish (null — chegarasiz) va oxirgi kun */
+export function periodBounds(period: Period, today: string, range: DateRange = EMPTY_RANGE): { start: string | null; end: string } {
+  if (period === "custom") return { start: range.from || null, end: range.to || today };
+  return { start: periodStart(period, today), end: today };
+}
+
+const ddmmyyyy = (k: string) => `${k.slice(8, 10)}.${k.slice(5, 7)}.${k.slice(0, 4)}`;
+
+/** Filtr yorlig'i: chip nomi yoki "12.10.2026 – 20.10.2026" */
+export function periodLabel(period: Period, range: DateRange = EMPTY_RANGE) {
+  if (period !== "custom") return PERIODS.find((p) => p.id === period)?.label || "";
+  if (range.from && range.to) return range.from === range.to ? ddmmyyyy(range.from) : `${ddmmyyyy(range.from)} – ${ddmmyyyy(range.to)}`;
+  if (range.from) return `${ddmmyyyy(range.from)} dan`;
+  if (range.to) return `${ddmmyyyy(range.to)} gacha`;
+  return "Barchasi";
+}
+
+export function filterByPeriod<T extends { sana: string }>(list: T[], period: Period, today: string, range?: DateRange) {
+  const { start, end } = periodBounds(period, today, range);
+  if (!start && end === today && period !== "custom") return list;
   return list.filter((m) => {
     const k = sanaKey(m.sana);
-    return k >= start && k <= today;
+    return (!start || k >= start) && k <= end;
   });
 }
 
@@ -212,7 +233,8 @@ export function mahallaRows(list: BaseMurojaat[]): MahallaRow[] {
  * @param today  bugungi kun (yyyy-MM-dd)
  * @param start  davr boshi (kunlik grafik shu kundan chiziladi); null — eng birinchi murojaatdan
  */
-export function buildCommon(list: BaseMurojaat[], today: string, start: string | null): CommonStats {
+/** `end` — kunlik dinamikaning oxirgi kuni (sana oralig'i tanlanganda); "Bugun"/"Kecha" — doim haqiqiy bugun */
+export function buildCommon(list: BaseMurojaat[], today: string, start: string | null, end = today): CommonStats {
   const total = list.length;
   const share = (n: number) => (total ? n / total : 0);
 
@@ -262,7 +284,7 @@ export function buildCommon(list: BaseMurojaat[], today: string, start: string |
   const days = [...byDay.keys()].filter((k) => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
   const from = start || days[0] || today;
   const daily: DayPoint[] = [];
-  for (let k = from, guard = 0; k <= today && guard < 800; k = addDays(k, 1), guard++) daily.push({ date: k, count: byDay.get(k) || 0, avg7: 0 });
+  for (let k = from, guard = 0; k <= end && guard < 800; k = addDays(k, 1), guard++) daily.push({ date: k, count: byDay.get(k) || 0, avg7: 0 });
   daily.forEach((p, i) => {
     const win = daily.slice(Math.max(0, i - 6), i + 1);
     p.avg7 = win.reduce((a, b) => a + b.count, 0) / win.length;

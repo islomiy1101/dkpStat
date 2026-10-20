@@ -10,7 +10,7 @@ import { isSuperAdmin, parseLocalDate, TUMANLAR } from "@/features/advice/utils"
 import type { ReceptionMurojaat, ReceptionXodim } from "@/lib/types";
 import { exportByDates, exportRegionalSummary, exportWeekly } from "./excel";
 import AdminDashboard from "./AdminDashboard";
-import { dateKey, filterByPeriod, type Period } from "./stats";
+import { EMPTY_RANGE, dateKey, filterByPeriod, type DateRange, type Period } from "./stats";
 
 /**
  * "Filial qabulxonasi" — branchreceptionist/myjs.js ning React ko'rinishi.
@@ -107,6 +107,16 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
   const [tumanFilter, setTumanFilter] = useState("");
   // Davr filtri faqat analitika panelida (admin); filial ko'rinishida butun ro'yxat
   const [period, setPeriod] = useState<Period>(isAdmin ? "30" : "all");
+  const [range, setRange] = useState<DateRange>(EMPTY_RANGE);
+  // Chip — sana oralig'i tozalanadi; sana tanlansa — "custom", ikkalasi bo'shatilsa — standart davr
+  const choosePeriod = (p: Period) => {
+    setPeriod(p);
+    if (p !== "custom") setRange(EMPTY_RANGE);
+  };
+  const chooseRange = (r: DateRange) => {
+    setRange(r);
+    setPeriod(r.from || r.to ? "custom" : isAdmin ? "30" : "all");
+  };
   const [page, setPage] = useState(1);
   const [dateModal, setDateModal] = useState<{ open: boolean; start: string; end: string }>({ open: false, start: "", end: "" });
   const today = now ? dateKey(now) : "";
@@ -128,8 +138,8 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
   // Davr + tuman filtri: panel diagrammalari, ro'yxat va hisobotlar uchun umumiy
   const scoped = useMemo(() => {
     const byTuman = tumanFilter ? sorted.filter((m) => sameBranch(m.tuman, tumanFilter)) : sorted;
-    return today ? filterByPeriod(byTuman, period, today) : byTuman;
-  }, [sorted, tumanFilter, period, today]);
+    return today ? filterByPeriod(byTuman, period, today, range) : byTuman;
+  }, [sorted, tumanFilter, period, today, range]);
 
   const filtered = useMemo(() => {
     let rows = scoped;
@@ -141,7 +151,7 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
     }
     return rows;
   }, [scoped, search]);
-  useEffect(() => setPage(1), [search, tumanFilter, period]);
+  useEffect(() => setPage(1), [search, tumanFilter, period, range]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
   const curPage = Math.min(page, totalPages);
@@ -277,7 +287,7 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
       </div>
 
       {isAdmin && today && (
-        <AdminDashboard scoped={scoped} today={today} period={period} onPeriod={setPeriod}
+        <AdminDashboard scoped={scoped} today={today} period={period} onPeriod={choosePeriod} range={range} onRange={chooseRange}
           tuman={tumanFilter} onTuman={setTumanFilter} totalAll={murojaatlar.length}
           actions={
             <>
