@@ -96,12 +96,19 @@ export function detailTable(sheet: DeadlineSheet, filtered: DeadlineRow[]) {
  * Sahifa katta xom varaq o'rniga shu kichik varaqni o'qiydi. Har bir qator:
  *  - [tuman, manbaSlug, "", soni] — manba bo'yicha noyob arizalar;
  *  - [tuman, manbaSlug, rolSlug, arizaSoni, day1 … day11_plus] — byManba statistikasi
- *    (rollar jami — barcha manbalar yig'indisi, o'qishda tiklanadi).
+ *    (rollar jami — barcha manbalar yig'indisi, o'qishda tiklanadi);
+ *  - [tuman, SPAN_MARK, "", birinchi, oxirgi] — tumanning xom varaqdagi qatorlari (yuklashda tuman bo'yicha saralanadi):
+ *    drilldown va Excel butun varaqni emas, faqat shu oraliqni o'qiydi (Netlify funksiyasi vaqti cheklangan).
  */
 export const SVOD_HEADERS = ["Tuman", "Manba", "Rol", "Ariza soni", "1-kun", "2-kun", "3-kun", "4-kun", "5-kun", "6-10-kun", "11+ kun"];
+const SPAN_MARK = "#qatorlar";
 
-export function flattenSummary(data: DeadlineData): string[][] {
+/** Tuman → xom varaqdagi [birinchi, oxirgi] qator raqami (1 dan, sarlavhalar bilan) */
+export type SvodSpans = Record<string, [number, number]>;
+
+export function flattenSummary(data: DeadlineData, spans: SvodSpans = {}): string[][] {
   const out: string[][] = [SVOD_HEADERS];
+  for (const [tuman, [a, b]] of Object.entries(spans)) out.push([tuman, SPAN_MARK, "", String(a), String(b)]);
   for (const [tuman, reg] of Object.entries(data)) {
     for (const [m, n] of Object.entries(reg.manbalar || {})) out.push([tuman, m, "", String(n)]);
     for (const [m, bm] of Object.entries(reg.byManba || {})) {
@@ -122,7 +129,7 @@ export function unflattenSummary(rows: readonly (readonly string[])[]): Deadline
     const tuman = String(r[0] ?? "").trim();
     const m = String(r[1] ?? "").trim();
     const rol = String(r[2] ?? "").trim();
-    if (!tuman || !m) continue;
+    if (!tuman || !m || m === SPAN_MARK) continue;
     const reg = (out[tuman] ??= {});
     if (!rol) {
       (reg.manbalar ??= {})[m] = num(r[3]);
@@ -134,6 +141,18 @@ export function unflattenSummary(rows: readonly (readonly string[])[]): Deadline
     const tot = ((reg.rollar ??= {})[rol] ??= emptyStats());
     tot.arizaSoni = (tot.arizaSoni || 0) + (st.arizaSoni || 0);
     for (const k of DAY_KEYS) tot[k] = (tot[k] || 0) + (st[k] || 0);
+  }
+  return out;
+}
+
+/** Svod varaqdagi tumanlar qator oraliqlari (eski svod'da yo'q — bo'sh obyekt) */
+export function svodSpans(rows: readonly (readonly string[])[]): SvodSpans {
+  const out: SvodSpans = {};
+  for (const r of rows.slice(1)) {
+    if (String(r[1] ?? "").trim() !== SPAN_MARK) continue;
+    const a = Number(r[3]);
+    const b = Number(r[4]);
+    if (a > 0 && b >= a) out[String(r[0]).trim()] = [a, b];
   }
   return out;
 }

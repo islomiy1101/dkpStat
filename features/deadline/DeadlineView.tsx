@@ -116,7 +116,9 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
           headers: json.headers || [], data: json.data,
         });
       } else {
-        setDrill((d) => ({ ...d, loading: false, message: { text: "Hozircha ma'lumot topilmadi!" } }));
+        // Server xatosi (masalan, jamlanma eskirgan yoki ro'yxat juda katta) — sababi ko'rsatiladi
+        const text = json.status === "error" && json.message ? json.message : "Hozircha ma'lumot topilmadi!";
+        setDrill((d) => ({ ...d, loading: false, message: { text, error: json.status === "error" } }));
       }
     } catch {
       setDrill((d) => ({ ...d, loading: false, message: { text: "Tarmoq uzildi!", error: true } }));
@@ -136,10 +138,10 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
     try {
       const p = new URLSearchParams({ list, action: "export", tuman: tumanName, _t: String(Date.now()) });
       const res = await fetch(`${API_DETAILS}?${p}`);
-      if (!res.ok) throw new Error("Server xatosi");
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || "Server xatosi");
       downloadBlob(await res.blob(), `${tumanName.replace(/\s+/g, "_")}_${listInfo.sheet}.xlsx`);
-    } catch {
-      alert("Excel yuklab olishda xatolik yuz berdi!");
+    } catch (e) {
+      alert(`Excel yuklab olishda xatolik: ${(e as Error).message}`);
     } finally {
       setExporting(null);
     }
