@@ -105,7 +105,8 @@ const nowStr = () => {
 };
 
 /* ---------- public ---------- */
-export async function loginWithSheet(login: string, password: string, ip: string, location: string, accuracy: number) {
+/** location / accuracy — ixtiyoriy (kirishda joylashuv so'ralmaydi; jurnalda bo'sh qoladi) */
+export async function loginWithSheet(login: string, password: string, ip: string, location = "", accuracy: number | null = null) {
   if (MOCK) {
     const u = (await mockUsers()).find((x) => x.login.toLowerCase() === login.trim().toLowerCase() && x.password === password.trim());
     if (!u) return { success: false as const, message: "Login yoki parol noto'g'ri!" };
@@ -115,7 +116,7 @@ export async function loginWithSheet(login: string, password: string, ip: string
     void _p;
     const { role: _r, ...who } = user;
     void _r;
-    (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location, accuracy: String(accuracy) });
+    (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location, accuracy: accuracy == null ? "" : String(accuracy) });
     return { success: true as const, user: { ...user, role: parseRole(user.role) }, mustChange: mockMustChange(u.login, password.trim()) };
   }
   const r = await callAuthScript<{ user?: LoginUser; mustChange?: boolean }>({ action: "login", login, password, ip, location, accuracy });

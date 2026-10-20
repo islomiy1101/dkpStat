@@ -36,8 +36,8 @@ export default function ChangePasswordView({ login, fullName, forced }: { login:
               <div className="pw-notice">
                 <i className="fa-solid fa-shield-halved" />
                 <div>
-                  <b>Xavfsizlik uchun yangi parol o&apos;rnating.</b> Joriy parolingiz talablarga javob bermaydi yoki
-                  administrator tomonidan vaqtinchalik berilgan. Yangi parol o&apos;rnatmaguncha bo&apos;limlar ochilmaydi.
+                  <b>Xavfsizlik uchun o&apos;z parolingizni o&apos;rnating</b> (kamida 8 belgi). Yangi parol o&apos;rnatmaguncha
+                  bo&apos;limlar ochilmaydi.
                 </div>
               </div>
             )}
