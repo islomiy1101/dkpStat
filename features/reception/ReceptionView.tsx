@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSection, type ReceptionPayload } from "@/components/DataProvider";
+import ReportActions from "@/components/ReportActions";
+import { useReportCapture } from "@/lib/useReportCapture";
 import { useClock, fmtDate, fmtHM } from "@/lib/useClock";
 import { sameBranch } from "@/lib/roles";
 import { isSuperAdmin, parseLocalDate, TUMANLAR } from "@/features/advice/utils";
@@ -88,6 +90,10 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
   const now = useClock();
   const { session, xodimlar, murojaatlar } = data;
   const isAdmin = isSuperAdmin(session.tuman);
+  const reportRef = useRef<HTMLDivElement>(null);
+  // Rasm / Chop etish — faqat Boshqarma analitika paneli (header + dashboard). Pechat — 2 sahifa, matnli
+  // (dinamika va gavjum vaqtlar — data-print-skip, 2-sahifa — data-print-page="2"; styles/analytics.css → .print-mode)
+  const cap = useReportCapture(reportRef, { fileName: () => `DKP_Namangan_Filial_qabulxonasi_${fmtDate(new Date())}.png`, background: "#f1f5f9", windowWidth: 1400, pagedPrint: true });
   const ownTuman = isAdmin ? "" : session.tuman;
 
   const [form, setForm] = useState<Form>({ ...EMPTY_FORM, tuman: ownTuman });
@@ -251,18 +257,22 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
 
   return (
     <>
+      <div ref={reportRef} className={isAdmin ? `print-page rc-report${cap.capturing ? " capturing" : ""}` : undefined}>
       <div className="header-panel">
         <div>
           <h2 className="rc-title">Filial qabulxonasi — murojaatlar monitoringi</h2>
           <span className="rc-tuman-badge">{isAdmin ? `Boshqarma | ${session.fio || "Viloyat bo'yicha"}` : `Tuman: ${session.tuman}`}</span>
         </div>
         <div className="status-container">
-          <button className={`btn-sync${syncing ? " spinning" : ""}`} onClick={onSync} disabled={syncing}>
+          <button className={`btn-sync no-print${syncing ? " spinning" : ""}`} onClick={onSync} disabled={syncing} data-html2canvas-ignore>
             <svg viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" /></svg>
             Sinxronizatsiya
           </button>
           <div className="realtime-indicator"><span className="dot" /> Real vaqt</div>
           <div className="live-clock">{now ? `${fmtDate(now)} ${fmtHM(now)}` : "--.--.---- --:--"}</div>
+          {isAdmin && (
+            <ReportActions onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} printBusy={cap.printing} disabled={!today} hidden={cap.capturing} />
+          )}
         </div>
       </div>
 
@@ -287,6 +297,7 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
           }
         />
       )}
+      </div>
 
       {!isAdmin && (
         <div className="dashboard-grid">

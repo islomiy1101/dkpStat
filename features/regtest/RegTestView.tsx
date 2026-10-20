@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { DURATION_SEC, FIO_ERROR, JARAYON, QUESTION_COUNT, isFio, isPinfl, normalizeFio, type Exam, type ExamResult } from "./config";
+import { DURATION_SEC, FIO_ERROR, JARAYON, MAX_VIOLATIONS, QUESTION_COUNT, isFio, isPinfl, normalizeFio, type Exam, type ExamResult } from "./config";
 
 /**
  * Registratsiya → "Test yechish" — registratorlar testi.
@@ -10,11 +10,44 @@ import { DURATION_SEC, FIO_ERROR, JARAYON, QUESTION_COUNT, isFio, isPinfl, norma
  *  1) F.I.O. + PINFL → "Testni boshlash" (server 20 ta tasodifiy savol beradi, variantlari aralash);
  *  2) test: 40 daqiqa, savollar bo'yicha yurish, javoblar sessionStorage'da (sahifa yangilansa ham saqlanadi);
  *  3) yakunlash (yoki vaqt tugashi) → serverda baholanadi → natija oynasi.
+ * Test full screen'da o'tadi: undan chiqish, vkladka yoki oyna almashtirish — qoidabuzarlik (savollar yopiladi,
+ * MAX_VIOLATIONS marta bo'lsa test avtomatik yakunlanadi). Brauzer Ctrl+T yoki yon panelni to'liq to'sa olmaydi —
+ * shuning uchun ular aniqlanadi va natijaga yoziladi.
  */
 type Answers = (number | null)[];
 
 const LETTERS = ["A", "B", "C", "D"];
 const storeKey = (e: Exam) => `dkp_regtest_${e.user.login}_${e.startedAt}`;
+const violationsKey = (e: Exam) => `${storeKey(e)}_v`;
+
+/* ---------- Full screen (Safari — webkit prefiksi) ---------- */
+type FsDoc = Document & { webkitFullscreenElement?: Element | null; webkitFullscreenEnabled?: boolean; webkitExitFullscreen?: () => Promise<void> };
+type FsEl = HTMLElement & { webkitRequestFullscreen?: () => Promise<void> };
+type KbNav = Navigator & { keyboard?: { lock?: (keys?: string[]) => Promise<void>; unlock?: () => void } };
+
+const fsElement = () => document.fullscreenElement ?? (document as FsDoc).webkitFullscreenElement ?? null;
+/** iPhone Safari kabi full screen'ni qo'llamaydigan brauzerda faqat vkladka/oyna almashtirish kuzatiladi */
+const fsSupported = () => !!(document.fullscreenEnabled || (document as FsDoc).webkitFullscreenEnabled);
+
+/** Faqat foydalanuvchi bosgan paytda chaqiriladi (brauzer talabi) */
+async function enterFullscreen(el: HTMLElement | null) {
+  if (!el || fsElement()) return;
+  try {
+    const f = el as FsEl;
+    await (f.requestFullscreen ? f.requestFullscreen({ navigationUI: "hide" }) : f.webkitRequestFullscreen?.());
+    // Chrome/Edge: Esc faqat bosib turilganda chiqaradi, Ctrl+T/W/N sahifaga keladi (pastda bloklanadi)
+    await (navigator as KbNav).keyboard?.lock?.();
+  } catch {}
+}
+
+function exitFullscreen() {
+  try {
+    (navigator as KbNav).keyboard?.unlock?.();
+  } catch {}
+  if (!fsElement()) return;
+  const d = document as FsDoc;
+  void (document.exitFullscreen ? document.exitFullscreen() : d.webkitExitFullscreen?.())?.catch(() => {});
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const mmss = (sec: number) => `${pad(Math.floor(sec / 60))}:${pad(sec % 60)}`;
@@ -41,6 +74,10 @@ export default function RegTestView({ login }: { login: string }) {
   const [answers, setAnswers] = useState<Answers>([]);
   const [result, setResult] = useState<ExamResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Bo'limdan chiqib ketilsa — full screen ham yopiladi
+  useEffect(() => () => exitFullscreen(), []);
 
   // Sahifa yangilangan bo'lsa — boshlangan testni davom ettirish
   useEffect(() => {
@@ -60,18 +97,28 @@ export default function RegTestView({ login }: { login: string }) {
 
   const begin = async (pinfl: string, fio: string) => {
     setError(null);
-    const { exam } = await post<{ exam: Exam }>("/api/regtest/start", { pinfl, fio });
+    // "Testni boshlash" bosilgan paytda (await'dan oldin) — aks holda brauzer full screen'ga ruxsat bermaydi
+    const fs = enterFullscreen(rootRef.current);
+    let exam: Exam;
+    try {
+      ({ exam } = await post<{ exam: Exam }>("/api/regtest/start", { pinfl, fio }));
+    } catch (e) {
+      await fs;
+      exitFullscreen();
+      throw e;
+    }
     setExam(exam);
     setAnswers(exam.questions.map(() => null));
     setPhase("exam");
   };
 
   const finish = useCallback(
-    async (final: Answers) => {
+    async (final: Answers, violations: number) => {
       if (!exam) return;
-      const { result } = await post<{ result: ExamResult }>("/api/regtest/finish", { answers: final });
+      const { result } = await post<{ result: ExamResult }>("/api/regtest/finish", { answers: final, violations });
       try {
         sessionStorage.removeItem(storeKey(exam));
+        sessionStorage.removeItem(violationsKey(exam));
       } catch {}
       setResult(result);
       setPhase("result");
@@ -80,6 +127,7 @@ export default function RegTestView({ login }: { login: string }) {
   );
 
   const backHome = () => {
+    exitFullscreen();
     setExam(null);
     setResult(null);
     setAnswers([]);
@@ -87,7 +135,7 @@ export default function RegTestView({ login }: { login: string }) {
   };
 
   return (
-    <div className="sec-regtest">
+    <div className="sec-regtest" ref={rootRef}>
       <header className="rt-toolbar">
         <div className="rt-badge"><i className="fa-solid fa-clipboard-question" /></div>
         <div>
@@ -98,7 +146,7 @@ export default function RegTestView({ login }: { login: string }) {
 
       {phase === "loading" && <div className="rt-loading"><i className="fa-solid fa-spinner fa-spin" /> Yuklanmoqda…</div>}
       {phase === "start" && <StartScreen login={login} error={error} onStart={begin} />}
-      {phase === "exam" && exam && <ExamScreen exam={exam} answers={answers} setAnswers={setAnswers} onFinish={finish} />}
+      {phase === "exam" && exam && <ExamScreen exam={exam} answers={answers} setAnswers={setAnswers} onFinish={finish} rootRef={rootRef} />}
       {phase === "result" && result && <ResultModal result={result} onClose={backHome} />}
     </div>
   );
@@ -181,6 +229,7 @@ function StartScreen({ login, error, onStart }: { login: string; error: string |
           <li><i className="fa-solid fa-list-ol" /> {QUESTION_COUNT} ta savol — har safar tasodifiy, variantlar ham aralash</li>
           <li><i className="fa-solid fa-stopwatch" /> Umumiy vaqt — {DURATION_SEC / 60} daqiqa; tugasa test avtomatik yakunlanadi</li>
           <li><i className="fa-solid fa-circle-check" /> Har bir savolda bitta to&apos;g&apos;ri javob; javobni yakunlashgacha o&apos;zgartirish mumkin</li>
+          <li><i className="fa-solid fa-expand" /> Test to&apos;liq ekranda o&apos;tadi; undan chiqish, boshqa vkladka yoki oynaga o&apos;tish — qoidabuzarlik, {MAX_VIOLATIONS}-marta bo&apos;lsa test yakunlanadi</li>
         </ul>
         <button className="rt-btn rt-btn-primary rt-btn-lg" disabled={!valid || !fioOk || busy}>
           {busy ? <><i className="fa-solid fa-spinner fa-spin" /> Tayyorlanmoqda…</> : <><i className="fa-solid fa-play" /> Testni boshlash</>}
@@ -193,11 +242,12 @@ function StartScreen({ login, error, onStart }: { login: string; error: string |
 
 /* ---------------- 2. Test ---------------- */
 
-function ExamScreen({ exam, answers, setAnswers, onFinish }: {
+function ExamScreen({ exam, answers, setAnswers, onFinish, rootRef }: {
   exam: Exam;
   answers: Answers;
   setAnswers: React.Dispatch<React.SetStateAction<Answers>>;
-  onFinish: (a: Answers) => Promise<void>;
+  onFinish: (a: Answers, violations: number) => Promise<void>;
+  rootRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const [cur, setCur] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -224,12 +274,16 @@ function ExamScreen({ exam, answers, setAnswers, onFinish }: {
     } catch {}
   }, [answers, exam]);
 
+  const { violations, secure } = useExamGuard(exam, sending);
+  const violationsRef = useRef(violations);
+  violationsRef.current = violations;
+
   const submit = useCallback(async () => {
     if (sending) return;
     setSending(true);
     setErr(null);
     try {
-      await onFinish(answersRef.current);
+      await onFinish(answersRef.current, violationsRef.current);
     } catch (e) {
       setErr((e as Error).message);
       setSending(false);
@@ -240,6 +294,11 @@ function ExamScreen({ exam, answers, setAnswers, onFinish }: {
   useEffect(() => {
     if (left === 0 && !sending && !err) void submit();
   }, [left, sending, err, submit]);
+
+  // Qoidabuzarlik chegarasi — avtomatik yakunlash
+  useEffect(() => {
+    if (violations >= MAX_VIOLATIONS && !sending && !err) void submit();
+  }, [violations, sending, err, submit]);
 
   // Test davomida sahifadan chiqishda ogohlantirish
   useEffect(() => {
@@ -269,9 +328,10 @@ function ExamScreen({ exam, answers, setAnswers, onFinish }: {
   }, [choose, confirm, sending, q, total]);
 
   const pct = useMemo(() => Math.round((answered / total) * 100), [answered, total]);
+  const guarded = !secure && !sending && violations < MAX_VIOLATIONS;
 
   return (
-    <div className="rt-exam">
+    <div className={`rt-exam${guarded ? " is-guarded" : ""}`}>
       <aside className="rt-side">
         <div className={`rt-timer${left <= 300 ? " is-low" : ""}`}>
           <span>Qolgan vaqt</span>
@@ -382,8 +442,103 @@ function ExamScreen({ exam, answers, setAnswers, onFinish }: {
           </div>
         </div>
       )}
+
+      {guarded && (
+        <div className="rt-guard" role="alertdialog" aria-modal="true" aria-labelledby="rt-guard-title">
+          <div className="rt-dialog">
+            <div className="rt-dialog-icon is-bad"><i className="fa-solid fa-shield-halved" /></div>
+            <h3 id="rt-guard-title">{violations > 0 ? `Qoidabuzarlik: ${violations} / ${MAX_VIOLATIONS}` : "Test to'liq ekranda davom etadi"}</h3>
+            <p>
+              {violations > 0 ? (
+                <>Test oynasidan chiqildi (to&apos;liq ekrandan chiqish, boshqa vkladka yoki oynaga o&apos;tish). Bu natijaga yoziladi.{" "}
+                  <b className="t-bad">{MAX_VIOLATIONS}-marta takrorlansa test avtomatik yakunlanadi.</b></>
+              ) : (
+                <>Test davomida boshqa vkladka, oyna yoki brauzer yordamchisini ochish taqiqlanadi.</>
+              )}
+            </p>
+            <div className="rt-dialog-actions">
+              <button className="rt-btn rt-btn-primary" onClick={() => void enterFullscreen(rootRef.current)} autoFocus>
+                <i className="fa-solid fa-expand" /> Testga qaytish
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
+}
+
+const isSecure = (blurred = false) =>
+  (!fsSupported() || !!fsElement()) && !document.hidden && !blurred && document.hasFocus();
+
+/**
+ * Test oynasi nazorati: full screen'dan chiqish, vkladka yashirilishi yoki oyna fokusini yo'qotish —
+ * qoidabuzarlik (faqat "xavfsiz" holatdan chiqilganda sanaladi; sahifa yangilanib full screen'siz ochilsa — sanalmaydi).
+ * Soni sessionStorage'da — sahifa yangilansa ham saqlanadi. Test davomida nusxalash, kontekst menyu va
+ * brauzer tezkor tugmalari (Ctrl+C/P/S/U/T/N/W…) bloklanadi.
+ */
+function useExamGuard(exam: Exam, paused: boolean) {
+  const [violations, setViolations] = useState(() => {
+    try {
+      return Number(sessionStorage.getItem(violationsKey(exam))) || 0;
+    } catch {
+      return 0;
+    }
+  });
+  const [secure, setSecure] = useState(() => isSecure());
+  const secureRef = useRef(secure);
+  const lastHit = useRef(0);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(violationsKey(exam), String(violations));
+    } catch {}
+  }, [violations, exam]);
+
+  useEffect(() => {
+    if (paused) return;
+    const check = (blurred = false) => {
+      const ok = isSecure(blurred);
+      // Bir harakatdan bir nechta hodisa (Esc → fullscreenchange + blur) — bitta qoidabuzarlik
+      if (secureRef.current && !ok && Date.now() - lastHit.current > 1500) {
+        lastHit.current = Date.now();
+        setViolations((v) => v + 1);
+      }
+      secureRef.current = ok;
+      setSecure(ok);
+    };
+    const onChange = () => check();
+    const onBlur = () => check(true);
+    check();
+    document.addEventListener("fullscreenchange", onChange);
+    document.addEventListener("webkitfullscreenchange", onChange);
+    document.addEventListener("visibilitychange", onChange);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("focus", onChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onChange);
+      document.removeEventListener("webkitfullscreenchange", onChange);
+      document.removeEventListener("visibilitychange", onChange);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("focus", onChange);
+    };
+  }, [paused]);
+
+  useEffect(() => {
+    const block = (e: Event) => e.preventDefault();
+    const keys = (e: KeyboardEvent) => {
+      if (e.key === "F12" || ((e.ctrlKey || e.metaKey) && /^[acfnpstuwx]$/i.test(e.key))) e.preventDefault();
+    };
+    const evs = ["contextmenu", "copy", "cut", "paste", "dragstart", "selectstart"] as const;
+    evs.forEach((n) => document.addEventListener(n, block));
+    document.addEventListener("keydown", keys);
+    return () => {
+      evs.forEach((n) => document.removeEventListener(n, block));
+      document.removeEventListener("keydown", keys);
+    };
+  }, []);
+
+  return { violations, secure };
 }
 
 /* ---------------- 3. Natija ---------------- */
@@ -402,6 +557,7 @@ function ResultModal({ result, onClose }: { result: ExamResult; onClose: () => v
     ["To'g'ri javoblar", result.correct, "good"],
     ["Noto'g'ri javoblar", result.wrong, "bad"],
     ["Javobsiz", result.unanswered],
+    ...(result.violations > 0 ? [["Qoidabuzarlik", `${result.violations} marta`, "bad"] as [string, React.ReactNode, string]] : []),
     ["To'plangan ball", <b key="b">{result.score}</b>, "score"],
   ];
   return (
@@ -417,7 +573,10 @@ function ResultModal({ result, onClose }: { result: ExamResult; onClose: () => v
           </div>
           <div>
             <b>{result.correct} / {result.total}</b>
-            <span>{result.status === "Vaqt tugadi" ? "Vaqt tugagani sababli yakunlandi" : "Test yakunlandi"}</span>
+            <span>
+              {result.status === "Qoidabuzarlik" ? "Qoidabuzarlik sababli avtomatik yakunlandi"
+                : result.status === "Vaqt tugadi" ? "Vaqt tugagani sababli yakunlandi" : "Test yakunlandi"}
+            </span>
           </div>
         </div>
         {result.saveError && (

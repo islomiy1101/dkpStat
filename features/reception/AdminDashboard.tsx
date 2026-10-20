@@ -32,6 +32,12 @@ export default function AdminDashboard({ scoped, today, period, onPeriod, tuman,
 
   return (
     <div className="rc-dash">
+      {/* Pechat: filtrlar o'rniga qisqa ma'lumot qatori */}
+      <div className="rc-print-only rc-print-meta">
+        <span>Davr: <b>{periodLabel}</b></span>
+        <span>Hudud: <b>{tuman || "Viloyat bo'yicha"}</b></span>
+        <span>Murojaatlar: <b>{s.total}</b> / {totalAll}</span>
+      </div>
       {/* FILTRLAR */}
       <div className="rc-filters">
         <div className="rc-chips" role="group" aria-label="Davr">
@@ -46,7 +52,7 @@ export default function AdminDashboard({ scoped, today, period, onPeriod, tuman,
           {TUMANLAR.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         {(tuman || period !== "30") && (
-          <button type="button" className="rc-clear" onClick={() => { onTuman(""); onPeriod("30"); }}>
+          <button type="button" className="rc-clear no-print" data-html2canvas-ignore onClick={() => { onTuman(""); onPeriod("30"); }}>
             <i className="fa-solid fa-xmark" aria-hidden /> Tozalash
           </button>
         )}
@@ -54,7 +60,7 @@ export default function AdminDashboard({ scoped, today, period, onPeriod, tuman,
           <b>{s.total}</b> / {totalAll} ta murojaat
         </span>
         {actions && (
-          <div className="rc-actions">
+          <div className="rc-actions no-print" data-html2canvas-ignore>
             <span className="rc-actions-label"><i className="fa-solid fa-file-excel" aria-hidden /> Hisobot:</span>
             {actions}
           </div>
@@ -72,8 +78,8 @@ export default function AdminDashboard({ scoped, today, period, onPeriod, tuman,
         <StatTile icon="fa-solid fa-rotate-left" label="Qayta murojaat" value={String(s.qayta)} note={s.total ? `${fmtPct(s.qayta / s.total)} murojaatlar` : undefined} />
       </div>
 
-      {/* DINAMIKA */}
-      <div className="rc-row rc-row-trend">
+      {/* DINAMIKA — pechatga tushmaydi */}
+      <div className="rc-row rc-row-trend" data-print-skip>
         <ChartCard title="Kunlik murojaatlar dinamikasi" sub={`${s.daily.length} kun · eng ko'p: ${Math.max(0, ...s.daily.map((d) => d.count))} ta bir kunda`}>
           <AreaTrend points={s.daily} />
         </ChartCard>
@@ -128,7 +134,12 @@ export default function AdminDashboard({ scoped, today, period, onPeriod, tuman,
         </ChartCard>
       </div>
 
-      {/* XODIMLAR · SIFAT */}
+      {/* XODIMLAR · SIFAT — pechatda 2-sahifa */}
+      <div className="rc-print-page" data-print-page="2">
+      <div className="rc-print-only rc-print-cont">
+        <b>Filial qabulxonasi</b> — hisobot davomi · {tuman || "Viloyat bo'yicha"} · {periodLabel}
+        <span>2 / 2</span>
+      </div>
       <div className="rc-row rc-row-staff">
         <ChartCard title="Xodimlar reytingi — top 10" sub="Eng ko'p fuqaro qabul qilgan xodimlar">
           {s.xodimlar.length === 0 ? (
@@ -169,6 +180,7 @@ export default function AdminDashboard({ scoped, today, period, onPeriod, tuman,
             </div>
           </div>
         </ChartCard>
+      </div>
       </div>
     </div>
   );

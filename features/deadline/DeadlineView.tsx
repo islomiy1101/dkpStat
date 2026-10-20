@@ -1,8 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSection } from "@/components/DataProvider";
 import { useClock, fmtDate, fmtTime, downloadBlob } from "@/lib/useClock";
+import { useReportCapture } from "@/lib/useReportCapture";
+import ReportActions from "@/components/ReportActions";
 import {
   ROWS, SECTIONS, SUB_COLS, computeTable, getCell, fmtNum, roleDisplayName, slugify,
   type DrillCtx, type RowCells,
@@ -13,6 +15,9 @@ import { DEADLINE_LISTS, type DeadlineList } from "./source";
 const GROUP_KEY = "dkp_group_states";
 const DEFAULT_GROUPS: Record<string, boolean> = { manba: true, filial: true, boshqarma: true, dkp: true, agentlik: true };
 const API_DETAILS = "/api/deadline/details";
+/** Telefon kartalaridagi bo'lim nomlari (qisqa) va kunlar ustuni sarlavhalari */
+const SEC_SHORT: Record<string, string> = { manba: "Manba", filial: "Filial", boshqarma: "Boshqarma", dkp: "DKP", agentlik: "Agentlik" };
+const SUB_SHORT = ["Jami", "1", "2", "3", "4", "5", "6–10", "11+"];
 
 const PdfIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
@@ -47,6 +52,15 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
   const [localLoading, setLocalLoading] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [drill, setDrill] = useState<Drill>({ open: false, loading: false, title: "", headers: [], data: [], message: null });
+  const reportRef = useRef<HTMLDivElement>(null);
+  const fileName = useCallback(() => `${listInfo.sheet}_${fmtDate(new Date())}.png`, [listInfo.sheet]);
+  // Rasm/pechat — faqat ochiq guruhlar; keng jadval canvas va sahifa kengligiga moslanadi
+  const cap = useReportCapture(reportRef, { fileName });
+
+  // Xom varaq (modal va Excel uchun) fonda keshga yuklab qo'yiladi — birinchi katak bosilganda kutish kamayadi
+  useEffect(() => {
+    fetch(`${API_DETAILS}?${new URLSearchParams({ list, warm: "1" })}`, { cache: "no-store" }).catch(() => {});
+  }, [list]);
 
   // localStorage'dagi ochiq/yopiq guruhlar (original bilan bir xil kalit)
   useEffect(() => {
@@ -155,9 +169,9 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
   };
 
   return (
-    <div className="sec-deadline">
+    <div className="sec-deadline print-page">
       {showMainLoader && (
-        <div id="main-loader">
+        <div id="main-loader" className="no-print">
           <div className="spinner" />
           <h3 style={{ color: "#0284c7", marginTop: 10, fontWeight: 600, fontSize: 13 }}>
             Ma&apos;lumotlar yuklanmoqda...
@@ -184,14 +198,21 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
             <span id="current-time" style={{ fontWeight: 700, color: "#0f172a" }}>{now ? fmtTime(now) : "--:--:--"}</span>
           </div>
 
-          <button onClick={refreshPageData} className="btn-action-panel" title="Ma'lumotlarni yangilash">
-            <i className="fa-solid fa-rotate" /> Yangilash
-          </button>
+          <ReportActions
+            onRefresh={refreshPageData} refreshing={localLoading || slot.refreshing}
+            onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} disabled={!summary}
+          />
         </div>
       </header>
 
-      <div className="dashboard-content-wrapper">
-        <div id="local-loader" className="local-loader" style={{ display: localLoading ? "flex" : "none" }}>
+      {cap.error && (
+        <div role="status" className="no-print" onClick={cap.clearError} style={{ margin: "0 0 10px", padding: "8px 14px", borderRadius: 10, background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e3a8a", fontSize: 12.5, cursor: "pointer" }}>
+          <i className="fa-solid fa-circle-info" style={{ marginRight: 8 }} />{cap.error}
+        </div>
+      )}
+
+      <div ref={reportRef} className={`dashboard-content-wrapper print-fit${cap.capturing ? " capturing" : ""}`}>
+        <div id="local-loader" className="local-loader no-print" data-html2canvas-ignore style={{ display: localLoading ? "flex" : "none" }}>
           <div className="spinner-sm" />
           <span style={{ color: "#0284c7", marginTop: 10, fontWeight: 600, fontSize: 13 }}>Ma&apos;lumotlar yangilanmoqda...</span>
         </div>
@@ -214,7 +235,7 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
                   <h3>{fmtNum(getCell(jami, `cell-sec-total-${k.id}`).value)}</h3>
                 </div>
               </div>
-              <button onClick={() => onPdf(k.id)} className="kpi-pdf-btn" title="PDF yuklash">
+              <button onClick={() => onPdf(k.id)} className="kpi-pdf-btn no-print" title="PDF yuklash" data-html2canvas-ignore>
                 <PdfIcon />
                 <span>PDF</span>
               </button>
@@ -300,7 +321,7 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
                     <td className="freeze-name">
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%" }}>
                         <span>{r.name}</span>
-                        <button onClick={() => downloadTumanExcel(r.name)} title="Excel yuklash"
+                        <button onClick={() => downloadTumanExcel(r.name)} title="Excel yuklash" className="no-print" data-html2canvas-ignore
                           style={{ background: "none", border: "none", cursor: "pointer", color: "#0284c7", pointerEvents: exporting === r.name ? "none" : "auto" }}>
                           <i className={exporting === r.name ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-file-excel"} style={{ fontSize: 13 }} />
                         </button>
@@ -327,10 +348,99 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
             </tbody>
           </table>
         </div>
+
+        {/* TELEFON: jadval o'rniga hudud kartalari (rasm va pechat — baribir jadval) */}
+        <div className="m-cards dl-cards">
+          <div className="dl-manba-filter" role="group" aria-label="Manba filtri">
+            {SECTIONS[0].roles.map((role) => {
+              const slug = slugify(role);
+              return (
+                <button key={slug} type="button" className={`dl-filter-chip${manbaFilters.includes(slug) ? " active" : ""}`} onClick={() => toggleManbaFilter(slug)}>
+                  {role}
+                </button>
+              );
+            })}
+          </div>
+          {ROWS.map((r) => {
+            const cells = table[r.name] || {};
+            const secs = SECTIONS.filter((sec) => groupStates[sec.id] !== false);
+            return (
+              <details key={r.name} className={`dl-card${r.isJami ? " is-total" : ""}`} open={r.isJami || undefined}>
+                <summary>
+                  <div className="dl-card-title">
+                    <span className="dl-card-n">{r.no}</span>
+                    <b>{r.name}</b>
+                    <button type="button" className="dl-card-excel" title="Excel yuklash" disabled={exporting === r.name}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); downloadTumanExcel(r.name); }}>
+                      <i className={exporting === r.name ? "fa-solid fa-spinner fa-spin" : "fa-solid fa-file-excel"} />
+                    </button>
+                    <i className="fa-solid fa-chevron-down dl-card-chev" aria-hidden />
+                  </div>
+                  <div className="dl-card-totals">
+                    {secs.map((sec) => (
+                      <span key={sec.id} className={`dl-pill ${sec.themeClass}`}>
+                        {SEC_SHORT[sec.id]} <b>{fmtNum(getCell(cells, `cell-sec-total-${sec.id}`).value)}</b>
+                      </span>
+                    ))}
+                  </div>
+                </summary>
+                {secs.map((sec) => (
+                  <section key={sec.id} className="dl-sec">
+                    <h4 className={sec.themeClass}>
+                      <span>{sec.title}</span>
+                      <b>{fmtNum(getCell(cells, `cell-sec-total-${sec.id}`).value)}</b>
+                    </h4>
+                    {sec.isSingleCol ? (
+                      <div className="dl-chips">
+                        {sec.roles.map((role) => {
+                          const c = getCell(cells, `cell-${slugify(role)}-0`);
+                          const clickable = c.value > 0 && !!c.ctx;
+                          return (
+                            <button key={role} type="button" disabled={!clickable}
+                              className={`dl-chip${c.value ? "" : " is-zero"}${c.expired ? " expired-cell" : ""}`}
+                              onClick={clickable ? () => openDrilldownModal(c.ctx!) : undefined}>
+                              <span>{role}</span> <b>{fmtNum(c.value)}</b>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="dl-roles">
+                        <div className="dl-days dl-days-head">{SUB_SHORT.map((h) => <span key={h}>{h}</span>)}</div>
+                        {sec.roles.map((role) => {
+                          const slug = slugify(role);
+                          const isJami = role.toLowerCase().includes("jami");
+                          return (
+                            <div key={slug} className={`dl-role${isJami ? " is-jami" : ""}`}>
+                              <div className="dl-role-name">{roleDisplayName(role, sec.id)}</div>
+                              <div className="dl-days">
+                                {SUB_COLS.map((_, i) => {
+                                  const c = getCell(cells, `cell-${slug}-${i}`);
+                                  const clickable = c.value > 0 && !!c.ctx;
+                                  return (
+                                    <button key={i} type="button" disabled={!clickable}
+                                      className={`dl-day${i === 0 ? " is-sum" : ""}${c.value ? "" : " is-zero"}${c.expired ? " expired-cell" : ""}`}
+                                      onClick={clickable ? () => openDrilldownModal(c.ctx!) : undefined}>
+                                      {fmtNum(c.value)}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </details>
+            );
+          })}
+        </div>
       </div>
 
       {/* DRILLDOWN MODAL */}
-      <div id="drilldown-modal" className="modal-overlay" style={{ display: drill.open ? "flex" : "none" }}>
+      <div id="drilldown-modal" className="modal-overlay no-print" style={{ display: drill.open ? "flex" : "none" }}>
         <div className="modal-content">
           <div className="modal-header">
             <h3 id="drilldown-title" style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
@@ -340,7 +450,7 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
               <i className="fa-solid fa-xmark" />
             </button>
           </div>
-          <div style={{ padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+          <div className="modal-toolbar">
             <span id="drilldown-loading" style={{ color: "#0284c7", fontWeight: 600, display: drill.loading ? "block" : "none" }}>
               <i className="fa-solid fa-spinner fa-spin" style={{ marginRight: 6 }} />Yuklanmoqda...
             </span>
@@ -351,7 +461,7 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
             </button>
           </div>
           <div className="modal-body">
-            <table className="excel-table" style={{ width: "100%", borderCollapse: "collapse" }} id="drilldown-table">
+            <table className="excel-table drill-table" id="drilldown-table">
               <thead>
                 <tr id="drilldown-thead">
                   {drill.headers.map((k, i) => (

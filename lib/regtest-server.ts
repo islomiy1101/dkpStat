@@ -4,7 +4,7 @@ import { cached } from "./cache";
 import { MOCK, readMock } from "./mock";
 import { regtestQuestionRows, regtestResultRows, regtestSaveResult, regtestStartRow } from "./auth-server";
 import {
-  DURATION_SEC, GRACE_SEC, JARAYON, QUESTION_COUNT, RETAKE_HOURS, UNLOCK_SEC,
+  DURATION_SEC, GRACE_SEC, JARAYON, MAX_VIOLATIONS, QUESTION_COUNT, RETAKE_HOURS, UNLOCK_SEC,
   type Exam, type ExamResult, type ExamUser, type ResultRow,
 } from "@/features/regtest/config";
 
@@ -173,7 +173,7 @@ export class ExamError extends Error {
 const mockFinished = new Set<string>();
 
 /** Baholash: javob — ko'rsatilgan variant indeksi (0..3) yoki null */
-export async function finishExam(u: Who, raw: string | undefined, answers: unknown, now = Date.now()): Promise<ExamResult> {
+export async function finishExam(u: Who, raw: string | undefined, answers: unknown, violations: unknown, now = Date.now()): Promise<ExamResult> {
   const t = decodeToken(raw);
   if (!t) throw new ExamError("Faol test topilmadi yoki muddati o'tgan. Testni qaytadan boshlang.");
   if (t.login !== u.login) throw new ExamError("Bu test boshqa foydalanuvchiga tegishli.");
@@ -197,6 +197,7 @@ export async function finishExam(u: Who, raw: string | undefined, answers: unkno
   });
 
   const spentSec = Math.max(0, Math.min(DURATION_SEC, Math.round((now - t.startedAt) / 1000)));
+  const vCount = Math.max(0, Math.min(99, Math.floor(Number(violations)) || 0));
   const result: ExamResult = {
     user: examUser(u, t.pinfl, t.fio),
     jarayon: JARAYON,
@@ -208,12 +209,13 @@ export async function finishExam(u: Who, raw: string | undefined, answers: unkno
     wrong,
     unanswered,
     score: correct,
-    status: now > t.deadline ? "Vaqt tugadi" : "Yakunlandi",
+    status: vCount >= MAX_VIOLATIONS ? "Qoidabuzarlik" : now > t.deadline ? "Vaqt tugadi" : "Yakunlandi",
+    violations: vCount,
   };
 
   const row = {
     testId: t.jti, login: u.login, pinfl: t.pinfl, fio: t.fio || "",
-    total: result.total, correct, wrong, unanswered, score: result.score, spentSec, status: result.status,
+    total: result.total, correct, wrong, unanswered, score: result.score, spentSec, status: result.status, violations: vCount,
   };
   // Token qayta yuborilsa (cookie nusxalanib) natija berilmaydi — aks holda javoblarni almashtirib,
   // ball o'zgarishidan to'g'ri javoblarni topib olish mumkin bo'lardi
@@ -285,7 +287,7 @@ export function parseResults(rows: string[][], now = Date.now()): ResultRow[] {
   const c = {
     date: col("Sana"), time: col("Vaqt"), login: col("Login"), pinfl: col("PINFL"), fio: col("F.I.O.", "FIO", "Ф.И.О.", "F.I.SH", "Xodim FIO"), total: col("Savol soni"),
     correct: col("To'g'ri"), wrong: col("Noto'g'ri"), unanswered: col("Javobsiz"), score: col("Ball"),
-    spent: col("Sarflangan vaqt"), status: col("Holat"), id: col("Test ID"),
+    spent: col("Sarflangan vaqt"), status: col("Holat"), violations: col("Qoidabuzarlik"), id: col("Test ID"),
   };
   const str = (r: string[], i: number) => (i >= 0 ? String(r[i] ?? "").trim() : "");
   const num = (r: string[], i: number) => Number(str(r, i).replace(/[\s ]/g, "").replace(",", ".")) || 0;
@@ -294,7 +296,7 @@ export function parseResults(rows: string[][], now = Date.now()): ResultRow[] {
     .map((r) => ({
       date: str(r, c.date), time: str(r, c.time), login: str(r, c.login), pinfl: str(r, c.pinfl).replace(/^'/, ""), fio: str(r, c.fio),
       total: num(r, c.total), correct: num(r, c.correct), wrong: num(r, c.wrong), unanswered: num(r, c.unanswered),
-      score: num(r, c.score), spentSec: num(r, c.spent), status: str(r, c.status), testId: str(r, c.id),
+      score: num(r, c.score), spentSec: num(r, c.spent), status: str(r, c.status), violations: num(r, c.violations), testId: str(r, c.id),
     }))
     .filter((r) => /^\d{14}$/.test(r.pinfl))
     // Boshlangan, lekin muddati o'tib ham yakunlanmagan (oyna yopilgan) — "Yakunlanmagan"

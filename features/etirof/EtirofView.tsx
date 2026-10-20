@@ -1,8 +1,10 @@
 "use client";
 
-import { Fragment, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { useSection } from "@/components/DataProvider";
 import { downloadBlob, fmtDate, fmtHM } from "@/lib/useClock";
+import { useReportCapture } from "@/lib/useReportCapture";
+import ReportActions from "@/components/ReportActions";
 import {
   ETIROF_PAGES, flatCols, isGroup, parseNum,
   type EtirofCol, type EtirofPage, type EtirofRow, type EtirofSvod,
@@ -12,6 +14,7 @@ import {
  * "E'tirof" bo'limchasi: SVOD jadvali (sheet'dagi ko'rinishda, data-bar'lar bilan).
  * Tuman nomi bosilsa — o'sha tumanning xom qatorlari Excel'da; "Rasm" — hisobot kartasi PNG;
  * "Chop etish" — A4 albom, faqat hisobot kartasi (styles/etirof.css → @media print).
+ * Telefonda (≤ 768 px) jadval o'rniga har bir hudud — alohida karta (SvodCards); rasm va pechat — baribir jadval.
  */
 export default function EtirofView({ page }: { page: EtirofPage }) {
   const slot = useSection("etirof");
@@ -21,30 +24,10 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
   const error = (entry && "error" in entry ? entry.error : null) || (!svod ? slot.error : null);
 
   const reportRef = useRef<HTMLDivElement>(null);
-  const [capturing, setCapturing] = useState(false);
-  const [busyImg, setBusyImg] = useState(false);
   const [exporting, setExporting] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-
-  const saveImage = async () => {
-    const el = reportRef.current;
-    if (!el) return;
-    setBusyImg(true);
-    setCapturing(true);
-    // Sticky va gorizontal scroll o'chirilgan holat chizilishini kutish
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(el, { scale: 3, backgroundColor: "#ffffff", useCORS: true, logging: false, windowWidth: 1400 });
-      canvas.toBlob((b) => b && downloadBlob(b, `Etirof_${page}_${fmtDate(new Date())}.png`), "image/png");
-    } catch (e) {
-      console.error("Rasm xatolik:", e);
-      setNotice("Rasmni saqlab bo'lmadi.");
-    } finally {
-      setCapturing(false);
-      setBusyImg(false);
-    }
-  };
+  const fileName = useCallback(() => `Etirof_${page}_${fmtDate(new Date())}.png`, [page]);
+  const cap = useReportCapture(reportRef, { fileName, windowWidth: 1400, maxScale: 3 });
 
   const exportTuman = async (name: string) => {
     if (exporting) return;
@@ -67,7 +50,7 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
   };
 
   return (
-    <div className="sec-etirof" style={accentVars(def.accent)}>
+    <div className="sec-etirof print-page" style={accentVars(def.accent)}>
       <header className="et-toolbar">
         <div className="et-toolbar-title">
           <div className="et-badge"><i className={def.icon} /></div>
@@ -79,17 +62,10 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
             </span>
           </div>
         </div>
-        <div className="et-actions">
-          <button className="et-btn" onClick={() => slot.refresh(true)} disabled={slot.refreshing} title="Google Sheets'dan qayta o'qish">
-            <i className={`fa-solid fa-rotate${slot.refreshing ? " fa-spin" : ""}`} /> <span>Yangilash</span>
-          </button>
-          <button className="et-btn" onClick={saveImage} disabled={!svod || busyImg} title="Jadvalni rasm (PNG) sifatida yuklab olish">
-            <i className={`fa-solid ${busyImg ? "fa-spinner fa-spin" : "fa-image"}`} /> <span>Rasm</span>
-          </button>
-          <button className="et-btn et-btn-primary" onClick={() => window.print()} disabled={!svod} title="Chop etish (A4 albom)">
-            <i className="fa-solid fa-print" /> <span>Chop etish</span>
-          </button>
-        </div>
+        <ReportActions
+          onRefresh={() => slot.refresh(true)} refreshing={slot.refreshing}
+          onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} disabled={!svod}
+        />
       </header>
 
       {error && (
@@ -97,9 +73,9 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
           <i className="fa-solid fa-circle-exclamation" /> Ma&apos;lumotni olib bo&apos;lmadi: {error}
         </div>
       )}
-      {notice && (
-        <div className="et-alert" role="status" onClick={() => setNotice(null)}>
-          <i className="fa-solid fa-circle-info" /> {notice}
+      {(notice || cap.error) && (
+        <div className="et-alert" role="status" onClick={() => (setNotice(null), cap.clearError())}>
+          <i className="fa-solid fa-circle-info" /> {notice || cap.error}
         </div>
       )}
 
@@ -110,7 +86,7 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
       {svod && (
         <>
           <p className="et-hint"><i className="fa-solid fa-file-excel" /> Tuman nomini bosing — o&apos;sha tuman bo&apos;yicha ro&apos;yxat Excel faylda yuklanadi.</p>
-          <div ref={reportRef} className={`et-report${capturing ? " capturing" : ""}`}>
+          <div ref={reportRef} className={`et-report${cap.capturing ? " capturing" : ""}`}>
             <div className="et-report-head">
               <h1><Rich text={def.heading} /></h1>
               <h2>МАЪЛУМОТ</h2>
@@ -119,6 +95,7 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
             <div className="et-table-wrap">
               <SvodTable page={page} svod={svod} exporting={exporting} onExport={exportTuman} />
             </div>
+            <SvodCards page={page} svod={svod} exporting={exporting} onExport={exportTuman} />
           </div>
         </>
       )}
@@ -130,7 +107,7 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
 function accentVars(hex: string) {
   const n = parseInt(hex.slice(1), 16);
   const rgb = `${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}`;
-  return { "--et-accent": hex, "--et-soft": `rgba(${rgb}, 0.07)`, "--et-soft2": `rgba(${rgb}, 0.14)` } as React.CSSProperties;
+  return { "--et-accent": hex, "--rpt-accent": hex, "--et-soft": `rgba(${rgb}, 0.07)`, "--et-soft2": `rgba(${rgb}, 0.14)` } as React.CSSProperties;
 }
 
 /** "{r:qizil} oddiy {b:ko'k}" → rangli bo'laklar */
@@ -148,12 +125,15 @@ function Rich({ text, date }: { text: string; date?: string }) {
 
 const fmtCell = (s: string) => s || "–";
 
-function SvodTable({ page, svod, exporting, onExport }: {
+type SvodProps = {
   page: EtirofPage;
   svod: EtirofSvod;
   exporting: string | null;
   onExport: (name: string) => void;
-}) {
+};
+
+/** Jadval va kartalar uchun umumiy: ustunlar, qiymat klassi va data-bar uzunligi */
+function useSvodCells(page: EtirofPage, svod: EtirofSvod) {
   const def = ETIROF_PAGES[page];
   const cols = useMemo(() => flatCols(def.head), [def]);
   // Bar uzunligi: ustundagi eng katta mutlaq qiymatga nisbatan (jami qatorisiz)
@@ -161,35 +141,46 @@ function SvodTable({ page, svod, exporting, onExport }: {
     () => cols.map((c, i) => (c.bar ? Math.max(1, ...svod.rows.map((r) => Math.abs(parseNum(r.cells[i])))) : 1)),
     [cols, svod]
   );
-  const hasGroups = def.head.some(isGroup);
-  const rs = hasGroups ? 2 : 1;
-
-  const cell = (c: EtirofCol, i: number, r: EtirofRow, total: boolean) => {
+  const value = (c: EtirofCol, i: number, r: EtirofRow, total: boolean) => {
     const raw = r.cells[i];
     const v = parseNum(raw);
-    const cls = ["et-num", c.tone && `tone-${c.tone}`, c.bold && "is-bold", v === 0 && /^0([.,]0+)?%?$/.test(raw.trim()) && "is-zero"]
+    const tone = [c.tone && `tone-${c.tone}`, c.bold && "is-bold", v === 0 && /^0([.,]0+)?%?$/.test(raw.trim()) && "is-zero"]
       .filter(Boolean)
       .join(" ");
     // Kamida 2% (CSS da min-width) — html2canvas 0 px kenglikdagi gradientda yiqiladi
     const w = c.bar && !total && raw && v !== 0 ? Math.max(2, Math.min(100, (Math.abs(v) / max[i]) * 100)) : 0;
+    const bar = w > 0 ? `bar-${v < 0 ? "neg" : c.bar}` : "";
+    return { text: fmtCell(raw), tone, w, bar };
+  };
+  return { def, cols, value };
+}
+
+/** Tuman nomi — bosilsa Excel. Eksport lotincha nom bo'yicha (xom varaqlarda tumanlar lotincha), ko'rinishda — kirillcha */
+function TumanButton({ r, exporting, onExport }: { r: EtirofRow; exporting: string | null; onExport: (name: string) => void }) {
+  const key = r.latin || r.name;
+  return (
+    <button type="button" className="et-tuman" onClick={() => onExport(key)} disabled={!!exporting} title={`${r.name} bo'yicha Excel yuklab olish`}>
+      <span>{r.name}</span>
+      <i className={`fa-solid ${exporting === key ? "fa-spinner fa-spin" : "fa-file-excel"}`} aria-hidden />
+    </button>
+  );
+}
+
+function SvodTable({ page, svod, exporting, onExport }: SvodProps) {
+  const { def, cols, value } = useSvodCells(page, svod);
+  const hasGroups = def.head.some(isGroup);
+  const rs = hasGroups ? 2 : 1;
+
+  const cell = (c: EtirofCol, i: number, r: EtirofRow, total: boolean) => {
+    const v = value(c, i, r, total);
     return (
-      <td key={c.col} className={cls}>
-        {w > 0 && <span className={`et-bar bar-${v < 0 ? "neg" : c.bar}`} style={{ width: `${w}%` }} aria-hidden />}
-        <span className="et-val">{fmtCell(raw)}</span>
+      <td key={c.col} className={`et-num${v.tone ? ` ${v.tone}` : ""}`}>
+        {v.w > 0 && <span className={`et-bar ${v.bar}`} style={{ width: `${v.w}%` }} aria-hidden />}
+        <span className="et-val">{v.text}</span>
       </td>
     );
   };
-
-  // Eksport lotincha nom bo'yicha (xom varaqlarda tumanlar lotincha), ko'rinishda — kirillcha
-  const nameBtn = (r: EtirofRow) => {
-    const key = r.latin || r.name;
-    return (
-      <button type="button" className="et-tuman" onClick={() => onExport(key)} disabled={!!exporting} title={`${r.name} bo'yicha Excel yuklab olish`}>
-        <span>{r.name}</span>
-        <i className={`fa-solid ${exporting === key ? "fa-spinner fa-spin" : "fa-file-excel"}`} aria-hidden />
-      </button>
-    );
-  };
+  const nameBtn = (r: EtirofRow) => <TumanButton r={r} exporting={exporting} onExport={onExport} />;
 
   return (
     <table className="et-table">
@@ -239,5 +230,48 @@ function SvodTable({ page, svod, exporting, onExport }: {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** Telefon ko'rinishi: har bir hudud — karta, ichida guruhlar va "ko'rsatkich — qiymat" qatorlari */
+function SvodCards({ page, svod, exporting, onExport }: SvodProps) {
+  const { def, cols, value } = useSvodCells(page, svod);
+  const idx = useMemo(() => new Map(cols.map((c, i) => [c.col, i])), [cols]);
+
+  const item = (c: EtirofCol, r: EtirofRow, total: boolean) => {
+    const v = value(c, idx.get(c.col)!, r, total);
+    return (
+      <div key={c.col} className="et-kv">
+        <span className={`et-kv-label${c.headTone ? ` head-${c.headTone}` : ""}`}><Rich text={c.label} date={svod.headDates[c.col]} /></span>
+        <b className={`et-kv-val${v.tone ? ` ${v.tone}` : ""}`}>{v.text}</b>
+        {v.w > 0 && <span className="et-kv-bar" aria-hidden><i className={v.bar} style={{ width: `${v.w}%` }} /></span>}
+      </div>
+    );
+  };
+
+  const card = (r: EtirofRow, total: boolean) => (
+    <article key={total ? "total" : r.n} className={`et-card${total ? " is-total" : ""}`}>
+      <header className="et-card-head">
+        {!total && <span className="et-card-n">{r.n}</span>}
+        <TumanButton r={r} exporting={exporting} onExport={onExport} />
+      </header>
+      {def.head.map((h, gi) =>
+        isGroup(h) ? (
+          <section key={gi} className="et-card-group">
+            <h4><Rich text={h.group} /></h4>
+            {h.cols.map((c) => item(c, r, total))}
+          </section>
+        ) : (
+          item(h, r, total)
+        )
+      )}
+    </article>
+  );
+
+  return (
+    <div className="m-cards et-cards">
+      {svod.total && card(svod.total, true)}
+      {svod.rows.map((r) => card(r, false))}
+    </div>
   );
 }

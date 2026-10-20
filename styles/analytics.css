@@ -265,3 +265,56 @@
 @media (max-width: 1100px) {
   :is(.sec-reception, .sec-advice) .rc-row-2 { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Rasm (PNG) va Chop etish — Boshqarma paneli (lib/useReportCapture.ts) */
+:is(.sec-reception, .sec-advice) .rc-report.capturing { width: 1360px; padding: 12px; background: #f1f5f9; }
+:is(.sec-reception, .sec-advice) .rc-report.capturing .rc-tile { transform: none; }
+
+
+/* ---------- Chop etish: 2 ta A4 albom sahifa, matnli (lib/useReportCapture.ts → pagedPrint) ----------
+ * `print-mode` pechat oynasi ochilganda qo'yiladi: tartib A4 kengligida, har bir sahifa o'lchanib --p1/--p2-zoom bilan sig'diriladi.
+ * 1-sahifa: sarlavha, ma'lumot qatori, KPI, birinchi diagramma qatori; 2-sahifa — [data-print-page="2"]. */
+:is(.sec-reception, .sec-advice) .rc-print-only { display: none; }
+:is(.sec-reception, .sec-advice) .rc-report.print-mode { width: 281mm; padding: 0; background: #fff; color: #0f172a; zoom: 1 !important; }
+:is(.sec-reception, .sec-advice) .print-mode :is([data-print-skip], .rc-filters, .no-print, .rpt-actions, .realtime-indicator, .rc-mini-btn) { display: none !important; }
+:is(.sec-reception, .sec-advice) .print-mode > .header-panel,
+:is(.sec-reception, .sec-advice) .print-mode .rc-dash > :not(.rc-print-page) { zoom: var(--p1-zoom, 1); }
+:is(.sec-reception, .sec-advice) .print-mode .rc-print-page {
+  zoom: var(--p2-zoom, 1); display: flex; flex-direction: column; gap: 10px; break-before: page; page-break-before: always;
+}
+
+:is(.sec-reception, .sec-advice) .print-mode > .header-panel {
+  flex-direction: row; flex-wrap: nowrap; align-items: flex-end; justify-content: space-between;
+  margin: 0 0 10px; padding: 0 2px 8px; border: 0; border-bottom: 2px solid #1d4ed8; border-radius: 0; box-shadow: none; background: #fff;
+}
+:is(.sec-reception, .sec-advice) .print-mode > .header-panel h2 { font-size: 19px; color: #0f172a !important; }
+:is(.sec-reception, .sec-advice) .print-mode .status-container { flex-wrap: nowrap; }
+:is(.sec-reception, .sec-advice) .print-mode .live-clock { background: none; border: 0; padding: 0; font-size: 12px; color: #475569; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-print-meta {
+  display: flex; gap: 22px; padding: 7px 12px; border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
+  font-size: 12px; color: #475569;
+}
+:is(.sec-reception, .sec-advice) .print-mode .rc-print-meta b { color: #0f172a; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-print-cont {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 12px;
+  padding: 0 2px 8px; border-bottom: 2px solid #1d4ed8; font-size: 12.5px; color: #475569;
+}
+:is(.sec-reception, .sec-advice) .print-mode .rc-print-cont b { font-size: 15px; color: #0f172a; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-dash { gap: 10px; margin: 0; }
+:is(.sec-reception, .sec-advice) .print-mode :is(.rc-tile, .rc-chart-card) {
+  box-shadow: none; border: 1px solid #dbe2ea; transform: none; break-inside: avoid; page-break-inside: avoid;
+}
+:is(.sec-reception, .sec-advice) .print-mode .rc-tile { border-top: 3px solid #93c5fd; padding: 10px 12px 9px; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-chart-card { padding: 12px 14px; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-staff-wrap { overflow: visible; }
+/* A4 kengligi (~1060 px) kichik ekran media query'larini yoqmasin — desktop tartibi saqlanadi */
+:is(.sec-reception, .sec-advice) .print-mode .rc-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; gap: 8px; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-row { gap: 10px; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-row-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-row-staff { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important; }
+:is(.sec-reception, .sec-advice) .print-mode .rc-row-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+
+@media print {
+  :is(.sec-reception, .sec-advice):has(.print-mode) { padding: 0 !important; min-height: 0 !important; background: #fff !important; }
+  :is(.sec-reception, .sec-advice):has(.print-mode) .container { max-width: none !important; margin: 0 !important; padding: 0 !important; }
+}

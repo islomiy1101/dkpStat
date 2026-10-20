@@ -52,7 +52,7 @@ const BACKUP_SUFFIX = "__backup";
  */
 const IMPORT_TARGETS = {
   // "<PAYMENT_SHEET_ID>": ["TolovBaza"],
-  // "<DEADLINE_SHEET_ID>": ["YakunlanganArizalar", "JarayondagiArizalar"],
+  // "<DEADLINE_SHEET_ID>": ["YakunlanganArizalar", "JarayondagiArizalar", "YakunlanganSvod", "JarayondagiSvod"],
 };
 
 /**
@@ -65,10 +65,10 @@ const REGTEST_RESULTS_SHEET = "Натижалар";
 /** Bitta PINFL — shuncha soatda bir marta (boshlangan test bo'yicha) */
 const REGTEST_RETAKE_HOURS = 2;
 /** Sayt shu raqamga qarab skript eskirganini aniqlaydi (ping → regtestVersion) */
-const REGTEST_VERSION = 4;
+const REGTEST_VERSION = 5;
 // Registratordan faqat login (u tizimga kirib beradi); qolgani — test yechgan xodimniki (PINFL)
 const REGTEST_HEADERS = ["Sana", "Vaqt", "Login", "PINFL", "F.I.O.", "Savol soni", "To'g'ri", "Noto'g'ri", "Javobsiz", "Ball",
-  "Sarflangan vaqt", "Holat", "Test ID"];
+  "Sarflangan vaqt", "Holat", "Qoidabuzarlik", "Test ID"];
 
 function doPost(e) {
   let result;
@@ -603,6 +603,7 @@ function regtestSave_(row) {
       "Ball": Number(row.score) || 0,
       "Sarflangan vaqt": Number(row.spentSec) || 0,
       "Holat": clean_(row.status),
+      "Qoidabuzarlik": Number(row.violations) || 0,
       "Test ID": id,
     };
 

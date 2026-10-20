@@ -121,61 +121,6 @@
   100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 
-.sec-payment .refresh-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface);
-  color: var(--text-main);
-  border: 1px solid var(--border);
-  padding: 8px 14px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-  transition: all 0.2s ease;
-}
-
-.sec-payment .refresh-btn:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
-}
-
-/* =========================================
-   EKSPORT (PDF / JPG) TUGMALARI
-========================================= */
-.sec-payment .export-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  padding: 3px;
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-}
-
-.sec-payment .action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: transparent;
-  border: none;
-  padding: 6px 11px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  color: var(--text-muted);
-}
-
-.sec-payment .action-btn.btn-jpg:hover { background: #f0fdf4; color: #16a34a; }
-.sec-payment .action-btn.btn-pdf:hover { background: #fef2f2; color: #dc2626; }
-.sec-payment .action-btn:active { transform: scale(0.96); }
-.sec-payment .action-btn.exporting { opacity: 0.6; pointer-events: none; }
-
 /* =========================================
    1-VA 2-QATOR STATISTIKA KARTALARI
 ========================================= */
@@ -982,9 +927,6 @@
   }
 
   .sec-payment .live-clock-card { justify-content: space-between; width: 100%; }
-  .sec-payment .export-actions { display: grid; grid-template-columns: 1fr 1fr; }
-  .sec-payment .action-btn { justify-content: center; }
-  .sec-payment .refresh-btn { justify-content: center; width: 100%; }
 
   .sec-payment .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1241,4 +1183,36 @@
     text-align: left;
     flex-shrink: 0;
   }
+}
+/* Planshet: jadval gorizontal scroll bilan, sarlavha o'raladi */
+@media (max-width: 1024px) {
+  .sec-payment .dashboard-header { flex-wrap: wrap; gap: 10px; }
+  .sec-payment .header-right-panel { flex-wrap: wrap; }
+}
+@media (max-width: 768px) {
+  .sec-payment .rpt-actions { width: 100%; }
+  .sec-payment .rpt-btn { flex: 1; justify-content: center; }
+}
+/* Kichik telefon */
+@media (max-width: 480px) {
+  .sec-payment { padding: 8px; }
+  .sec-payment .dashboard-header h1 { font-size: 15.5px; }
+  .sec-payment .stat-val { font-size: 14px; }
+  .sec-payment .stat-icon-wrapper { width: 30px; height: 30px; }
+}
+
+/* Pechat: A4 albom, kompyuter jadvali (mobil kartalar emas), filtr/modal/yuklagichsiz */
+@media print {
+  .sec-payment { padding: 0; min-height: 0; background: #fff; }
+  .sec-payment .dashboard-wrapper { zoom: var(--print-zoom, 1); }
+  .sec-payment .loader-overlay,
+  .sec-payment .modal-backdrop { display: none !important; }
+  .sec-payment .table-container { overflow: visible !important; }
+  .sec-payment .desktop-table-view { display: block !important; overflow: visible !important; }
+  .sec-payment .mobile-cards-container { display: none !important; }
+  .sec-payment .dashboard-wrapper { break-after: avoid; page-break-after: avoid; }
+  .sec-payment .dashboard-card { break-inside: avoid; box-shadow: none; }
+  .sec-payment .stat-card { box-shadow: none; break-inside: avoid; }
+  .sec-payment .dashboard-header { flex-direction: row; align-items: center; }
+  .sec-payment .stats-grid { grid-template-columns: repeat(5, 1fr) !important; }
 }

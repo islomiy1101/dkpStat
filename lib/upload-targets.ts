@@ -1,4 +1,8 @@
-import { DEADLINE_BASE_HEADERS, DEADLINE_HEADER_ROWS, DEADLINE_LISTS, DEADLINE_LIST_IDS, colLetter, locateColumns } from "@/features/deadline/source";
+import {
+  DEADLINE_BASE_HEADERS, DEADLINE_HEADER_ROWS, DEADLINE_LISTS, DEADLINE_LIST_IDS, colLetter, locateColumns, makeTumanResolver, toDeadlineRows,
+} from "@/features/deadline/source";
+import { SVOD_HEADERS, buildSummary, flattenSummary } from "@/features/deadline/aggregate";
+import { DISTRICTS } from "@/features/deadline/model";
 
 /**
  * "Bazaga yuklash" — har bir bo'lim uchun alohida .xlsx fayl va u yoziladigan Google Sheets varaqlari.
@@ -39,6 +43,12 @@ export type UploadTarget = {
    * Apps Script har bir qismni o'rniga yozadi. Zaxira nusxa olinmaydi — Google Sheets'ning 10 mln katak chegarasi.
    */
   chunked?: boolean;
+  /**
+   * Fayldagi varaqdan hisoblanadigan qo'shimcha varaq (masalan, tayyor svod): o'z varag'idan keyin yoziladi.
+   * `derived` — ularning qoidalari (server qismlarni shu ro'yxat bo'yicha ham qabul qiladi).
+   */
+  derive?: (p: ParsedSheet) => ParsedSheet | null;
+  derived?: SheetRule[];
   /** Barcha kataklar matn sifatida yoziladi (gviz ustun turini adashtirib, raqamli ID'larni yo'qotmasligi uchun) */
   asText?: boolean;
 };
@@ -111,10 +121,30 @@ export const UPLOAD_TARGETS: Record<UploadSection, UploadTarget> = {
       headerRows: DEADLINE_HEADER_ROWS,
       validate: (values: CellValue[][]) => void locateColumns(values[0] || [], values[1] || []),
     })),
+    derive: deriveDeadlineSvod,
+    derived: DEADLINE_LIST_IDS.map((id) => ({
+      target: DEADLINE_LISTS[id].svodSheet,
+      source: DEADLINE_LISTS[id].svodSheet,
+      validate: (values: CellValue[][]) => {
+        if ((values[0] || []).join("|") !== SVOD_HEADERS.join("|")) throw new Error("svod sarlavhasi noto'g'ri");
+      },
+    })),
     chunked: true,
     asText: true,
   },
 };
+
+/** Xom varaqdan tayyor jamlanma — sahifa katta varaq o'rniga shuni o'qiydi (lib/deadline-server.ts → loadSvod) */
+function deriveDeadlineSvod(p: ParsedSheet): ParsedSheet | null {
+  const id = DEADLINE_LIST_IDS.find((l) => DEADLINE_LISTS[l].sheet === p.rule.target);
+  const rule = id && UPLOAD_TARGETS.deadline.derived?.find((r) => r.target === DEADLINE_LISTS[id].svodSheet);
+  if (!rule) return null;
+  const cols = locateColumns(p.values[0] || [], p.values[1] || []);
+  const rows = toDeadlineRows(p.values.slice(DEADLINE_HEADER_ROWS), cols, makeTumanResolver(DISTRICTS.map((d) => d.name)));
+  // Apps Script setValues to'rtburchak massiv talab qiladi
+  const values = flattenSummary(buildSummary(rows)).map((r) => [...r, ...Array(SVOD_HEADERS.length - r.length).fill("")]);
+  return { rule, sourceName: rule.target, values };
+}
 
 /** Qismlab yuklash: bitta so'rovdagi qatorlar (~80 ustun × 2000 qator ≈ 2–3 MB JSON) va server chegarasi */
 export const UPLOAD_CHUNK_ROWS = 2000;
@@ -148,7 +178,7 @@ export function parseWorkbook(XLSX: typeof import("xlsx"), wb: import("xlsx").Wo
     const want = target.sheets.map((r) => r.source).join(", ");
     throw new Error(`Faylda kerakli varaq topilmadi (${want}). Mavjud varaqlar: ${wb.SheetNames.join(", ")}`);
   }
-  return found.map(({ rule, name }) => {
+  const parsed = found.map(({ rule, name }): ParsedSheet => {
     const raw = XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name], { header: 1, raw: true, defval: "", blankrows: false });
     let values: CellValue[][] = raw.map((row) =>
       (rule.maxCols ? row.slice(0, rule.maxCols) : row).map((v) => {
@@ -176,5 +206,9 @@ export function parseWorkbook(XLSX: typeof import("xlsx"), wb: import("xlsx").Wo
     // Apps Script setValues to'rtburchak massiv talab qiladi
     for (const r of values) while (r.length < width) r.push("");
     return { rule, sourceName: name, values };
+  });
+  return parsed.flatMap((p) => {
+    const d = target.derive?.(p);
+    return d ? [p, d] : [p];
   });
 }

@@ -36,6 +36,12 @@ export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman
 
   return (
     <div className="rc-dash">
+      {/* Pechat: filtrlar o'rniga qisqa ma'lumot qatori */}
+      <div className="rc-print-only rc-print-meta">
+        <span>Davr: <b>{periodLabel}</b></span>
+        <span>Hudud: <b>{tuman || "Viloyat bo'yicha"}</b></span>
+        <span>Murojaatlar: <b>{s.total}</b> / {totalAll}</span>
+      </div>
       {/* FILTRLAR */}
       <div className="rc-filters">
         <div className="rc-chips" role="group" aria-label="Davr">
@@ -50,7 +56,7 @@ export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman
           {TUMANLAR.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
         {(tuman || period !== "30") && (
-          <button type="button" className="rc-clear" onClick={() => { onTuman(""); onPeriod("30"); }}>
+          <button type="button" className="rc-clear no-print" data-html2canvas-ignore onClick={() => { onTuman(""); onPeriod("30"); }}>
             <i className="fa-solid fa-xmark" aria-hidden /> Tozalash
           </button>
         )}
@@ -58,7 +64,7 @@ export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman
           <b>{s.total}</b> / {totalAll} ta murojaat
         </span>
         {actions && (
-          <div className="rc-actions">
+          <div className="rc-actions no-print" data-html2canvas-ignore>
             <span className="rc-actions-label"><i className="fa-solid fa-file-excel" aria-hidden /> Hisobot:</span>
             {actions}
           </div>
@@ -77,8 +83,8 @@ export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman
         <StatTile icon="fa-solid fa-stopwatch" label="O'rtacha qabul vaqti" value={s.avgMin === null ? "—" : String(Math.round(s.avgMin))} unit={s.avgMin === null ? undefined : "daq"} note="keldi → ketdi" />
       </div>
 
-      {/* DINAMIKA */}
-      <div className="rc-row rc-row-trend">
+      {/* DINAMIKA — pechatga tushmaydi */}
+      <div className="rc-row rc-row-trend" data-print-skip>
         <ChartCard title="Kunlik murojaatlar dinamikasi" sub={`${s.daily.length} kun · eng ko'p: ${Math.max(0, ...s.daily.map((d) => d.count))} ta bir kunda`}>
           <AreaTrend points={s.daily} />
         </ChartCard>
@@ -119,7 +125,12 @@ export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman
         </ChartCard>
       </div>
 
-      {/* TURLAR · MAHALLALAR */}
+      {/* TURLAR · MAHALLALAR — pechatda 2-sahifa */}
+      <div className="rc-print-page" data-print-page="2">
+      <div className="rc-print-only rc-print-cont">
+        <b>Maslahat burchagi</b> — hisobot davomi · {tuman || "Viloyat bo'yicha"} · {periodLabel}
+        <span>2 / 2</span>
+      </div>
       <div className="rc-row rc-row-2">
         <ChartCard title="Murojaat turlari" sub="Kelishdan maqsad matni bo'yicha turkumlangan">
           <BarList
@@ -150,6 +161,7 @@ export default function AdviceDashboard({ scoped, today, period, onPeriod, tuman
             emptyText="Manzil (MFY) kiritilmagan"
           />
         </ChartCard>
+      </div>
       </div>
     </div>
   );

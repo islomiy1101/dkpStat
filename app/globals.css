@@ -182,7 +182,8 @@ html[data-sidebar="collapsed"] .sb-child { justify-content: center; padding: 8px
 /* Original "*" qoidasi body'ga ham border-box berardi — wrapper'ga ham beramiz */
 .sec-deadline, .sec-payment, .sec-advice { box-sizing: border-box; }
 /* Deadline: original body = 100vh, overflow hidden */
-.sec-deadline { height: calc(100vh - var(--topbar-h)) !important; }
+/* TV masshtabida (--tv-zoom) balandlik ham zoom'ga ko'payadi — bo'linadi */
+.sec-deadline { height: calc((100vh - var(--topbar-h)) / var(--tv-zoom, 1)) !important; }
 /* Advice: login oynasi originalda butun ekran markazida — endi kontent maydoni markazida */
 .sec-advice #login-page { left: calc(50% + var(--sb-w) / 2) !important; }
 @media (max-width: 900px) {
@@ -318,3 +319,54 @@ html[data-sidebar="collapsed"] .sb-user-info { display: none; }
 .sb-btn-danger:hover:not(:disabled) { background: #b91c1c; }
 @keyframes sb-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes sb-pop { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+/* ---------- Hisobot sahifalari: umumiy tugmalar (components/ReportActions.tsx) ---------- */
+.rpt-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.rpt-btn {
+  display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border-radius: 8px;
+  border: 1px solid #cbd5e1; background: #fff; color: #0f172a; font: inherit; font-weight: 600; font-size: 12.5px;
+  cursor: pointer; white-space: nowrap; transition: background 0.15s, border-color 0.15s;
+}
+.rpt-btn:hover:not(:disabled) { background: #f8fafc; border-color: #94a3b8; }
+.rpt-btn:disabled { opacity: 0.55; cursor: default; }
+.rpt-btn-primary { background: var(--rpt-accent, #0284c7); border-color: var(--rpt-accent, #0284c7); color: #fff; }
+.rpt-btn-primary:hover:not(:disabled) { background: var(--rpt-accent, #0284c7); border-color: var(--rpt-accent, #0284c7); filter: brightness(1.08); }
+@media (max-width: 600px) {
+  .rpt-btn { padding: 0 11px; }
+  .rpt-btn span { display: none; }
+}
+
+/*
+ * Katta ekran / TV: hisobot sahifalari px'da yozilgan — 1920 dan keng ekranda butun bo'lim masshtablanadi
+ * (1920 — oddiy monitor va Full HD televizor, ko'rinish o'zgarmaydi). Rasm olishda va pechatda masshtab 1.
+ */
+@media (min-width: 2200px) { :root { --tv-zoom: 1.2; } }
+@media (min-width: 2800px) { :root { --tv-zoom: 1.5; } }
+@media (min-width: 3600px) { :root { --tv-zoom: 2; } }
+.print-page { zoom: var(--tv-zoom, 1); }
+html.rpt-capturing .print-page { zoom: 1; }
+
+/* ---------- Pechat: hisobot sahifasi (.print-page) — qobiq yashiriladi, ranglar saqlanadi ---------- */
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  body:has(.print-page) { background: #fff !important; }
+  body:has(.print-page) .app-sidebar,
+  body:has(.print-page) .app-topbar,
+  body:has(.print-page) .app-scrim { display: none !important; }
+  body:has(.print-page) .app-main { margin: 0 !important; padding: 0 !important; }
+  .print-page * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-page .rpt-actions,
+  .print-page .no-print { display: none !important; }
+  .print-page thead { display: table-header-group; }
+  .print-page tr { break-inside: avoid; page-break-inside: avoid; }
+  /* Keng jadval — sahifa kengligiga sig'diriladi (lib/useReportCapture.ts → --print-zoom) */
+  .print-page { zoom: 1; }
+  .print-fit { zoom: var(--print-zoom, 1); }
+  /* Rasmga olingan sahifalar (useReportCapture → printPages): har bir rasm — bitta sahifa, to'liq sig'adi */
+  body:has(.rpt-print-sheet) > :not(.rpt-print-sheet) { display: none !important; }
+  body:has(.rpt-print-sheet) { background: #fff !important; }
+  .rpt-print-sheet { display: block !important; }
+  .rpt-print-sheet img { display: block; width: 100%; height: 193mm; object-fit: contain; break-after: page; page-break-after: always; }
+  .rpt-print-sheet img:last-child { break-after: auto; page-break-after: auto; }
+}
+.rpt-print-sheet { display: none; }

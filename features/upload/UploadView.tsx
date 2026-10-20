@@ -229,7 +229,7 @@ function UploadCard({ target }: { target: UploadTarget }) {
 
       {preview && (
         <div className="up-preview">
-          {preview.map((p) => (
+          {preview.filter((p) => !target.derived?.includes(p.rule)).map((p) => (
             <div key={p.rule.target} className="up-sheet">
               <div className="up-sheet-head">
                 <span><i className="fa-solid fa-table" /> {p.sourceName} → <b>{p.rule.target}</b></span>

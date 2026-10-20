@@ -6,7 +6,7 @@ import { slugify } from "./model";
  * shu yerda (serverda) hisoblanadi. Har bir qator: bitta ariza bitta rolda necha kun turgani
  * (keng jadvaldan source.ts → toDeadlineRows orqali olinadi).
  */
-export type DeadlineRow = { ariza: string; tranz: string; tuman: string; manba: string; rol: string; vaqt: string; kun: number };
+export type DeadlineRow = { ri: number; ariza: string; tranz: string; tuman: string; manba: string; rol: string; vaqt: string; kun: number };
 export const VILOYAT_JAMI = "Viloyat jami";
 
 type DayKey = Exclude<keyof RoleStats, "arizaSoni">;
@@ -17,6 +17,7 @@ export function dayKey(kun: number): DayKey {
   return "day11_plus";
 }
 
+const DAY_KEYS: DayKey[] = ["day1", "day2", "day3", "day4", "day5", "day6_10", "day11_plus"];
 const emptyStats = (): Required<RoleStats> => ({ arizaSoni: 0, day1: 0, day2: 0, day3: 0, day4: 0, day5: 0, day6_10: 0, day11_plus: 0 });
 
 function addRow(region: RegionSummary, seen: Set<string>, r: DeadlineRow, mSlug: string, rSlug: string) {
@@ -73,6 +74,66 @@ export function filterDetails(rows: DeadlineRow[], f: DetailFilter) {
   );
 }
 
-/** Drilldown jadvali va Excel eksporti uchun (Django /details/ formati) */
-export const DETAIL_HEADERS = ["№", "Ariza raqami", "Tranzaksiya raqami", "Tuman", "Manba", "Rol", "Rolda turgan vaqt", "Kun"];
-export const detailRows = (rows: DeadlineRow[]) => rows.map((r, i) => [i + 1, r.ariza, r.tranz, r.tuman, r.manba, r.rol, r.vaqt, r.kun]);
+/** Xom varaq: sarlavhalar (sheetHeaders), ma'lumot qatorlari va ulardan olingan ariza × rol qatorlari */
+export type DeadlineSheet = { headers: string[]; raw: string[][]; rows: DeadlineRow[] };
+
+/**
+ * Drilldown jadvali va Excel eksporti: filtrdan o'tgan arizalar varaqdagi BARCHA ustunlari bilan
+ * (bir qator — bir ariza, varaqdagi tartibda).
+ */
+export function detailTable(sheet: DeadlineSheet, filtered: DeadlineRow[]) {
+  const ris = [...new Set(filtered.map((r) => r.ri))].sort((a, b) => a - b);
+  const width = sheet.headers.length;
+  const data = ris.map((ri, i) => {
+    const row = sheet.raw[ri] || [];
+    return [i + 1, ...Array.from({ length: width }, (_, c) => row[c] ?? "")];
+  });
+  return { headers: ["№", ...sheet.headers], data };
+}
+
+/**
+ * Svod varaq ("YakunlanganSvod" / "JarayondagiSvod") — tayyor jamlanma, yuklash paytida brauzerda hisoblanib yoziladi.
+ * Sahifa katta xom varaq o'rniga shu kichik varaqni o'qiydi. Har bir qator:
+ *  - [tuman, manbaSlug, "", soni] — manba bo'yicha noyob arizalar;
+ *  - [tuman, manbaSlug, rolSlug, arizaSoni, day1 … day11_plus] — byManba statistikasi
+ *    (rollar jami — barcha manbalar yig'indisi, o'qishda tiklanadi).
+ */
+export const SVOD_HEADERS = ["Tuman", "Manba", "Rol", "Ariza soni", "1-kun", "2-kun", "3-kun", "4-kun", "5-kun", "6-10-kun", "11+ kun"];
+
+export function flattenSummary(data: DeadlineData): string[][] {
+  const out: string[][] = [SVOD_HEADERS];
+  for (const [tuman, reg] of Object.entries(data)) {
+    for (const [m, n] of Object.entries(reg.manbalar || {})) out.push([tuman, m, "", String(n)]);
+    for (const [m, bm] of Object.entries(reg.byManba || {})) {
+      for (const [rol, st] of Object.entries(bm.rollar || {})) {
+        out.push([tuman, m, rol, String(st.arizaSoni || 0), ...DAY_KEYS.map((k) => String(st[k] || 0))]);
+      }
+    }
+  }
+  return out;
+}
+
+/** flattenSummary'ning teskarisi; sarlavha mos kelmasa — null (eski yo'lga qaytiladi) */
+export function unflattenSummary(rows: readonly (readonly string[])[]): DeadlineData | null {
+  if (!rows.length || String(rows[0][0] ?? "").trim() !== SVOD_HEADERS[0] || String(rows[0][2] ?? "").trim() !== SVOD_HEADERS[2]) return null;
+  const out: DeadlineData = {};
+  const num = (v: unknown) => Number(String(v ?? "").replace(/\s/g, "")) || 0;
+  for (const r of rows.slice(1)) {
+    const tuman = String(r[0] ?? "").trim();
+    const m = String(r[1] ?? "").trim();
+    const rol = String(r[2] ?? "").trim();
+    if (!tuman || !m) continue;
+    const reg = (out[tuman] ??= {});
+    if (!rol) {
+      (reg.manbalar ??= {})[m] = num(r[3]);
+      continue;
+    }
+    const st: RoleStats = { arizaSoni: num(r[3]) };
+    DAY_KEYS.forEach((k, i) => (st[k] = num(r[4 + i])));
+    (((reg.byManba ??= {})[m] ??= { rollar: {} }).rollar ??= {})[rol] = st;
+    const tot = ((reg.rollar ??= {})[rol] ??= emptyStats());
+    tot.arizaSoni = (tot.arizaSoni || 0) + (st.arizaSoni || 0);
+    for (const k of DAY_KEYS) tot[k] = (tot[k] || 0) + (st[k] || 0);
+  }
+  return out;
+}

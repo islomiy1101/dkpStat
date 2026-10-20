@@ -20,8 +20,8 @@ const mmss = (sec: number) => {
 const tashkentToday = () => new Date(Date.now() + 5 * 3600_000).toISOString().slice(0, 10);
 const daysAgo = (n: number) => new Date(Date.now() + 5 * 3600_000 - n * 86400_000).toISOString().slice(0, 10);
 /** Natijasi bor (yakunlangan) urinish */
-const isDone = (r: ResultRow) => r.status === "Yakunlandi" || r.status === "Vaqt tugadi";
-const STATUS_CLS: Record<string, string> = { "Vaqt tugadi": " is-late", Jarayonda: " is-live", Yakunlanmagan: " is-gone" };
+const isDone = (r: ResultRow) => r.status === "Yakunlandi" || r.status === "Vaqt tugadi" || r.status === "Qoidabuzarlik";
+const STATUS_CLS: Record<string, string> = { "Vaqt tugadi": " is-late", Qoidabuzarlik: " is-late", Jarayonda: " is-live", Yakunlanmagan: " is-gone" };
 
 const tone = (score: number, total: number) => {
   const p = total ? score / total : 0;
@@ -232,10 +232,10 @@ function Dashboard({ rows }: { rows: ResultRow[] }) {
       filtered.map((r, i) => ({
         "№": i + 1, Sana: r.date, Vaqt: r.time, Login: r.login, PINFL: r.pinfl, "F.I.O.": r.fio, "Savol soni": r.total,
         "To'g'ri": r.correct, "Noto'g'ri": r.wrong, Javobsiz: r.unanswered, Ball: r.score,
-        "Sarflangan vaqt": mmss(r.spentSec), Holat: r.status,
+        "Sarflangan vaqt": mmss(r.spentSec), Holat: r.status, Qoidabuzarlik: r.violations,
       }))
     );
-    ws["!cols"] = [5, 12, 10, 16, 18, 34, 10, 9, 10, 9, 7, 15, 13].map((wch) => ({ wch }));
+    ws["!cols"] = [5, 12, 10, 16, 18, 34, 10, 9, 10, 9, 7, 15, 13, 13].map((wch) => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Natijalar");
     const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" }) as ArrayBuffer;
@@ -291,6 +291,7 @@ function Dashboard({ rows }: { rows: ResultRow[] }) {
               <option value="">Barchasi</option>
               <option>Yakunlandi</option>
               <option>Vaqt tugadi</option>
+              <option>Qoidabuzarlik</option>
               <option>Jarayonda</option>
               <option>Yakunlanmagan</option>
             </select>
@@ -321,6 +322,7 @@ function Dashboard({ rows }: { rows: ResultRow[] }) {
                 <th>Javobsiz</th>
                 <th className="sortable" onClick={() => sortBy("spentSec")}>Sarflangan{arrow("spentSec")}</th>
                 <th>Holat</th>
+                <th title="Full screen'dan chiqish, vkladka yoki oyna almashtirish">Qoidabuzarlik</th>
               </tr>
             </thead>
             <tbody>
@@ -343,10 +345,11 @@ function Dashboard({ rows }: { rows: ResultRow[] }) {
                     <td colSpan={5} className="muted rt-nores">— natija yo&apos;q —</td>
                   )}
                   <td><span className={`rt-status${STATUS_CLS[r.status] || ""}`}>{r.status || "—"}</span></td>
+                  <td>{r.violations > 0 ? <span className="rt-status is-late">{r.violations}</span> : <span className="muted">—</span>}</td>
                 </tr>
               ))}
               {!shown.length && (
-                <tr><td colSpan={11} className="rt-empty">Natija topilmadi</td></tr>
+                <tr><td colSpan={12} className="rt-empty">Natija topilmadi</td></tr>
               )}
             </tbody>
           </table>

@@ -1,8 +1,8 @@
 import { requireArea } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { isGlobalIn, sameBranch } from "@/lib/roles";
-import { loadDeadlineRows, loadDeadlineSummary } from "@/lib/deadline-server";
-import { detailRows, filterDetails, DETAIL_HEADERS } from "@/features/deadline/aggregate";
+import { loadDeadlineSheet, loadDeadlineSummary } from "@/lib/deadline-server";
+import { detailTable, filterDetails } from "@/features/deadline/aggregate";
 import { DEADLINE_LISTS, isDeadlineList } from "@/features/deadline/source";
 
 /**
@@ -35,19 +35,23 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
       return NextResponse.json({ status: "success", summary }, { headers: { "Cache-Control": "no-store" } });
     }
 
-    let rows = await loadDeadlineRows(list, q.has("fresh"));
+    const sheet = await loadDeadlineSheet(list, q.has("fresh"));
+    // Sahifa ochilganda fonda: xom varaqni keshga oldindan yuklab qo'yish (birinchi bosish tezroq ochilsin)
+    if (q.has("warm")) return NextResponse.json({ status: "success" }, { headers: { "Cache-Control": "no-store" } });
+    let rows = sheet.rows;
     if (!global) rows = rows.filter((r) => sameBranch(r.tuman, u.branch));
 
     const tuman = q.get("tuman");
     if (!global && !sameBranch(tuman, u.branch)) {
       return NextResponse.json({ status: "error", message: "Ruxsat yo'q" }, { status: 403 });
     }
-    const data = detailRows(filterDetails(rows, { tuman, manba: q.get("manba"), role: q.get("role"), day: q.get("day") }));
+    const { headers, data } = detailTable(sheet, filterDetails(rows, { tuman, manba: q.get("manba"), role: q.get("role"), day: q.get("day") }));
 
     if (q.get("action") === "export") {
       const XLSX = await import("xlsx");
-      const ws = XLSX.utils.aoa_to_sheet([DETAIL_HEADERS, ...data]);
-      ws["!cols"] = [6, 16, 16, 22, 18, 34, 24, 8].map((wch) => ({ wch }));
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+      ws["!cols"] = headers.map((h, i) => ({ wch: i === 0 ? 6 : Math.min(40, Math.max(10, h.length + 2)) }));
+      ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: data.length, c: headers.length - 1 } }) };
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Arizalar");
       const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx", compression: true }) as Buffer;
@@ -60,7 +64,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
         },
       });
     }
-    return NextResponse.json({ status: "success", headers: DETAIL_HEADERS, data }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ status: "success", headers, data }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ status: "error", message: (e as Error).message }, { status: 502 });
   }

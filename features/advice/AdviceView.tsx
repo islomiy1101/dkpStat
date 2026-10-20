@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSection } from "@/components/DataProvider";
+import ReportActions from "@/components/ReportActions";
+import { useReportCapture } from "@/lib/useReportCapture";
 import { useClock, fmtDate, fmtHM } from "@/lib/useClock";
 import type { AdviceSessionInfo, Murojaat, Natija } from "@/lib/types";
 import {
@@ -81,6 +83,10 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
   const slot = useSection("advice");
   const now = useClock();
   const isAdmin = isSuperAdmin(session.tuman);
+  const reportRef = useRef<HTMLDivElement>(null);
+  // Rasm / Chop etish — faqat Boshqarma analitika paneli (header + dashboard). Pechat — 2 sahifa, matnli
+  // (dinamika va gavjum vaqtlar — data-print-skip, 2-sahifa — data-print-page="2"; styles/analytics.css → .print-mode)
+  const cap = useReportCapture(reportRef, { fileName: () => `DKP_Namangan_Maslahat_burchagi_${fmtDate(new Date())}.png`, background: "#f1f5f9", windowWidth: 1400, pagedPrint: true });
 
   const all = useMemo(() => slot.data?.murojaatlar || [], [slot.data]);
   const mahallalar = useMemo(() => slot.data?.mahallalar || [], [slot.data]);
@@ -265,6 +271,7 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
 
   return (
     <div id="main-dashboard" style={{ display: "block" }}>
+      <div ref={reportRef} className={isAdmin ? `print-page rc-report${cap.capturing ? " capturing" : ""}` : undefined}>
       <div className="header-panel">
         <div>
           <h2 id="user-title" style={{ textAlign: "left", margin: 0, color: "var(--primary-color)" }}>Murojaatlar Monitoringi</h2>
@@ -273,12 +280,15 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
           </span>
         </div>
         <div className="status-container">
-          <button id="sync-btn" className={`btn-sync${syncing ? " spinning" : ""}`} onClick={manualSync}>
+          <button id="sync-btn" className={`btn-sync no-print${syncing ? " spinning" : ""}`} onClick={manualSync} data-html2canvas-ignore>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" /></svg>
             Sinxronizatsiya
           </button>
           <div className="realtime-indicator"><span className="dot" />Real vaqt</div>
           <div id="live-clock" className="live-clock">{now ? `${fmtDate(now)} ${fmtHM(now)}` : "--.--.---- --:--"}</div>
+          {isAdmin && (
+            <ReportActions onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} printBusy={cap.printing} disabled={!today} hidden={cap.capturing} />
+          )}
         </div>
       </div>
 
@@ -303,6 +313,7 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
           }
         />
       )}
+      </div>
 
       {!isAdmin && (
         <div className="dashboard-grid">
