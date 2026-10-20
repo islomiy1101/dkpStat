@@ -561,6 +561,19 @@ html.rpt-capturing .sec-deadline { height: auto !important; overflow: visible !i
 .sec-deadline .dashboard-content-wrapper.capturing td { position: static !important; }
 .sec-deadline .dashboard-content-wrapper.capturing .kpi-cards-grid { grid-template-columns: repeat(5, minmax(220px, 320px)); }
 
+/* Drilldown xatosi (masalan, jamlanma eskirgan) */
+.sec-deadline .drill-error {
+  display: flex; gap: 10px; align-items: flex-start; max-width: 720px; margin: 10px auto; padding: 12px 14px; border-radius: 10px;
+  background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; font-size: 13px; line-height: 1.5; white-space: normal; text-align: left;
+}
+.sec-deadline .drill-error > i { margin-top: 3px; }
+.sec-deadline .drill-error.is-preparing { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+.sec-deadline .drill-error-link {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 6px 12px; border-radius: 8px;
+  background: #0284c7; color: #fff; font-weight: 600; text-decoration: none;
+}
+.sec-deadline .drill-error-link:hover { background: #0369a1; }
+
 /* ---------- Telefon kartalari: jadval o'rniga (rasm va pechat — jadval) ---------- */
 .sec-deadline .dl-cards { display: none; flex-direction: column; gap: 8px; }
 .sec-deadline .dl-manba-filter { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 4px; scrollbar-width: none; }

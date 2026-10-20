@@ -128,6 +128,7 @@ export const UPLOAD_TARGETS: Record<UploadSection, UploadTarget> = {
       source: DEADLINE_LISTS[id].svodSheet,
       validate: (values: CellValue[][]) => {
         if ((values[0] || []).join("|") !== SVOD_HEADERS.join("|")) throw new Error("svod sarlavhasi noto'g'ri");
+        // Tuman oraliqlarisiz svod (brauzerda saytning eski versiyasi ochiq) ham qabul qilinadi — server uni o'zi tuzatadi
       },
     })),
     chunked: true,

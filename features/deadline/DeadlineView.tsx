@@ -37,10 +37,16 @@ type Drill = {
   title: string;
   headers: string[];
   data: unknown[][];
-  message: { text: string; error?: boolean } | null;
+  message: { text: string; error?: boolean; preparing?: boolean } | null;
 };
 
-export default function DeadlineView({ list }: { list: DeadlineList }) {
+/** Eski usulda yuklangan ma'lumot avtomatik tartiblanayotganda (API → 202) qayta so'rash oralig'i va soni */
+const PREPARE_RETRY_MS = 8000;
+const PREPARE_RETRIES = 12;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** canUpload — xato "qayta yuklang" bo'lsa, modalda "Bazaga yuklash" havolasi (faqat superadmin) */
+export default function DeadlineView({ list, canUpload = false }: { list: DeadlineList; canUpload?: boolean }) {
   const slot = useSection("deadline");
   // Ikkala ro'yxat bitta slotda; eski keshda (bitta ro'yxatli format) bu kalit bo'lmaydi
   const summary = slot.data?.[list] ?? null;
@@ -53,6 +59,7 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
   const [exporting, setExporting] = useState<string | null>(null);
   const [drill, setDrill] = useState<Drill>({ open: false, loading: false, title: "", headers: [], data: [], message: null });
   const reportRef = useRef<HTMLDivElement>(null);
+  const drillRun = useRef(0);
   const fileName = useCallback(() => `${listInfo.sheet}_${fmtDate(new Date())}.png`, [listInfo.sheet]);
   // Rasm/pechat — faqat ochiq guruhlar; keng jadval canvas va sahifa kengligiga moslanadi
   const cap = useReportCapture(reportRef, { fileName });
@@ -101,14 +108,25 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
   };
 
   const openDrilldownModal = async (ctx: DrillCtx) => {
+    const run = ++drillRun.current; // yangi katak bosilsa yoki modal yopilsa — eski qayta so'rov to'xtaydi
     setDrill({ open: true, loading: true, title: `${ctx.tuman} arizalari (Yuklanmoqda...)`, headers: [], data: [], message: null });
     try {
-      const p = new URLSearchParams({ list, tuman: ctx.tuman, _t: String(Date.now()) });
+      const p = new URLSearchParams({ list, tuman: ctx.tuman });
       if (ctx.manba) p.set("manba", ctx.manba);
       if (ctx.role) p.set("role", ctx.role);
       if (ctx.day) p.set("day", ctx.day);
-      const res = await fetch(`${API_DETAILS}?${p}`);
-      const json = await res.json();
+      let json;
+      for (let attempt = 0; ; attempt++) {
+        p.set("_t", String(Date.now()));
+        const res = await fetch(`${API_DETAILS}?${p}`);
+        json = await res.json();
+        if (json.status !== "preparing" || attempt >= PREPARE_RETRIES) break;
+        if (run !== drillRun.current) return;
+        setDrill((d) => ({ ...d, loading: false, title: `${ctx.tuman} arizalari`, message: { text: json.message, preparing: true } }));
+        await sleep(PREPARE_RETRY_MS);
+        if (run !== drillRun.current) return;
+      }
+      if (run !== drillRun.current) return;
       if (json.status === "success" && json.data && json.data.length > 0) {
         setDrill({
           open: true, loading: false, message: null,
@@ -117,11 +135,13 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
         });
       } else {
         // Server xatosi (masalan, jamlanma eskirgan yoki ro'yxat juda katta) — sababi ko'rsatiladi
-        const text = json.status === "error" && json.message ? json.message : "Hozircha ma'lumot topilmadi!";
-        setDrill((d) => ({ ...d, loading: false, message: { text, error: json.status === "error" } }));
+        const failed = json.status === "error" || json.status === "preparing";
+        const text = failed && json.message ? json.message : "Hozircha ma'lumot topilmadi!";
+        setDrill((d) => ({ ...d, loading: false, title: `${ctx.tuman} arizalari`, message: { text, error: failed } }));
       }
     } catch {
-      setDrill((d) => ({ ...d, loading: false, message: { text: "Tarmoq uzildi!", error: true } }));
+      if (run !== drillRun.current) return;
+      setDrill((d) => ({ ...d, loading: false, title: `${ctx.tuman} arizalari`, message: { text: "Tarmoq uzildi!", error: true } }));
     }
   };
 
@@ -136,9 +156,16 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
   const downloadTumanExcel = async (tumanName: string) => {
     setExporting(tumanName);
     try {
-      const p = new URLSearchParams({ list, action: "export", tuman: tumanName, _t: String(Date.now()) });
-      const res = await fetch(`${API_DETAILS}?${p}`);
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.message || "Server xatosi");
+      const p = new URLSearchParams({ list, action: "export", tuman: tumanName });
+      let res: Response;
+      // 202 — ma'lumot avtomatik tartiblanmoqda: biroz kutib qayta so'raladi
+      for (let attempt = 0; ; attempt++) {
+        p.set("_t", String(Date.now()));
+        res = await fetch(`${API_DETAILS}?${p}`);
+        if (res.status !== 202 || attempt >= PREPARE_RETRIES) break;
+        await sleep(PREPARE_RETRY_MS);
+      }
+      if (!res.ok || res.status === 202) throw new Error((await res.json().catch(() => null))?.message || "Server xatosi");
       downloadBlob(await res.blob(), `${tumanName.replace(/\s+/g, "_")}_${listInfo.sheet}.xlsx`);
     } catch (e) {
       alert(`Excel yuklab olishda xatolik: ${(e as Error).message}`);
@@ -448,7 +475,7 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
             <h3 id="drilldown-title" style={{ margin: 0, fontSize: 14, fontWeight: 700 }}>
               {drill.title || (<><i className="fa-solid fa-circle-info" style={{ marginRight: 6 }} />Batafsil ma&apos;lumot</>)}
             </h3>
-            <button onClick={() => setDrill((d) => ({ ...d, open: false }))} style={{ background: "none", border: "none", color: "white", fontSize: 20, cursor: "pointer" }}>
+            <button onClick={() => { drillRun.current++; setDrill((d) => ({ ...d, open: false })); }} style={{ background: "none", border: "none", color: "white", fontSize: 20, cursor: "pointer" }}>
               <i className="fa-solid fa-xmark" />
             </button>
           </div>
@@ -473,7 +500,28 @@ export default function DeadlineView({ list }: { list: DeadlineList }) {
               </thead>
               <tbody id="drilldown-tbody">
                 {drill.message ? (
-                  <tr><td style={{ textAlign: "center", padding: 15, color: drill.message.error ? "red" : undefined }}>{drill.message.text}</td></tr>
+                  <tr>
+                    <td style={{ padding: 15, border: 0 }}>
+                      {drill.message.preparing ? (
+                        <div className="drill-error is-preparing">
+                          <i className="fa-solid fa-spinner fa-spin" />
+                          <div>{drill.message.text} Oyna o&apos;zi yangilanadi.</div>
+                        </div>
+                      ) : drill.message.error ? (
+                        <div className="drill-error">
+                          <i className="fa-solid fa-triangle-exclamation" />
+                          <div>
+                            {drill.message.text}
+                            {canUpload && /yuklang/i.test(drill.message.text) && (
+                              <a href="/upload" className="drill-error-link"><i className="fa-solid fa-file-arrow-up" /> Bazaga yuklash sahifasiga o&apos;tish</a>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: "center", color: "#64748b" }}>{drill.message.text}</div>
+                      )}
+                    </td>
+                  </tr>
                 ) : (
                   drill.data.map((row, ri) => (
                     <tr key={ri}>

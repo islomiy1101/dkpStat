@@ -228,6 +228,16 @@
 .sec-users .us-durations button.active { border-color: #dc2626; background: #fef2f2; color: #b91c1c; }
 .sec-users .us-block-sum { margin: 2px 0 0 !important; padding: 8px 10px; border-radius: 9px; background: #fef2f2; color: #991b1b !important; font-size: 12.5px !important; }
 .sec-users .us-block-sum.is-bad { background: #fff7ed; color: #9a3412 !important; }
+.sec-users .us-form input.is-readonly { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+.sec-users .us-form select:disabled { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
+.sec-users .us-form label small.us-muted-note { color: var(--us-muted); }
+.sec-users .us-warn-box { margin: 0 !important; padding: 8px 10px; border-radius: 9px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e !important; font-size: 12px !important; line-height: 1.45; }
+.sec-users .us-toast {
+  position: fixed; right: 20px; bottom: 20px; z-index: 10001; display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; border-radius: 12px; background: #0f172a; color: #fff; font-size: 13px; font-weight: 600;
+  box-shadow: 0 16px 30px -12px rgba(15, 23, 42, 0.6); animation: sb-pop 0.18s ease-out;
+}
+.sec-users .us-toast i { color: #4ade80; }
 
 /* Planshet */
 @media (max-width: 1100px) {
@@ -265,7 +275,7 @@
   .sec-users .us-table td[data-label]:not(.us-date) { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; font-size: 12px; }
   .sec-users .us-table td[data-label]::before { content: attr(data-label) ":"; color: var(--us-muted); font-size: 11px; font-weight: 600; }
   .sec-users .us-act { grid-column: 1 / -1; width: auto; text-align: left; }
-  .sec-users .us-actions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .sec-users .us-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); width: 100%; }
   .sec-users .us-actions .us-reset { width: 100%; }
   .sec-users .us-actions .us-reset > span { display: inline; }
   .sec-users .us-reset { width: 100%; justify-content: center; height: 36px; }

@@ -5,12 +5,12 @@ import type { UserRow } from "@/lib/auth-server";
 import { ROLES, ROLE_LABEL, type Role } from "@/lib/roles";
 
 /**
- * "Foydalanuvchilar" oynalari: yangi foydalanuvchi va bloklash.
+ * "Foydalanuvchilar" oynalari: yangi foydalanuvchi / tahrirlash va bloklash.
  * Uslub — globals.css (.sb-confirm) + styles/users.css (.us-dlg-*).
  */
 
-async function postJson(url: string, body: unknown) {
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+async function sendJson(url: string, body: unknown, method: "POST" | "PATCH" = "POST") {
+  const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const json = await res.json().catch(() => ({}));
   if (res.status === 401) window.location.replace("/login?next=/users");
   if (!res.ok || !json.success) throw new Error(json.message || `HTTP ${res.status}`);
@@ -37,21 +37,42 @@ function Dialog({ title, icon, tone, onClose, busy, children }: {
   );
 }
 
-/* ---------------- Yangi foydalanuvchi ---------------- */
+/* ---------------- Yangi foydalanuvchi / tahrirlash ---------------- */
 
-export function CreateUserDialog({ users, onClose, onCreated }: {
+/**
+ * Yaratish (mode="create") yoki tahrirlash (mode="edit": login faqat o'qish uchun, faqat o'zgarganda saqlanadi).
+ * Rol yoki filial o'zgarsa xodim ~1 daqiqada tizimdan chiqariladi va qayta kirib yangi huquqlarni oladi.
+ */
+export function UserFormDialog({ mode, user, self, users, onClose, onCreated, onSaved }: {
+  mode: "create" | "edit";
+  /** Tahrirlanayotgan foydalanuvchi (mode="edit") */
+  user?: UserRow;
+  /** Tizimga kirgan superadmin login'i — o'z rolini o'zgartira olmaydi */
+  self: string;
   users: UserRow[];
   onClose: () => void;
-  /** Yaratildi — vaqtinchalik parol bilan */
-  onCreated: (u: { fullName: string; login: string }, password: string) => void;
+  onCreated?: (u: { fullName: string; login: string }, password: string) => void;
+  onSaved?: (revoked: boolean) => void;
 }) {
-  const [f, setF] = useState({ fullName: "", branch: "", department: "", login: "", role: "" as Role | "" });
+  const edit = mode === "edit" && !!user;
+  const initial = {
+    fullName: user?.fullName ?? "",
+    branch: user?.branch ?? "",
+    department: user?.department ?? "",
+    login: user?.login ?? "",
+    role: (user?.role ?? "") as Role | "",
+  };
+  const [f, setF] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const branches = useMemo(() => [...new Set(users.map((u) => u.branch).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [users]);
-  const taken = f.login !== "" && users.some((u) => u.login.toLowerCase() === f.login.toLowerCase());
-  const loginBad = f.login !== "" && !/^\S{3,64}$/.test(f.login);
-  const ok = f.fullName.trim() && f.branch.trim() && f.role && f.login && !taken && !loginBad;
+  const isSelf = edit && user!.login.toLowerCase() === self.toLowerCase();
+  const taken = !edit && f.login !== "" && users.some((u) => u.login.toLowerCase() === f.login.toLowerCase());
+  const loginBad = !edit && f.login !== "" && !/^\S{3,64}$/.test(f.login);
+  const norm = (v: string) => v.trim().replace(/\s+/g, " ");
+  const dirty = (Object.keys(initial) as (keyof typeof initial)[]).some((k) => norm(f[k]) !== norm(initial[k]));
+  const accessChanged = edit && (f.role !== initial.role || norm(f.branch) !== norm(initial.branch));
+  const ok = norm(f.fullName) && norm(f.branch) && f.role && f.login && !taken && !loginBad && (!edit || dirty);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((v) => ({ ...v, [k]: k === "login" ? e.target.value.replace(/\s/g, "") : e.target.value }));
 
@@ -61,8 +82,13 @@ export function CreateUserDialog({ users, onClose, onCreated }: {
     setBusy(true);
     setError(null);
     try {
-      const j = await postJson("/api/admin/users", f);
-      onCreated({ fullName: f.fullName.trim(), login: f.login }, j.password);
+      if (edit) {
+        const j = await sendJson("/api/admin/users", f, "PATCH");
+        onSaved?.(!!j.revoked);
+      } else {
+        const j = await sendJson("/api/admin/users", f);
+        onCreated?.({ fullName: norm(f.fullName), login: f.login }, j.password);
+      }
     } catch (err) {
       setError((err as Error).message);
       setBusy(false);
@@ -70,7 +96,8 @@ export function CreateUserDialog({ users, onClose, onCreated }: {
   };
 
   return (
-    <Dialog title="Yangi foydalanuvchi" icon="fa-solid fa-user-plus" tone="blue" onClose={onClose} busy={busy}>
+    <Dialog title={edit ? "Ma'lumotlarni tahrirlash" : "Yangi foydalanuvchi"} icon={edit ? "fa-solid fa-user-pen" : "fa-solid fa-user-plus"}
+      tone="blue" onClose={onClose} busy={busy}>
       <form className="us-form" onSubmit={submit}>
         {error && <p className="us-err"><i className="fa-solid fa-circle-exclamation" /> {error}</p>}
         <label>
@@ -90,24 +117,37 @@ export function CreateUserDialog({ users, onClose, onCreated }: {
         </div>
         <div className="us-form-row">
           <label className={taken || loginBad ? "is-bad" : ""}>
-            <span>Login *</span>
-            <input value={f.login} onChange={set("login")} placeholder="Masalan: PINFL" maxLength={64} autoComplete="off" spellCheck={false} required />
+            <span>Login {edit ? "" : "*"}</span>
+            <input value={f.login} onChange={set("login")} placeholder="Masalan: PINFL" maxLength={64} autoComplete="off" spellCheck={false}
+              readOnly={edit} className={edit ? "is-readonly" : undefined} title={edit ? "Login o'zgarmaydi" : undefined} required />
             {taken && <small>Bu login band</small>}
             {loginBad && <small>Kamida 3 belgi, probelsiz</small>}
           </label>
-          <label>
+          <label title={isSelf ? "O'z rolingizni o'zgartira olmaysiz" : undefined}>
             <span>Rol *</span>
-            <select value={f.role} onChange={set("role")} required>
+            <select value={f.role} onChange={set("role")} disabled={isSelf} required>
               <option value="">Tanlang</option>
               {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
             </select>
+            {isSelf && <small className="us-muted-note">O&apos;z rolingizni o&apos;zgartira olmaysiz</small>}
           </label>
         </div>
-        <p className="us-note"><i className="fa-solid fa-circle-info" /> Parol avtomatik yaratiladi va bir marta ko&apos;rsatiladi. Xodim birinchi kirishda o&apos;z parolini o&apos;rnatadi.</p>
+        {accessChanged ? (
+          <p className="us-warn-box">
+            <i className="fa-solid fa-triangle-exclamation" />{" "}
+            {isSelf
+              ? "Filial o'zgarsa, siz ham bir daqiqa ichida tizimdan chiqarilasiz va qayta kirishingiz kerak bo'ladi."
+              : "Rol yoki filial o'zgarmoqda: xodim bir daqiqa ichida tizimdan chiqariladi va qayta kirganda yangi huquqlar bilan ishlaydi."}
+          </p>
+        ) : !edit && (
+          <p className="us-note"><i className="fa-solid fa-circle-info" /> Parol avtomatik yaratiladi va bir marta ko&apos;rsatiladi. Xodim birinchi kirishda o&apos;z parolini o&apos;rnatadi.</p>
+        )}
         <div className="sb-confirm-actions">
           <button type="button" className="sb-btn-cancel" onClick={onClose} disabled={busy}>Bekor qilish</button>
           <button type="submit" className="us-btn-primary" disabled={!ok || busy}>
-            {busy ? <><i className="fa-solid fa-spinner fa-spin" /> Qo&apos;shilmoqda...</> : <><i className="fa-solid fa-user-plus" /> Qo&apos;shish</>}
+            {busy
+              ? <><i className="fa-solid fa-spinner fa-spin" /> {edit ? "Saqlanmoqda..." : "Qo'shilmoqda..."}</>
+              : edit ? <><i className="fa-solid fa-floppy-disk" /> Saqlash</> : <><i className="fa-solid fa-user-plus" /> Qo&apos;shish</>}
           </button>
         </div>
       </form>
@@ -157,7 +197,7 @@ export function BlockDialog({ user, onClose, onDone }: { user: UserRow; onClose:
     try {
       // Tanlangan muddat tugmani bosgan paytdan hisoblanadi
       const at = dur === "forever" ? "muddatsiz" : dur === "custom" ? until : Date.now() + (preset?.ms || 0);
-      await postJson("/api/admin/users/block", { login: user.login, until: at, reason: reason.trim() });
+      await sendJson("/api/admin/users/block", { login: user.login, until: at, reason: reason.trim() });
       onDone();
     } catch (err) {
       setError((err as Error).message);
@@ -210,7 +250,7 @@ export function UnblockDialog({ user, onClose, onDone }: { user: UserRow; onClos
     setBusy(true);
     setError(null);
     try {
-      await postJson("/api/admin/users/unblock", { login: user.login });
+      await sendJson("/api/admin/users/unblock", { login: user.login });
       onDone();
     } catch (err) {
       setError((err as Error).message);

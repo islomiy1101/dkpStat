@@ -2,6 +2,7 @@ import { config } from "./config";
 import { MOCK, readMock } from "./mock";
 import { cached, invalidate } from "./cache";
 import { fetchGvizCsv } from "./gviz";
+import { deadlineRepair } from "./auth-server";
 import {
   buildSummary, svodSpans, unflattenSummary, type DeadlineRow, type DeadlineSheet, type SvodSpans,
 } from "@/features/deadline/aggregate";
@@ -84,6 +85,11 @@ const reupload = (list: DeadlineList) =>
   `"${DEADLINE_LISTS[list].svodSheet}" jamlanma varag'i topilmadi yoki eski formatda. ` +
   `"Bazaga yuklash" bo'limida Rollar kesimi faylini qayta yuklang — jamlanma shu paytda tayyorlanadi.`;
 
+/** Eski usulda yuklangan ma'lumot avtomatik tartiblanmoqda — mijoz biroz kutib qayta so'raydi (API → 202) */
+export class DeadlinePreparing extends Error {}
+const preparing = (list: DeadlineList) =>
+  new DeadlinePreparing(`"${DEADLINE_LISTS[list].sheet}" ma'lumoti tumanlar bo'yicha tartiblanmoqda — bir daqiqa ichida ochiladi.`);
+
 /** Tayyor svod varaq (bir necha KB). Varaq yo'q bo'lsa gviz birinchi varaqni qaytaradi — sarlavha mos kelmaydi → null */
 async function readSvod(list: DeadlineList): Promise<Svod | null> {
   const rows = await fetchGvizCsv(config.deadlineSheetId, DEADLINE_LISTS[list].svodSheet);
@@ -91,8 +97,28 @@ async function readSvod(list: DeadlineList): Promise<Svod | null> {
   return data && Object.keys(data).length ? { data, spans: svodSpans(rows) } : null;
 }
 
+/** Oraliqsiz svod (eski usulda yuklangan) qisqa saqlanadi — avtomatik tuzatilgach tez yangilansin */
+const hasSpans = (d: Svod | null) => !!d && Object.keys(d.spans).length > 0;
 const loadSvod = (list: DeadlineList, fresh = false) =>
-  cached<Svod | null>(`deadline:svod:${list}`, (d) => (d ? TTL : EMPTY_TTL), () => readSvod(list), { fresh });
+  cached<Svod | null>(`deadline:svod:${list}`, (d) => (hasSpans(d) ? TTL : EMPTY_TTL), () => readSvod(list), { fresh });
+
+/**
+ * Eski usulda yuklangan ma'lumot (xom qatorlar saralanmagan, svod'da oraliqlar yo'q) — Apps Script'da joyida tuzatiladi:
+ * xom varaq tuman bo'yicha saralanadi, svod'ga oraliqlar qo'shiladi. Qayta yuklash shart emas.
+ * `waitMs` dan ko'p kutilmaydi (Netlify ~10 s); tugamasa Apps Script fonda davom etadi → null.
+ */
+async function repairSvod(list: DeadlineList, waitMs: number): Promise<{ svod: Svod | null; error?: string }> {
+  try {
+    const st = await deadlineRepair(config.deadlineSheetId, DEADLINE_LISTS[list].sheet, DEADLINE_LISTS[list].svodSheet, waitMs);
+    if (st !== "done") return { svod: null };
+    const svod = await loadSvod(list, true);
+    return { svod: hasSpans(svod) ? svod : null };
+  } catch (e) {
+    // Masalan, Apps Script'ning eski versiyasi (deadlineRepair amali yo'q) — "tayyorlanmoqda"da osilib qolmasin
+    console.error("[deadline] tuzatish:", (e as Error).message);
+    return { svod: null, error: (e as Error).message };
+  }
+}
 
 /** Butun viloyat bo'yicha jamlanma — faqat svod varaqdan (demo rejimida — namunaviy fayldan) */
 export async function loadDeadlineSummary(list: DeadlineList, fresh = false): Promise<DeadlineData> {
@@ -122,9 +148,25 @@ const loadHead = (list: DeadlineList) =>
  */
 export async function loadDeadlineSheet(list: DeadlineList, tuman: string | null, fresh = false): Promise<DeadlineSheet> {
   if (MOCK) return loadMock(list);
-  const svod = await loadSvod(list, fresh);
-  if (!svod || !Object.keys(svod.spans).length) throw new Error(reupload(list));
-  const names = tuman ? Object.keys(svod.spans).filter((t) => t === resolveTuman(tuman)) : Object.keys(svod.spans);
+  let svod = await loadSvod(list, fresh);
+  if (!svod) throw new Error(reupload(list));
+  if (!hasSpans(svod)) {
+    // Eski usulda yuklangan: tuzatish boshlanadi (Apps Script). Kichik ro'yxat shu payt parallel to'liq o'qiladi,
+    // kattasi tuzatishni biroz kutadi — tugamasa mijoz "tayyorlanmoqda" bilan qayta so'raydi
+    const repairing = repairSvod(list, 5000);
+    const count = await rawRowCount(list);
+    if (count <= MAX_DETAIL_ROWS) {
+      const [sheet] = await Promise.all([loadUnsorted(list, count, fresh), repairing]);
+      return sheet;
+    }
+    const fixed = await repairing;
+    if (fixed.svod) svod = fixed.svod;
+    else if (fixed.error) throw new Error(`Ma'lumotni tayyorlab bo'lmadi: ${fixed.error}`);
+    else throw preparing(list);
+  }
+  // Oraliqlar yangi yuklashda tuman nomi bilan, avtomatik tuzatishda varaqdagi nom bilan ("Namangan shahri") yoziladi
+  const want = tuman ? resolveTuman(tuman) : null;
+  const names = Object.keys(svod.spans).filter((t) => !want || resolveTuman(t) === want);
   const spans = names.map((t) => svod.spans[t]);
   const total = spans.reduce((n, [a, b]) => n + b - a + 1, 0);
   if (total > MAX_DETAIL_ROWS) {
@@ -145,10 +187,40 @@ export async function loadDeadlineSheet(list: DeadlineList, tuman: string | null
   }, { fresh });
 }
 
+/** Xom varaqdagi ma'lumot qatorlari soni (B ustuni — ~1.5 MB, bir necha soniya) */
+const rawRowCount = (list: DeadlineList) =>
+  cached(`deadline:count:${list}`, TTL, async () => {
+    const col = await fetchGvizCsv(config.deadlineSheetId, DEADLINE_LISTS[list].sheet, { range: `B${DEADLINE_HEADER_ROWS + 1}:B300000` });
+    return col.length;
+  });
+
+/**
+ * Zaxira yo'l (tuzatish tugaguncha): svod oraliqlarisiz — butun xom varaq o'qiladi.
+ * Faqat kichik ro'yxat uchun (Netlify funksiyasi ~10 s).
+ */
+async function loadUnsorted(list: DeadlineList, count: number, fresh: boolean): Promise<DeadlineSheet> {
+  return cached<DeadlineSheet>(`deadline:rows:${list}:unsorted`, TTL, async () => {
+    const first = DEADLINE_HEADER_ROWS + 1;
+    const last = DEADLINE_HEADER_ROWS + count;
+    const parts: [number, number][] = [];
+    for (let a = first; a <= last; a += FETCH_ROWS) parts.push([a, Math.min(last, a + FETCH_ROWS - 1)]);
+    const sheet = DEADLINE_LISTS[list].sheet;
+    const [head, ...chunks] = await Promise.all([
+      loadHead(list),
+      ...parts.map(([a, b]) => fetchGvizCsv(config.deadlineSheetId, sheet, { range: `A${a}:ZZ${b}` })),
+    ]);
+    const width = head.headers.length;
+    const raw = (chunks as string[][][]).flat().map((r) => Array.from({ length: width }, (_, c) => String(r[c] ?? "")));
+    return { headers: head.headers, raw, rows: toDeadlineRows(raw, head.cols, resolveTuman) };
+  }, { fresh });
+}
+
 /** Sahifa ochilganda fonda: svod va sarlavhalar keshga (drilldown birinchi bosishda tezroq ochilsin) */
 export async function warmDeadline(list: DeadlineList) {
   if (MOCK) return;
-  await Promise.all([loadSvod(list), loadHead(list)]);
+  const [svod] = await Promise.all([loadSvod(list), loadHead(list)]);
+  // Eski usulda yuklangan bo'lsa — tuzatish shu yerda boshlanadi (foydalanuvchi katakni bosguncha tayyor bo'lsin)
+  if (svod && !hasSpans(svod)) await repairSvod(list, 2500);
 }
 
 export const invalidateDeadline = () => invalidate("deadline:");

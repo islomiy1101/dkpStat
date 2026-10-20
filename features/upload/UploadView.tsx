@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useData } from "@/components/DataProvider";
 import type { SheetLink } from "@/lib/sheet-links";
 import { UPLOAD_CHUNK_ROWS, UPLOAD_TARGETS, parseWorkbook, type ParsedSheet, type UploadSection, type UploadTarget, type CellValue } from "@/lib/upload-targets";
+import { svodSpans } from "@/features/deadline/aggregate";
 
 /**
  * "Bazaga yuklash" (faqat superadmin): har bir bo'lim uchun alohida .xlsx.
@@ -127,7 +128,11 @@ async function sendChunked(target: UploadTarget, file: File, sheets: ParsedSheet
       start += values.length;
       onProgress({ sheet: p.rule.target, done: start, total });
     }
-    done.push(`${p.rule.target}: ${(total - (p.rule.headerRows ?? 1)).toLocaleString()} qator`);
+    // Rollar kesimi svod'i — tuman oraliqlari soni (yuklash yangi kod bilan bo'lgani shundan ko'rinadi)
+    const spans = target.derived?.includes(p.rule) ? Object.keys(svodSpans(p.values.map((r) => r.map(String)))).length : 0;
+    done.push(spans
+      ? `${p.rule.target}: jamlanma va ${spans} ta tuman oralig'i tayyorlandi`
+      : `${p.rule.target}: ${(total - (p.rule.headerRows ?? 1)).toLocaleString()} qator`);
   }
   return `Baza yangilandi (${done.join(", ")}).`;
 }

@@ -1,7 +1,7 @@
 import { requireArea } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { isGlobalIn, sameBranch } from "@/lib/roles";
-import { loadDeadlineSheet, loadDeadlineSummary, warmDeadline } from "@/lib/deadline-server";
+import { DeadlinePreparing, loadDeadlineSheet, loadDeadlineSummary, warmDeadline } from "@/lib/deadline-server";
 import { VILOYAT_JAMI, detailTable, filterDetails } from "@/features/deadline/aggregate";
 import { DEADLINE_LISTS, isDeadlineList } from "@/features/deadline/source";
 
@@ -71,6 +71,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
     }
     return NextResponse.json({ status: "success", headers, data }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
+    // Eski usulda yuklangan ma'lumot avtomatik tartiblanmoqda — mijoz biroz kutib qayta so'raydi
+    if (e instanceof DeadlinePreparing) {
+      return NextResponse.json({ status: "preparing", message: e.message }, { status: 202, headers: { "Cache-Control": "no-store" } });
+    }
     return NextResponse.json({ status: "error", message: (e as Error).message }, { status: 502 });
   }
 }
