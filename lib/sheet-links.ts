@@ -2,6 +2,7 @@ import { config } from "./config";
 import { authSpreadsheetId } from "./auth-server";
 import { DEADLINE_LISTS, DEADLINE_LIST_IDS } from "@/features/deadline/source";
 import { ETIROF_PAGES, ETIROF_PAGE_IDS } from "@/features/etirof/config";
+import { KADR_SHEET } from "@/features/kadr/model";
 
 /**
  * "Bazaga yuklash" sahifasidagi Google Sheets havolalari (faqat superadmin ko'radi).
@@ -14,6 +15,13 @@ const url = (id: string) => (id ? `https://docs.google.com/spreadsheets/d/${id}/
 export async function sheetLinks(): Promise<SheetLink[]> {
   const authId = await authSpreadsheetId();
   return [
+    {
+      group: "Bazaga yuklanadigan",
+      title: "Kadrlar statistikasi",
+      icon: "fa-solid fa-people-group",
+      sheets: [KADR_SHEET],
+      url: url(config.kadrSheetId),
+    },
     {
       group: "Bazaga yuklanadigan",
       title: "To'lov va tushumlar",

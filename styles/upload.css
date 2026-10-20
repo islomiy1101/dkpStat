@@ -40,6 +40,11 @@
 }
 .sec-upload .up-card-head h3 { margin: 0 0 2px; font-size: 14px; font-weight: 700; }
 .sec-upload .up-card-head p { margin: 0; font-size: 11.5px; color: var(--up-muted); line-height: 1.45; }
+.sec-upload .up-template {
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 5px 10px; border-radius: 7px; cursor: pointer;
+  border: 1px solid #bbf7d0; background: #f0fdf4; color: #15803d; font: inherit; font-size: 12px; font-weight: 600;
+}
+.sec-upload .up-template:hover { background: #dcfce7; border-color: #86efac; }
 
 .sec-upload .up-drop {
   display: flex; align-items: center; gap: 10px; padding: 14px; border: 1.5px dashed #cbd5e1; border-radius: 10px;

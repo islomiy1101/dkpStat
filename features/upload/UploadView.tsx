@@ -137,6 +137,16 @@ async function sendChunked(target: UploadTarget, file: File, sheets: ParsedSheet
   return `Baza yangilandi (${done.join(", ")}).`;
 }
 
+/** Bo'lim uchun tayyor shablon (.xlsx): to'g'ri sarlavhalar va namunaviy qatorlar */
+async function downloadTemplate(t: NonNullable<UploadTarget["template"]>) {
+  const XLSX = await import("xlsx");
+  const ws = XLSX.utils.aoa_to_sheet(t.rows);
+  ws["!cols"] = t.rows[0].map((h) => ({ wch: Math.max(14, String(h).length + 4) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, t.sheet);
+  XLSX.writeFile(wb, t.fileName);
+}
+
 function UploadCard({ target }: { target: UploadTarget }) {
   const { refresh } = useData();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -222,6 +232,11 @@ function UploadCard({ target }: { target: UploadTarget }) {
         <div>
           <h3>{target.title}</h3>
           <p>{target.hint}</p>
+          {target.template && (
+            <button type="button" className="up-template" onClick={() => downloadTemplate(target.template!)}>
+              <i className="fa-solid fa-download" /> Shablonni yuklab olish
+            </button>
+          )}
         </div>
       </div>
 

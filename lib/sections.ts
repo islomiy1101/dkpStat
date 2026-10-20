@@ -8,6 +8,14 @@ import { ETIROF_PAGES, ETIROF_PAGE_IDS } from "@/features/etirof/config";
 
 export const SECTIONS = [
   {
+    id: "kadr",
+    href: "/kadr",
+    title: "Kadrlar statistikasi",
+    subtitle: "Shtat · xodimlar · vakantlar",
+    icon: "fa-solid fa-people-group",
+    source: "Google Sheets (Bazaga yuklash)",
+  },
+  {
     id: "deadline",
     href: "/deadline",
     title: "Rollar kesimida tahlil",
