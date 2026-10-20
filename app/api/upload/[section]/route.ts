@@ -44,7 +44,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ section: strin
   if (target.chunked) {
     const body = (await req.json().catch(() => null)) as ChunkBody | null;
     if (!body) return fail("So'rov noto'g'ri");
-    const rule = target.sheets.find((r) => r.target === body.sheet);
+    const rule = [...target.sheets, ...(target.derived ?? [])].find((r) => r.target === body.sheet);
     if (!rule) return fail("Noma'lum varaq");
     const startRow = Number(body.startRow);
     const totalRows = Number(body.totalRows);
@@ -77,8 +77,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ section: strin
       if (!r.success) return fail(r.message || "Google Sheets'ga yozib bo'lmadi", 502);
       if (section === "deadline") {
         if (MOCK) {
-          const list = DEADLINE_LIST_IDS.find((id) => DEADLINE_LISTS[id].sheet === rule.target)!;
-          mockAppendChunk(list, startRow, values, last);
+          const list = DEADLINE_LIST_IDS.find((id) => DEADLINE_LISTS[id].sheet === rule.target);
+          if (list) mockAppendChunk(list, startRow, values, last);
         }
         if (last) invalidateDeadline();
       }

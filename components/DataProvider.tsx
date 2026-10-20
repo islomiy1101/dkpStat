@@ -59,16 +59,20 @@ async function getJson(url: string) {
   return json;
 }
 
-const FETCHERS: { [K in SectionId]: (fresh: boolean) => Promise<DataMap[K]> } = {
-  deadline: async (fresh) => {
-    const lists = await Promise.all(
+/** `onPartial` — bir nechta so'rovli bo'limda tayyor bo'lgan qismni darhol ko'rsatish uchun */
+const FETCHERS: { [K in SectionId]: (fresh: boolean, onPartial: (d: DataMap[K]) => void) => Promise<DataMap[K]> } = {
+  deadline: async (fresh, onPartial) => {
+    // Har bir ro'yxat kelishi bilan ko'rsatiladi — sahifa ikkinchisini kutmaydi
+    const done: DeadlinePayload = {};
+    await Promise.all(
       DEADLINE_LIST_IDS.map(async (list) => {
         const json = await getJson(`/api/deadline/summary?list=${list}${fresh ? "&fresh=1" : ""}`);
-        if (json.status === "success" && json.summary) return [list, json.summary as DeadlineData] as const;
-        throw new Error(json.message || "Javob noto'g'ri");
+        if (json.status !== "success" || !json.summary) throw new Error(json.message || "Javob noto'g'ri");
+        done[list] = json.summary as DeadlineData;
+        onPartial({ ...done });
       })
     );
-    return Object.fromEntries(lists) as DeadlinePayload;
+    return done;
   },
   etirof: async (fresh) => {
     const res = await Promise.allSettled(ETIROF_PAGE_IDS.map((p) => getJson(`/api/etirof/${p}${fresh ? "?fresh=1" : ""}`)));
@@ -129,7 +133,10 @@ export function DataProvider({ children, allowed }: { children: React.ReactNode;
         [id]: { ...s[id], refreshing: true, status: s[id].data ? s[id].status : "loading", error: undefined },
       }));
 
-      const p = FETCHERS[id](!!opts.fresh)
+      // Qism keshdagi eski ma'lumot ustiga qo'yiladi (boshqa ro'yxat hali eski holida ko'rinib turadi)
+      const onPartial = (part: DataMap[typeof id]) =>
+        setState((s) => ({ ...s, [id]: { ...s[id], status: "ready", data: { ...(s[id].data as object), ...(part as object) } } }));
+      const p = (FETCHERS[id] as (fresh: boolean, onPartial: (d: DataMap[typeof id]) => void) => Promise<DataMap[typeof id]>)(!!opts.fresh, onPartial)
         .then((data) => {
           writeCache(id, data);
           patch(id, { status: "ready", data: data as never, updatedAt: Date.now(), refreshing: false, error: undefined });

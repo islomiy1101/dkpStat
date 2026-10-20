@@ -14,8 +14,8 @@ import type { DeadlineRow } from "./aggregate";
  */
 
 export const DEADLINE_LISTS = {
-  yakunlangan: { sheet: "YakunlanganArizalar", title: "Yakunlangan arizalar", icon: "fa-solid fa-circle-check" },
-  jarayonda: { sheet: "JarayondagiArizalar", title: "Jarayondagi arizalar", icon: "fa-solid fa-hourglass-half" },
+  yakunlangan: { sheet: "YakunlanganArizalar", svodSheet: "YakunlanganSvod", title: "Yakunlangan arizalar", icon: "fa-solid fa-circle-check" },
+  jarayonda: { sheet: "JarayondagiArizalar", svodSheet: "JarayondagiSvod", title: "Jarayondagi arizalar", icon: "fa-solid fa-hourglass-half" },
 } as const;
 export type DeadlineList = keyof typeof DEADLINE_LISTS;
 export const DEADLINE_LIST_IDS = Object.keys(DEADLINE_LISTS) as DeadlineList[];
@@ -75,6 +75,28 @@ export function locateColumns(row1: readonly unknown[], row2: readonly unknown[]
   return { ...base, roles };
 }
 
+/**
+ * Varaqdagi har bir ustunning ko'rinadigan nomi (modal va Excel uchun):
+ * rol ustuni — "Filial · Arxivchi", qolganlari — 1-qatordagi nomi.
+ */
+export function sheetHeaders(row1: readonly unknown[], row2: readonly unknown[]): string[] {
+  const out: string[] = [];
+  let group = "";
+  const width = Math.max(row1.length, row2.length);
+  for (let i = 0; i < width; i++) {
+    const g = String(row1[i] ?? "").trim();
+    const name = String(row2[i] ?? "").trim();
+    if (!name) {
+      group = "";
+      out.push(g || colLetter(i));
+      continue;
+    }
+    if (g) group = g;
+    out.push(group ? `${group} · ${name}` : name);
+  }
+  return out;
+}
+
 /** "1 kun 8 soat 16 min 42 s" → soniyalar; "-" yoki bo'sh → null */
 export function parseDuration(v: unknown): number | null {
   const s = String(v ?? "").trim();
@@ -97,25 +119,26 @@ export function makeTumanResolver(known: readonly string[]) {
 
 /**
  * Keng jadval (bir qator — bir ariza, har bir rol alohida ustunda) → har bir ariza × rol uchun bitta qator.
+ * `ri` — `data` dagi qator indeksi (modalda varaqdagi to'liq qatorni ko'rsatish uchun).
  * Kun: rolda turgan vaqt yuqoriga yaxlitlangan kunlarda (8 soat → 1-kun, 1 kun 8 soat → 2-kun).
  * "Jami" ustunlarida "0 s" — ariza shu guruhga umuman kelmagan, sanalmaydi.
  */
 export function toDeadlineRows(data: readonly (readonly unknown[])[], cols: DeadlineCols, resolveTuman: (s: string) => string): DeadlineRow[] {
   const out: DeadlineRow[] = [];
   const str = (r: readonly unknown[], i: number) => String(r[i] ?? "").trim();
-  for (const r of data) {
+  data.forEach((r, ri) => {
     const tranz = str(r, cols.tranz);
     const ariza = str(r, cols.ariza) || tranz;
     const tumanRaw = str(r, cols.tuman);
-    if (!ariza || !tumanRaw) continue;
+    if (!ariza || !tumanRaw) return;
     const tuman = resolveTuman(tumanRaw);
     const manba = str(r, cols.manba);
     for (const rc of cols.roles) {
       const sec = parseDuration(r[rc.idx]);
       if (sec === null || (rc.isJami && sec <= 0)) continue;
-      out.push({ ariza, tranz, tuman, manba, rol: rc.rol, vaqt: str(r, rc.idx), kun: Math.max(1, Math.ceil(sec / 86400)) });
+      out.push({ ri, ariza, tranz, tuman, manba, rol: rc.rol, vaqt: str(r, rc.idx), kun: Math.max(1, Math.ceil(sec / 86400)) });
     }
-  }
+  });
   return out;
 }
 

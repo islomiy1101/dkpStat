@@ -113,6 +113,9 @@
 
 /* 2. Test */
 .sec-regtest .rt-exam { display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 16px; align-items: start; }
+/* Test davomida matnni belgilab nusxalash yo'q; oyna nazorati buzilganda savollar yashiriladi */
+.sec-regtest .rt-exam { user-select: none; -webkit-user-select: none; }
+.sec-regtest .rt-exam.is-guarded > :is(.rt-side, .rt-main) { visibility: hidden; }
 .sec-regtest .rt-side { display: grid; gap: 12px; position: sticky; top: 14px; }
 .sec-regtest .rt-timer {
   border: 2px solid #fca5a5; background: var(--rt-red-soft); color: var(--rt-red); border-radius: 14px; padding: 12px 16px;
@@ -231,3 +234,13 @@
   .sec-regtest .rt-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .sec-regtest .rt-nav-hint { display: none; }
 }
+
+/* Full screen: bo'lim butun ekranni egallaydi (fon qora bo'lib qolmasin) */
+.sec-regtest:fullscreen { overflow-y: auto; min-height: 100vh; background: #f1f5f9; padding: 20px 28px 28px; }
+.sec-regtest:-webkit-full-screen { overflow-y: auto; min-height: 100vh; background: #f1f5f9; }
+/* Oyna nazorati — qoidabuzarlik ogohlantirishi (barcha oynalar ustida) */
+.sec-regtest .rt-guard {
+  position: fixed; inset: 0; z-index: 1100; display: grid; place-items: center; padding: 16px;
+  background: rgba(127, 29, 29, 0.92);
+}
+.sec-regtest .rt-guard .rt-dialog { border-top: 4px solid var(--rt-red); }

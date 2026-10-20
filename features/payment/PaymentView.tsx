@@ -3,6 +3,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useSection } from "@/components/DataProvider";
 import { useClock, fmtDate, fmtTime } from "@/lib/useClock";
+import { useReportCapture } from "@/lib/useReportCapture";
+import ReportActions from "@/components/ReportActions";
 import {
   buildView, fmtMoney, formatDateStr, getInitials, processPayment, zeroCounts, zeroMoney,
   type Counts, type PaidApp, type WaitingApp,
@@ -69,6 +71,8 @@ const PERIOD_CARDS = [
   { key: "y1", cls: "card-p5", label: "1-YILDAN ORTIQ", icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg> },
 ] as const;
 
+const paymentFileName = () => `DKP_Namangan_Tolov_${fmtDate(new Date())}.png`;
+
 export default function PaymentView() {
   const slot = useSection("payment");
   const now = useClock();
@@ -81,9 +85,11 @@ export default function PaymentView() {
   const [modal, setModal] = useState<Modal | null>(null);
   const [query, setQuery] = useState("");
   const [userRefreshing, setUserRefreshing] = useState(false);
-  const [capturing, setCapturing] = useState(false);
-  const [exportLabel, setExportLabel] = useState<{ jpg: string; pdf: string }>({ jpg: "JPG", pdf: "PDF" });
   const wrapperRef = useRef<HTMLDivElement>(null);
+  // Rasmga olishda ochiq tumanlar yig'iladi (pastda: isExp)
+  // "Chop etish" — butun hisobot rasm sifatida bitta A4 albom sahifaga sig'diriladi
+  const cap = useReportCapture(wrapperRef, { fileName: paymentFileName, background: "#f8fafc", windowWidth: 1400, printPages: 1 });
+  const capturing = cap.capturing;
 
   const processed = useMemo(() => processPayment(slot.data), [slot.data]);
   const view = useMemo(() => buildView(processed, selectedSources, selectedPeriods), [processed, selectedSources, selectedPeriods]);
@@ -184,63 +190,11 @@ export default function PaymentView() {
     XLSX.writeFile(wb, fileName);
   };
 
-  /** Original captureFullDashboard(): eksport tugmalari yashiriladi, ochiq tumanlar yig'iladi */
-  const capture = async () => {
-    const el = wrapperRef.current;
-    if (!el) return null;
-    setCapturing(true);
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      return await html2canvas(el, { scale: 2, backgroundColor: "#f8fafc", useCORS: true, logging: false });
-    } finally {
-      setCapturing(false);
-    }
-  };
-
-  const exportJpg = async () => {
-    try {
-      setExportLabel((l) => ({ ...l, jpg: "..." }));
-      const canvas = await capture();
-      if (!canvas) return;
-      const a = document.createElement("a");
-      a.download = `DKP_Namangan_Monitoring_${new Date().toISOString().slice(0, 10)}.jpg`;
-      a.href = canvas.toDataURL("image/jpeg", 0.95);
-      a.click();
-    } catch (err) {
-      console.error("JPG xatolik:", err);
-    } finally {
-      setExportLabel((l) => ({ ...l, jpg: "JPG" }));
-    }
-  };
-
-  const exportPdf = async () => {
-    try {
-      setExportLabel((l) => ({ ...l, pdf: ". . ." }));
-      const canvas = await capture();
-      if (!canvas) return;
-      const { jsPDF } = await import("jspdf");
-      const pdf = new jsPDF("l", "mm", "a4");
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
-      const margin = 8;
-      const printWidth = pageWidth - margin * 2;
-      const printHeight = (canvas.height * printWidth) / canvas.width;
-      const topOffset = printHeight < pageHeight - margin * 2 ? (pageHeight - printHeight) / 2 : margin;
-      pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", margin, topOffset, printWidth, printHeight);
-      pdf.save(`DKP_Namangan_Monitoring_${new Date().toISOString().slice(0, 10)}.pdf`);
-    } catch (err) {
-      console.error("PDF xatolik:", err);
-    } finally {
-      setExportLabel((l) => ({ ...l, pdf: "PDF" }));
-    }
-  };
-
   const muted = (k: string) => (selectedSources.size > 0 && !selectedSources.has(k) ? { opacity: 0.3 } : undefined);
   const statText = (n: number) => (slot.data ? `${n.toLocaleString()} ta` : "—");
 
   return (
-    <div className="sec-payment">
+    <div className="sec-payment print-page">
       <div className="dashboard-wrapper" ref={wrapperRef}>
         <header className="dashboard-header">
           <div className="header-title">
@@ -260,21 +214,10 @@ export default function PaymentView() {
               </div>
             </div>
 
-            <div className="export-actions" style={capturing ? { display: "none" } : undefined}>
-              <button className={`action-btn btn-jpg${exportLabel.jpg !== "JPG" ? " exporting" : ""}`} title="Jadvalni JPG rasm formatida yuklab olish" onClick={exportJpg}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" /></svg>
-                <span>{exportLabel.jpg}</span>
-              </button>
-              <button className={`action-btn btn-pdf${exportLabel.pdf !== "PDF" ? " exporting" : ""}`} title="Jadvalni PDF formatida yuklab olish" onClick={exportPdf}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>
-                <span>{exportLabel.pdf}</span>
-              </button>
-            </div>
-
-            <button id="refreshBtn" className="refresh-btn" title="Jadvaldan yangi ma'lumotlarni olish" onClick={refresh} style={capturing ? { display: "none" } : undefined}>
-              <svg className={`refresh-icon${loaderActive ? " spinning" : ""}`} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.19" /></svg>
-              <span>Yangilash</span>
-            </button>
+            <ReportActions
+              onRefresh={refresh} refreshing={loaderActive}
+              onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} printBusy={cap.printing} disabled={!slot.data} hidden={capturing}
+            />
           </div>
         </header>
 

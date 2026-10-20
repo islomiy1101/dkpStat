@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { useSection } from "@/components/DataProvider";
-import { downloadBlob, fmtDate, fmtHM } from "@/lib/useClock";
+import { fmtDate, fmtHM } from "@/lib/useClock";
+import { useReportCapture } from "@/lib/useReportCapture";
+import ReportActions from "@/components/ReportActions";
 import { parseNum } from "@/features/etirof/config";
 import { BLOCK_IDS, dmy, pctScale, type BlockId, type XatlovBlock, type XatlovRow } from "./config";
 
@@ -10,6 +12,7 @@ import { BLOCK_IDS, dmy, pctScale, type BlockId, type XatlovBlock, type XatlovRo
  * "Xatlov+Faol" — ЎРҚ-937 ШТАБ маълумоти (sheet'dagi ko'rinishda).
  * Kunlik qiymat 1 kunlik rejadan kam bo'lsa — qizil; foizlar — 3 rangli shkala (≥100% yashil).
  * "Rasm" — hisobot kartasi PNG, "Chop etish" — A4 albom (styles/xatlov.css → @media print).
+ * Telefonda (≤ 768 px) jadval o'rniga har bir hudud — alohida karta (RowCard); rasm va pechat — baribir jadval.
  */
 const BLOCK_TITLE: Record<BlockId, string> = { xatlov: "Хатлов", faol: "Фаол" };
 const JAMI_LABEL: Record<BlockId, string> = { xatlov: "Хатлов ўтказилган объектлар", faol: "Жами фаол" };
@@ -26,9 +29,8 @@ export default function XatlovView() {
   const slot = useSection("xatlov");
   const data = slot.data;
   const reportRef = useRef<HTMLDivElement>(null);
-  const [capturing, setCapturing] = useState(false);
-  const [busyImg, setBusyImg] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const fileName = useCallback(() => `Xatlov_Faol_${fmtDate(new Date())}.png`, []);
+  const cap = useReportCapture(reportRef, { fileName, windowWidth: 2100 });
 
   // Foiz ustunlari shkalasi — tumanlar bo'yicha (viloyat qatori ham shu shkalada bo'yaladi)
   const scales = useMemo(() => {
@@ -44,29 +46,10 @@ export default function XatlovView() {
     ) as Record<BlockId, { oy: ReturnType<typeof pctScale>; hafta: ReturnType<typeof pctScale> }>;
   }, [data]);
 
-  const saveImage = async () => {
-    const el = reportRef.current;
-    if (!el) return;
-    setBusyImg(true);
-    setCapturing(true);
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const canvas = await html2canvas(el, { scale: 2, backgroundColor: "#ffffff", useCORS: true, logging: false, windowWidth: 2100 });
-      canvas.toBlob((b) => b && downloadBlob(b, `Xatlov_Faol_${fmtDate(new Date())}.png`), "image/png");
-    } catch (e) {
-      console.error("Rasm xatolik:", e);
-      setNotice("Rasmni saqlab bo'lmadi.");
-    } finally {
-      setCapturing(false);
-      setBusyImg(false);
-    }
-  };
-
   const error = !data ? slot.error : null;
 
   return (
-    <div className="sec-xatlov">
+    <div className="sec-xatlov print-page">
       <header className="xt-toolbar">
         <div className="xt-toolbar-title">
           <div className="xt-badge"><i className="fa-solid fa-map-location-dot" /></div>
@@ -79,17 +62,10 @@ export default function XatlovView() {
             </span>
           </div>
         </div>
-        <div className="xt-actions">
-          <button className="xt-btn" onClick={() => slot.refresh(true)} disabled={slot.refreshing} title="Google Sheets'dan qayta o'qish">
-            <i className={`fa-solid fa-rotate${slot.refreshing ? " fa-spin" : ""}`} /> <span>Yangilash</span>
-          </button>
-          <button className="xt-btn" onClick={saveImage} disabled={!data || busyImg} title="Jadvalni rasm (PNG) sifatida yuklab olish">
-            <i className={`fa-solid ${busyImg ? "fa-spinner fa-spin" : "fa-image"}`} /> <span>Rasm</span>
-          </button>
-          <button className="xt-btn xt-btn-primary" onClick={() => window.print()} disabled={!data} title="Chop etish (A4 albom)">
-            <i className="fa-solid fa-print" /> <span>Chop etish</span>
-          </button>
-        </div>
+        <ReportActions
+          onRefresh={() => slot.refresh(true)} refreshing={slot.refreshing}
+          onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} disabled={!data}
+        />
       </header>
 
       {error && (
@@ -97,15 +73,15 @@ export default function XatlovView() {
           <i className="fa-solid fa-circle-exclamation" /> Ma&apos;lumotni olib bo&apos;lmadi: {error}
         </div>
       )}
-      {notice && (
-        <div className="xt-alert is-info" role="status" onClick={() => setNotice(null)}>
-          <i className="fa-solid fa-circle-info" /> {notice}
+      {cap.error && (
+        <div className="xt-alert is-info" role="status" onClick={cap.clearError}>
+          <i className="fa-solid fa-circle-info" /> {cap.error}
         </div>
       )}
       {!data && !error && <div className="xt-loading"><i className="fa-solid fa-spinner fa-spin" /> Yuklanmoqda…</div>}
 
       {data && (
-        <div ref={reportRef} className={`xt-report${capturing ? " capturing" : ""}`}>
+        <div ref={reportRef} className={`xt-report${cap.capturing ? " capturing" : ""}`}>
           <div className="xt-report-head">
             <h1>Ўзбекистон Республикасининг ЎРҚ-937-сон Қонуни ижроси бўйича ШТАБ маълумоти</h1>
             {data.asOf && <div className="xt-asof">{data.asOf}</div>}
@@ -156,6 +132,10 @@ export default function XatlovView() {
               </tbody>
             </table>
           </div>
+          <div className="m-cards xt-cards">
+            {data.total && <RowCard row={data.total} total week={data.week} month={data.month} scales={scales} />}
+            {data.rows.map((r) => <RowCard key={r.n} row={r} week={data.week} month={data.month} scales={scales} />)}
+          </div>
         </div>
       )}
     </div>
@@ -197,5 +177,57 @@ function BlockCells({ b, k, scale }: { b: BlockId; k: XatlovBlock; scale: Scales
       ))}
       <td className={blk(b, "c-pct")} style={{ background: scale.hafta(k.haftaPct) }}>{pctText(k.haftaPct)}</td>
     </>
+  );
+}
+
+/** Telefon ko'rinishi: hudud kartasi — har bir blok (oy · hafta · kunlar) va jarayon ko'rsatkichlari */
+function RowCard({ row, total, week, month, scales }: { row: XatlovRow; total?: boolean; week: string[]; month: string; scales: Scales }) {
+  return (
+    <article className={`xt-card${total ? " is-total" : ""}`}>
+      <header className="xt-card-head">
+        {!total && <span className="xt-card-n">{row.n}</span>}
+        <h3>{row.name}</h3>
+      </header>
+      {BLOCK_IDS.map((b) => {
+        const k = row[b];
+        const farq = parseNum(k.farq);
+        return (
+          <section key={b} className={`xt-card-block blk-${b}`}>
+            <h4>
+              <span><i className={BLOCK_ICON[b]} /> {BLOCK_TITLE[b]}</span>
+              <small>{JAMI_LABEL[b]}: <b>{k.jami || "–"}</b></small>
+            </h4>
+            <div className="xt-card-label">{month}</div>
+            <div className="xt-stats">
+              <div><span>Режа</span><b className="t-red">{k.reja || "–"}</b></div>
+              <div><span>Бажарилиши</span><b className="t-blue">{k.bajar || "–"}</b></div>
+              <div className="is-pct" style={{ background: scales[b].oy(pctVal(k.pct)) }}><span>%</span><b>{k.pct || "–"}</b></div>
+              <div><span>Фарқи</span><b className={farq < 0 ? "t-red" : undefined}>{k.farq || "–"}</b></div>
+              <div><span>Ўртача кунлик</span><b>{k.ortacha || "–"}</b></div>
+            </div>
+            <div className="xt-card-label">Ҳафта</div>
+            <div className="xt-stats">
+              <div><span>Ҳафталик режа</span><b className="t-red">{k.haftaReja || "–"}</b></div>
+              <div><span>1 ҳафтада</span><b>{fmt(k.hafta)}</b></div>
+              <div><span>1 кунлик режа</span><b className="t-red">{k.kunReja || "–"}</b></div>
+              <div className="is-pct" style={{ background: scales[b].hafta(k.haftaPct) }}><span>%</span><b>{pctText(k.haftaPct)}</b></div>
+            </div>
+            <div className="xt-days">
+              {k.days.map((v, i) => (
+                <div key={i} className={v != null && v < k.kunRejaNum ? "is-low" : v == null ? "is-empty" : undefined}>
+                  <span>{dmy(week[i]).slice(0, 5)}</span>
+                  <b>{v == null ? "–" : fmt(v)}</b>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
+      <footer className="xt-card-foot">
+        <div><span>Жараёнда</span><b>{row.jarayon || "–"}</b></div>
+        <div><span>Рад этилган</span><b>{row.rad || "–"}</b></div>
+        <div><span>Кадастр муҳандиси</span><b>{row.muhandis || "–"}</b></div>
+      </footer>
+    </article>
   );
 }

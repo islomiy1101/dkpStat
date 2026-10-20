@@ -9,6 +9,8 @@ export const GRACE_SEC = 60;
 /** Bitta PINFL — shuncha soatda bir marta (boshlangan test bo'yicha; Code.gs → REGTEST_RETAKE_HOURS bilan bir xil) */
 export const RETAKE_HOURS = 2;
 export const JARAYON = "Registratsiya";
+/** Full screen'dan chiqish / vkladka yoki oyna almashtirish — shuncha marta bo'lsa test avtomatik yakunlanadi */
+export const MAX_VIOLATIONS = 3;
 
 export const isPinfl = (s: string) => /^\d{14}$/.test(s);
 
@@ -42,7 +44,9 @@ export type ExamResult = {
   wrong: number;
   unanswered: number;
   score: number;
-  status: "Yakunlandi" | "Vaqt tugadi";
+  status: "Yakunlandi" | "Vaqt tugadi" | "Qoidabuzarlik";
+  /** Full screen'dan chiqish, vkladka/oyna almashtirish soni */
+  violations: number;
   /** Natija sheet'ga yozilmagan bo'lsa — sababi */
   saveError?: string;
 };
@@ -64,5 +68,6 @@ export type ResultRow = {
   score: number;
   spentSec: number;
   status: string;
+  violations: number;
   testId: string;
 };
