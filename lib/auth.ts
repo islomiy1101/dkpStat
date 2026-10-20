@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { config } from "./config";
+import { cached } from "./cache";
+import { fetchAuthState, type AuthStateRow } from "./auth-server";
 import { canSee, firstAllowedHref, parseRole, type AreaId, type Role } from "./roles";
 
 /**
@@ -49,9 +51,32 @@ export function decodeUser(raw: string | undefined): AppUser | null {
   }
 }
 
+/** Bloklanganlar / sessiyasi bekor qilinganlar — har instansiyada daqiqasiga ko'pi bilan bir marta o'qiladi */
+const STATE_TTL = 60_000;
+export const AUTH_STATE_KEY = "auth:state";
+
+async function authState(): Promise<AuthStateRow[] | null> {
+  try {
+    return await cached(AUTH_STATE_KEY, STATE_TTL, fetchAuthState);
+  } catch (e) {
+    // Apps Script vaqtincha javob bermasa — butun sayt yopilib qolmasin (cookie imzosi baribir tekshirilgan)
+    console.error("[auth] sessiya holatini tekshirib bo'lmadi:", (e as Error).message);
+    return null;
+  }
+}
+
+/** Sessiya hali amaldami: foydalanuvchi bloklanmagan va sessiyalari keyinroq bekor qilinmagan */
+async function isSessionValid(u: AppUser) {
+  const st = (await authState())?.find((x) => x.login === u.login.toLowerCase());
+  if (!st) return true;
+  if (st.until === null || st.until > Date.now()) return false;
+  return !(st.revokedAt > u.loginTime);
+}
+
 export async function getUser() {
   const jar = await cookies();
-  return decodeUser(jar.get(AUTH_COOKIE)?.value);
+  const u = decodeUser(jar.get(AUTH_COOKIE)?.value);
+  return u && (await isSessionValid(u)) ? u : null;
 }
 
 export async function setUser(u: AppUser, secure: boolean) {

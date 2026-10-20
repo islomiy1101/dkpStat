@@ -71,7 +71,7 @@ function NavGroup({ id, inner, tip, items, isActive, isOpen, onToggle, pathname,
 const ADMIN_LINKS: { id: AreaId; href: string; title: string; subtitle: string; icon: string }[] = [
   { id: "upload", href: "/upload", title: "Bazaga yuklash", subtitle: "Excel → Google Sheets", icon: "fa-solid fa-file-arrow-up" },
   { id: "logs", href: "/logs", title: "Log", subtitle: "Kirishlar tarixi", icon: "fa-solid fa-clock-rotate-left" },
-  { id: "users", href: "/users", title: "Foydalanuvchilar", subtitle: "Parollarni tiklash", icon: "fa-solid fa-users-gear" },
+  { id: "users", href: "/users", title: "Foydalanuvchilar", subtitle: "Qo'shish, parol, bloklash", icon: "fa-solid fa-users-gear" },
 ];
 
 const initials = (name: string) =>
@@ -96,6 +96,22 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   const [pwOpen, setPwOpen] = useState(false);
   const [pwDone, setPwDone] = useState(false);
+
+  // Sessiya nazorati: bloklangan yoki paroli tiklangan foydalanuvchi ochiq sahifadan ham ~1 daqiqada chiqariladi
+  useEffect(() => {
+    const check = async () => {
+      if (document.hidden) return;
+      const res = await fetch("/api/auth/session", { cache: "no-store" }).catch(() => null);
+      if (res?.status === 401) window.location.replace(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+    };
+    const t = setInterval(check, 60_000);
+    const onVisible = () => !document.hidden && void check();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, []);
 
   useEffect(() => {
     if (!pwOpen) return;
