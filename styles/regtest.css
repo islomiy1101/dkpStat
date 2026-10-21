@@ -31,7 +31,6 @@
 }
 .sec-regtest .rt-toolbar h2 { margin: 0; font-size: 15px; font-weight: 700; }
 .sec-regtest .rt-toolbar span { font-size: 12px; color: var(--rt-muted); }
-.sec-regtest .rt-loading { padding: 80px 0; text-align: center; color: var(--rt-muted); }
 
 /* Tugmalar */
 .sec-regtest .rt-btn {

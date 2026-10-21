@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSection, type ReceptionPayload } from "@/components/DataProvider";
 import ReportActions from "@/components/ReportActions";
+import PageLoader from "@/components/PageLoader";
 import { useReportCapture } from "@/lib/useReportCapture";
 import { useClock, fmtDate, fmtHM } from "@/lib/useClock";
 import { sameBranch } from "@/lib/roles";
@@ -76,9 +77,11 @@ export default function ReceptionView() {
           // Keshdagi boshqa foydalanuvchi ma'lumotidan keyin sessiya tumani o'zgarsa — forma va filtrlar qaytadan
           <Dashboard key={session.tuman} data={slot.data} />
         ) : (
-          <div style={{ padding: 40, textAlign: "center", color: slot.status === "error" ? "#dc2626" : "#64748b" }}>
-            {slot.status === "error" ? `Ma'lumotlarni yuklashda xatolik: ${slot.error || ""}` : <><span className="spinner dark" /> Ma&apos;lumotlar yuklanmoqda...</>}
-          </div>
+          slot.status === "error" ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#dc2626" }}>Ma&apos;lumotlarni yuklashda xatolik: {slot.error || ""}</div>
+          ) : (
+            <PageLoader />
+          )
         )}
       </div>
     </div>
@@ -90,6 +93,9 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
   const now = useClock();
   const { session, xodimlar, murojaatlar } = data;
   const isAdmin = isSuperAdmin(session.tuman);
+  // Filial rahbari: o'z tumani bo'yicha analitika paneli + ro'yxat (faqat ko'rish, forma yo'q)
+  const readOnly = !!session.analytics;
+  const panel = isAdmin || readOnly;
   const reportRef = useRef<HTMLDivElement>(null);
   // Rasm / Chop etish — faqat Boshqarma analitika paneli (header + dashboard). Pechat — 2 sahifa, matnli
   // (dinamika va gavjum vaqtlar — data-print-skip, 2-sahifa — data-print-page="2"; styles/analytics.css → .print-mode)
@@ -105,8 +111,8 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
   const [updating, setUpdating] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [tumanFilter, setTumanFilter] = useState("");
-  // Davr filtri faqat analitika panelida (admin); filial ko'rinishida butun ro'yxat
-  const [period, setPeriod] = useState<Period>(isAdmin ? "30" : "all");
+  // Davr filtri faqat analitika panelida (admin, filial rahbari); filial xodimi ko'rinishida butun ro'yxat
+  const [period, setPeriod] = useState<Period>(panel ? "30" : "all");
   const [range, setRange] = useState<DateRange>(EMPTY_RANGE);
   // Chip — sana oralig'i tozalanadi; sana tanlansa — "custom", ikkalasi bo'shatilsa — standart davr
   const choosePeriod = (p: Period) => {
@@ -115,7 +121,7 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
   };
   const chooseRange = (r: DateRange) => {
     setRange(r);
-    setPeriod(r.from || r.to ? "custom" : isAdmin ? "30" : "all");
+    setPeriod(r.from || r.to ? "custom" : panel ? "30" : "all");
   };
   const [page, setPage] = useState(1);
   const [dateModal, setDateModal] = useState<{ open: boolean; start: string; end: string }>({ open: false, start: "", end: "" });
@@ -218,6 +224,10 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const f = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, v.trim()])) as Form;
+    if (f.qabulQildi && !f.lavozim) {
+      setFormAlert({ text: "Xatolik: \"Kim qabul qildi\" maydonida xodimni ro'yxatdan tanlang!", type: "danger" });
+      return;
+    }
     if (!f.fio || !f.tuman || !f.manzil || !f.maqsad || !f.qabulQildi || !f.lavozim) {
       setFormAlert({ text: "Xatolik: Formadagi barcha maydonlarni to'ldirish majburiy!", type: "danger" });
       return;
@@ -267,7 +277,7 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
 
   return (
     <>
-      <div ref={reportRef} className={isAdmin ? `print-page rc-report${cap.capturing ? " capturing" : ""}` : undefined}>
+      <div ref={reportRef} className={panel ? `print-page rc-report${cap.capturing ? " capturing" : ""}` : undefined}>
       <div className="header-panel">
         <div>
           <h2 className="rc-title">Filial qabulxonasi — murojaatlar monitoringi</h2>
@@ -280,15 +290,15 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
           </button>
           <div className="realtime-indicator"><span className="dot" /> Real vaqt</div>
           <div className="live-clock">{now ? `${fmtDate(now)} ${fmtHM(now)}` : "--.--.---- --:--"}</div>
-          {isAdmin && (
+          {panel && (
             <ReportActions onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} printBusy={cap.printing} disabled={!today} hidden={cap.capturing} />
           )}
         </div>
       </div>
 
-      {isAdmin && today && (
+      {panel && today && (
         <AdminDashboard scoped={scoped} today={today} period={period} onPeriod={choosePeriod} range={range} onRange={chooseRange}
-          tuman={tumanFilter} onTuman={setTumanFilter} totalAll={murojaatlar.length}
+          tuman={tumanFilter} onTuman={setTumanFilter} fixedTuman={isAdmin ? undefined : session.tuman} totalAll={murojaatlar.length}
           actions={
             <>
               <button type="button" className="btn-excel-date" onClick={openDateModal} title="Sana oralig'i bo'yicha Excel hisobot">
@@ -299,10 +309,12 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" /></svg>
                 Haftalik
               </button>
-              <button type="button" className="btn-excel-summary" onClick={() => exportRegionalSummary(sorted)} title="Butun baza bo'yicha viloyat yig'ma Excel hisoboti">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 3h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 4v3h4V7H4zm6 0v3h10V7H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10z" /></svg>
-                Viloyat yig&apos;ma
-              </button>
+              {isAdmin && (
+                <button type="button" className="btn-excel-summary" onClick={() => exportRegionalSummary(sorted)} title="Butun baza bo'yicha viloyat yig'ma Excel hisoboti">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 3h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 4v3h4V7H4zm6 0v3h10V7H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10z" /></svg>
+                  Viloyat yig&apos;ma
+                </button>
+              )}
             </>
           }
         />
@@ -310,8 +322,8 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
       </div>
 
       {!isAdmin && (
-        <div className="dashboard-grid">
-          <div className="card">
+        <div className="dashboard-grid" style={readOnly ? { gridTemplateColumns: "1fr", marginTop: 16 } : undefined}>
+          {!readOnly && <div className="card">
             <h3>Yangi Murojaat Qo&apos;shish</h3>
             {formAlert && <div className={`alert alert-${formAlert.type}`}>{formAlert.text}</div>}
             <form onSubmit={onSave}>
@@ -347,6 +359,11 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
                 <datalist id="rc-xodimlar-list">
                   {formXodimlar.map((x) => <option key={`${x.tuman}|${x.fio}`} value={x.fio} />)}
                 </datalist>
+                {form.tuman && formXodimlar.length === 0 && (
+                  <small style={{ color: "var(--danger-color)", display: "block", marginTop: 4 }}>
+                    Bu tuman uchun xodimlar ro&apos;yxati topilmadi — Sinxronizatsiya qiling yoki administratorga murojaat qiling.
+                  </small>
+                )}
               </div>
               <div className="form-group">
                 <label>Lavozimi</label>
@@ -356,7 +373,7 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
                 <BtnLabel loading={saving} text={saving ? "Saqlanmoqda..." : "Saqlash"} />
               </button>
             </form>
-          </div>
+          </div>}
 
           <div className="card table-card">
             <div className="table-card-header">
@@ -397,8 +414,8 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
                 <tbody>
                   {pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={10} style={{ textAlign: "center", fontWeight: 600, color: search || tumanFilter || period !== "all" ? "var(--danger-color)" : "#666" }}>
-                        {search || tumanFilter || period !== "all" ? "Qidiruv bo'yicha hech qanday ma'lumot topilmadi." : "Bazada hali birorta ham murojaat mavjud emas."}
+                      <td colSpan={10} style={{ textAlign: "center", fontWeight: 600, color: search || tumanFilter || period !== (panel ? "30" : "all") ? "var(--danger-color)" : "#666" }}>
+                        {search || tumanFilter || period !== (panel ? "30" : "all") ? "Qidiruv bo'yicha hech qanday ma'lumot topilmadi." : "Bazada hali birorta ham murojaat mavjud emas."}
                       </td>
                     </tr>
                   ) : (
@@ -417,17 +434,19 @@ function Dashboard({ data }: { data: ReceptionPayload }) {
                           </td>
                           <td className="rc-maqsad">{item.maqsad || "Mavjud emas"}</td>
                           <td>
-                            <select className="table-select" value={item.qabulQildi} disabled={updating === item.rowNum}
+                            {readOnly ? <b>{item.qabulQildi || "—"}</b> : <select className="table-select" value={item.qabulQildi} disabled={updating === item.rowNum}
                               style={{ opacity: updating === item.rowNum ? 0.5 : 1 }} onChange={(e) => onInlineUpdate(item, e.target.value)}>
                               {!known && <option value={item.qabulQildi}>{item.qabulQildi || "—"}</option>}
                               {rowXodimlar.map((x) => <option key={x.fio} value={x.fio}>{x.fio}</option>)}
-                            </select>
+                            </select>}
                             <br />
                             <small style={{ color: "#666", display: "inline-block", marginTop: 4 }}>{item.lavozim || "Mavjud emas"}</small>
                           </td>
                           <td><span className={`badge${item.qaytaMurojaat > 1 ? " badge-qayta" : ""}`}>{item.qaytaMurojaat} m</span></td>
                           <td>
-                            {!item.ketdi ? (
+                            {readOnly && !item.ketdi ? (
+                              <span style={{ color: "#d97706", fontWeight: "bold" }}>Jarayonda</span>
+                            ) : !item.ketdi ? (
                               <button className={`btn btn-success${ketdiBusy === item.rowNum ? " btn-disabled" : ""}`} disabled={ketdiBusy === item.rowNum} onClick={() => onKetdi(item.rowNum)}>
                                 <BtnLabel loading={ketdiBusy === item.rowNum} text={ketdiBusy === item.rowNum ? "..." : "Ketdi"} />
                               </button>

@@ -40,7 +40,6 @@
   background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
 }
 .sec-etirof .et-alert[role="status"] { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; cursor: pointer; }
-.sec-etirof .et-loading { padding: 60px 0; text-align: center; color: var(--et-muted); font-size: 14px; }
 .sec-etirof .et-hint { margin: 0 0 8px 4px; font-size: 11.5px; color: var(--et-muted); }
 .sec-etirof .et-hint i { color: #16a34a; }
 

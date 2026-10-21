@@ -52,7 +52,6 @@
   background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
 }
 .sec-xatlov .xt-alert.is-info { background: #eff6ff; border-color: #bfdbfe; color: #1e3a8a; cursor: pointer; }
-.sec-xatlov .xt-loading { padding: 60px 0; text-align: center; color: var(--xt-muted); font-size: 14px; }
 
 /* Hisobot kartasi */
 .sec-xatlov .xt-report {

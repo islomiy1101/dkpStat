@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { UserRow } from "@/lib/auth-server";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 import { BlockDialog, UnblockDialog, UserFormDialog } from "./UserDialogs";
+import PageLoader from "@/components/PageLoader";
 
 /**
  * "Foydalanuvchilar" (faqat superadmin): statistika, filtrlar, sahifalangan ro'yxat;
@@ -11,7 +12,7 @@ import { BlockDialog, UnblockDialog, UserFormDialog } from "./UserDialogs";
  * Tiklanganda vaqtinchalik parol bir marta ko'rsatiladi — xodim u bilan kirib, darhol o'z parolini o'rnatadi.
  * Uslub — styles/users.css (.sec-users); oynalar — globals.css (.sb-confirm).
  */
-const PER_PAGE = 12;
+const PER_PAGE = 10;
 type Status = "all" | "must" | "ok" | "blocked";
 
 /** "2026-10-25 18:00" → "25.10 18:00" (joriy yil) yoki "25.10.2027 18:00" */
@@ -223,7 +224,7 @@ export default function UsersView({ self }: { self: string }) {
         </div>
 
         <div className="us-table-wrap">
-          {loading && !users && <div className="us-overlay"><div className="us-spinner" /><span>Yuklanmoqda...</span></div>}
+          {loading && !users && <PageLoader overlay text="Yuklanmoqda" />}
           <table className="us-table">
             <thead>
               <tr>

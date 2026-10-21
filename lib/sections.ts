@@ -53,7 +53,7 @@ export const SECTIONS = [
   {
     id: "advice",
     href: "/advice",
-    title: "Maslahat burchagi",
+    title: "DXM Maslahat burchagi",
     subtitle: "Murojaatlar monitoringi",
     icon: "fa-solid fa-comments",
     source: "Google Sheets + Apps Script",

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { LogRow } from "@/lib/auth-server";
+import PageLoader from "@/components/PageLoader";
 
 const PER_PAGE = 10;
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -239,7 +240,7 @@ export default function LogsView() {
 
         {/* Jadval */}
         <div className="lg-table-wrap">
-          {loading && !logs && <div className="lg-overlay"><div className="lg-spinner" /><span>Loglar yuklanmoqda...</span></div>}
+          {loading && !logs && <PageLoader overlay text="Loglar yuklanmoqda" />}
           <table className="lg-table">
             <thead>
               <tr>

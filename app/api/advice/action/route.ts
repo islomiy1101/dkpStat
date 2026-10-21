@@ -1,4 +1,4 @@
-import { requireArea } from "@/lib/auth";
+import { requireArea, forbidden } from "@/lib/auth";
 import { NextResponse } from "next/server";
 import { isSuperAdminTuman, normalizeName } from "@/lib/session";
 import { callAppsScript, adviceSessionFor } from "@/lib/advice-server";
@@ -12,6 +12,8 @@ export async function POST(req: Request) {
   const u = await requireArea("advice");
   if (u instanceof Response) return u;
   const s = adviceSessionFor(u);
+  // Filial rahbari — faqat ko'rish (analitika paneli)
+  if (s.analytics) return forbidden();
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const action = String(body.action || "");

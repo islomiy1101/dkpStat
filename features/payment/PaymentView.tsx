@@ -5,6 +5,7 @@ import { useSection } from "@/components/DataProvider";
 import { useClock, fmtDate, fmtTime } from "@/lib/useClock";
 import { useReportCapture } from "@/lib/useReportCapture";
 import ReportActions from "@/components/ReportActions";
+import PageLoader from "@/components/PageLoader";
 import {
   buildView, fmtMoney, formatDateStr, getInitials, processPayment, zeroCounts, zeroMoney,
   type Counts, type PaidApp, type WaitingApp,
@@ -258,10 +259,7 @@ export default function PaymentView() {
         </div>
 
         <div className="dashboard-card">
-          <div id="loader" className={`loader-overlay${loaderActive ? " active" : ""}`}>
-            <div className="spinner" />
-            <span>Ma&apos;lumotlar yangilanmoqda...</span>
-          </div>
+          {loaderActive && <PageLoader overlay text="Ma'lumotlar yangilanmoqda" />}
 
           {/* Desktop jadval */}
           <div className="table-container desktop-table-view">

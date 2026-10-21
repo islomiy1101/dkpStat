@@ -3,6 +3,7 @@
 import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 import { useSection } from "@/components/DataProvider";
 import ReportActions from "@/components/ReportActions";
+import PageLoader from "@/components/PageLoader";
 import { fmtDate } from "@/lib/useClock";
 import { useReportCapture } from "@/lib/useReportCapture";
 import { buildKadrStats, fmtKadr, fmtRate, rateTone, type KadrAgg, type KadrFilial } from "./model";
@@ -139,7 +140,7 @@ export default function KadrView({ canUpload }: { canUpload: boolean }) {
       {slot.error && !data && (
         <div className="kd-alert"><i className="fa-solid fa-circle-exclamation" /> Ma&apos;lumotni olib bo&apos;lmadi: {slot.error}</div>
       )}
-      {!data && !slot.error && <div className="kd-loading"><i className="fa-solid fa-spinner fa-spin" /> Yuklanmoqda…</div>}
+      {!data && !slot.error && <PageLoader />}
 
       {data && !stats && (
         <div className="kd-empty">

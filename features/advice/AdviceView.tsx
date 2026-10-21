@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSection } from "@/components/DataProvider";
 import ReportActions from "@/components/ReportActions";
+import PageLoader from "@/components/PageLoader";
 import { useReportCapture } from "@/lib/useReportCapture";
 import { useClock, fmtDate, fmtHM } from "@/lib/useClock";
 import type { AdviceSessionInfo, Murojaat, Natija } from "@/lib/types";
@@ -39,7 +40,7 @@ export default function AdviceView() {
 
   // Lotin alifbosi eslatmasi — filial xodimiga brauzer sessiyasida bir marta
   useEffect(() => {
-    if (!session || isSuperAdmin(session.tuman)) return;
+    if (!session || isSuperAdmin(session.tuman) || session.analytics) return;
     try {
       if (sessionStorage.getItem("dkp_advice_latin_seen")) return;
       sessionStorage.setItem("dkp_advice_latin_seen", "1");
@@ -53,9 +54,11 @@ export default function AdviceView() {
         {session ? (
           <Dashboard session={session} />
         ) : (
-          <div style={{ padding: 40, textAlign: "center", color: slot.status === "error" ? "#dc2626" : "#64748b" }}>
-            {slot.status === "error" ? `Ma'lumotlarni yuklashda xatolik: ${slot.error || ""}` : <><span className="spinner" /> Ma&apos;lumotlar yuklanmoqda...</>}
-          </div>
+          slot.status === "error" ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#dc2626" }}>Ma&apos;lumotlarni yuklashda xatolik: {slot.error || ""}</div>
+          ) : (
+            <PageLoader />
+          )
         )}
       </div>
 
@@ -83,6 +86,9 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
   const slot = useSection("advice");
   const now = useClock();
   const isAdmin = isSuperAdmin(session.tuman);
+  // Filial rahbari: o'z tumani bo'yicha analitika paneli + ro'yxat (faqat ko'rish, forma yo'q)
+  const readOnly = !!session.analytics;
+  const panel = isAdmin || readOnly;
   const reportRef = useRef<HTMLDivElement>(null);
   // Rasm / Chop etish — faqat Boshqarma analitika paneli (header + dashboard). Pechat — 2 sahifa, matnli
   // (dinamika va gavjum vaqtlar — data-print-skip, 2-sahifa — data-print-page="2"; styles/analytics.css → .print-mode)
@@ -147,11 +153,11 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
   // Panel, hisobotlar: bir kunda takrorlangan fuqaro bir marta, davr va tuman bo'yicha
   const today = now ? dateKey(now) : "";
   const scoped = useMemo(() => {
-    if (!isAdmin || !today) return [];
+    if (!panel || !today) return [];
     const daily = getLatestDailyAppeals(all, false);
     const byTuman = tumanFilter ? daily.filter((m) => sameBranch(m.tuman, tumanFilter)) : daily;
     return filterByPeriod(byTuman, period, today, range);
-  }, [all, isAdmin, today, tumanFilter, period, range]);
+  }, [all, panel, today, tumanFilter, period, range]);
 
   const manualSync = async () => {
     if (syncing) return;
@@ -162,7 +168,7 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
     setSyncing(false);
   };
 
-  const exportSource = () => (isAdmin ? (scoped.length > 0 ? scoped : all) : filtered.length > 0 ? filtered : all);
+  const exportSource = () => (panel ? (scoped.length > 0 ? scoped : all) : filtered.length > 0 ? filtered : all);
   const excelCtx = { isAdmin, sessionTuman: session.tuman, masullar };
 
   const handleKetdi = async (rowNum: number) => {
@@ -246,13 +252,13 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
       <select
         id={`${idPrefix}${item.rowNum}`}
         className={`chora-select ${cls}`}
-        disabled={!!item.natija || saving}
+        disabled={readOnly || !!item.natija || saving}
         style={saving ? { opacity: 0.5 } : undefined}
         data-current={item.natija || ""}
         value={value}
         onChange={(e) => setPendingChora({ rowNum: item.rowNum, natijaTuri: e.target.value as Natija })}
       >
-        <option value="" disabled>Tanlang...</option>
+        <option value="" disabled>{readOnly ? "Chora ko'rilmagan" : "Tanlang..."}</option>
         <option value="ijobiy">Ijobiy hal etildi</option>
         <option value="filial">Filialga yo&apos;naltirildi</option>
         <option value="vakolatsiz">Vakolati doirasiga kirmaydi</option>
@@ -261,7 +267,9 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
   };
 
   const actionCell = (item: Murojaat) =>
-    !item.ketdi ? (
+    readOnly && !item.ketdi ? (
+      <span style={{ color: "#d97706", fontWeight: "bold" }}>Jarayonda</span>
+    ) : !item.ketdi ? (
       <button className={`btn btn-success${ketdiBusy === item.rowNum ? " btn-disabled" : ""}`} disabled={ketdiBusy === item.rowNum} onClick={() => handleKetdi(item.rowNum)}>
         <BtnLabel loading={ketdiBusy === item.rowNum} text={ketdiBusy === item.rowNum ? "..." : "Yakunlash"} />
       </button>
@@ -281,7 +289,7 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
 
   return (
     <div id="main-dashboard" style={{ display: "block" }}>
-      <div ref={reportRef} className={isAdmin ? `print-page rc-report${cap.capturing ? " capturing" : ""}` : undefined}>
+      <div ref={reportRef} className={panel ? `print-page rc-report${cap.capturing ? " capturing" : ""}` : undefined}>
       <div className="header-panel">
         <div>
           <h2 id="user-title" style={{ textAlign: "left", margin: 0, color: "var(--primary-color)" }}>Murojaatlar Monitoringi</h2>
@@ -296,15 +304,15 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
           </button>
           <div className="realtime-indicator"><span className="dot" />Real vaqt</div>
           <div id="live-clock" className="live-clock">{now ? `${fmtDate(now)} ${fmtHM(now)}` : "--.--.---- --:--"}</div>
-          {isAdmin && (
+          {panel && (
             <ReportActions onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} printBusy={cap.printing} disabled={!today} hidden={cap.capturing} />
           )}
         </div>
       </div>
 
-      {isAdmin && today && (
+      {panel && today && (
         <AdviceDashboard scoped={scoped} today={today} period={period} onPeriod={choosePeriod} range={range} onRange={chooseRange}
-          tuman={tumanFilter} onTuman={setTumanFilter} totalAll={getLatestDailyAppeals(all, false).length}
+          tuman={tumanFilter} onTuman={setTumanFilter} fixedTuman={isAdmin ? undefined : session.tuman} totalAll={getLatestDailyAppeals(all, false).length}
           actions={
             <>
               <button className="btn-excel-date" onClick={openDateModal} title="Sana oralig'i bo'yicha Excel hisobot">
@@ -315,10 +323,12 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z" /></svg>
                 Haftalik
               </button>
-              <button className="btn-excel-summary" onClick={() => exportRegionalSummary(all, masullar)} title="Butun baza bo'yicha viloyat yig'ma Excel hisoboti">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 3h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 4v3h4V7H4zm6 0v3h10V7H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10z" /></svg>
-                Viloyat yig&apos;ma
-              </button>
+              {isAdmin && (
+                <button className="btn-excel-summary" onClick={() => exportRegionalSummary(all, masullar)} title="Butun baza bo'yicha viloyat yig'ma Excel hisoboti">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M4 3h16c1.1 0 2 .9 2 2v14c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2zm0 4v3h4V7H4zm6 0v3h10V7H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10zm-6 5v3h4v-3H4zm6 0v3h10v-3H10z" /></svg>
+                  Viloyat yig&apos;ma
+                </button>
+              )}
             </>
           }
         />
@@ -326,8 +336,8 @@ function Dashboard({ session }: { session: AdviceSessionInfo }) {
       </div>
 
       {!isAdmin && (
-        <div className="dashboard-grid">
-          <MurojaatForm session={session} mahallalar={mahallalar} onSaved={() => { setSearch(""); return slot.refresh(true); }} />
+        <div className="dashboard-grid" style={readOnly ? { gridTemplateColumns: "1fr", marginTop: 18 } : undefined}>
+          {!readOnly && <MurojaatForm session={session} mahallalar={mahallalar} onSaved={() => { setSearch(""); return slot.refresh(true); }} />}
 
           {/* JADVAL */}
           <div id="table-card" className="card">
