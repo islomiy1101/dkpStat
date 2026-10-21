@@ -7,6 +7,9 @@ export const config = {
   deadlineSheetId: (process.env.DEADLINE_SHEET_ID || "").trim(),
   /** Bu varaqlar katta va faqat yuklashda o'zgaradi — server keshi alohida (ms) */
   deadlineCacheTtlMs: Number(process.env.DEADLINE_CACHE_TTL_MS || 10 * 60_000),
+  /** "Muddat buzilish" Google Sheet: MuddatBuzilishBaza varag'i (UZKAD arizalari, Bazaga yuklash orqali) */
+  muddatSheetId: (process.env.MUDDAT_SHEET_ID || "").trim(),
+  muddatCacheTtlMs: Number(process.env.MUDDAT_CACHE_TTL_MS || 10 * 60_000),
 
   /** "To'lov kutilmoqda" Google Sheet */
   paymentSheetId: process.env.PAYMENT_SHEET_ID || "",

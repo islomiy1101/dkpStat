@@ -28,7 +28,7 @@
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
  *  Users: Branch | FullName | Department | Login | Password | Role
  *         | MustChangePassword | PasswordChangedAt | BlockedUntil | BlockReason | SessionsRevokedAt  (avtomatik qo'shiladi)
- *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | reception | registrator | superadmin
+ *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | assistant | reception | registrator | superadmin
  *
  *  YANGI XODIM (sayt → Foydalanuvchilar → "Yangi foydalanuvchi", yoki shu varaqqa qo'lda):
  *         Branch, FullName, Department, Login, Role va Password'ga istalgan vaqtinchalik parol yoziladi —
@@ -62,6 +62,7 @@ const BACKUP_SUFFIX = "__backup";
  */
 const IMPORT_TARGETS = {
   // "<PAYMENT_SHEET_ID>": ["TolovBaza"],
+  // "<KADR_SHEET_ID>": ["Shtat"],
   // "<DEADLINE_SHEET_ID>": ["YakunlanganArizalar", "JarayondagiArizalar", "YakunlanganSvod", "JarayondagiSvod"],
 };
 
@@ -934,7 +935,7 @@ function listUsers_(admin) {
 
 /* ---------------- foydalanuvchi qo'shish va bloklash ---------------- */
 
-const USER_ROLES = ["engineer", "advicer", "accountant", "branchManager", "headOfDepartment", "reception", "registrator", "superadmin"];
+const USER_ROLES = ["engineer", "advicer", "accountant", "branchManager", "headOfDepartment", "assistant", "reception", "registrator", "superadmin"];
 
 /** Sessiyalarni bekor qilish: shu vaqtdan oldin ochilgan barcha sessiyalar yopiladi (sayt authState orqali tekshiradi) */
 function revokeSessions_(t, r) {

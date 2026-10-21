@@ -7,10 +7,11 @@ import { MOCK } from "@/lib/mock";
 import { MAX_CHUNK_ROWS, UPLOAD_TARGETS, isUploadSection, parseWorkbook, type CellValue, type UploadSection } from "@/lib/upload-targets";
 import { invalidateDeadline, mockAppendChunk } from "@/lib/deadline-server";
 import { mockSetKadr } from "@/lib/kadr-server";
+import { invalidateMuddat } from "@/lib/muddat-server";
 import { DEADLINE_LIST_IDS, DEADLINE_LISTS } from "@/features/deadline/source";
 
 /**
- * POST /api/upload/<payment|deadline> — faqat superadmin.
+ * POST /api/upload/<kadr|payment|deadline|muddat> — superadmin, assistent (canSee "upload").
  *  - payment: multipart .xlsx — server tekshirib, varaqlarni zaxira bilan to'liq almashtiradi;
  *  - deadline (chunked): fayl katta, so'rov hajmi cheklangan — brauzer tekshirib, har bir varaqni
  *    qismlarga bo'lib JSON bilan yuboradi; har bir qism shu yerda tekshirilib Apps Script'ga uzatiladi.
@@ -24,6 +25,7 @@ const SHEET_ID: Record<UploadSection, () => string> = {
   kadr: () => config.kadrSheetId,
   payment: () => config.paymentSheetId,
   deadline: () => config.deadlineSheetId,
+  muddat: () => config.muddatSheetId,
 };
 
 const fail = (message: string, status = 400) => NextResponse.json({ success: false, message }, { status });
@@ -84,6 +86,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ section: strin
         }
         if (last) invalidateDeadline();
       }
+      if (section === "muddat" && last) invalidateMuddat();
       return NextResponse.json({ success: true, last });
     } catch (e) {
       console.error("upload chunk:", e);

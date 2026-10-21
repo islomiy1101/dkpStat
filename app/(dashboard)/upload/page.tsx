@@ -7,6 +7,6 @@ export const metadata: Metadata = { title: "Bazaga yuklash — DKP Namangan" };
 
 export default async function Page() {
   await guardPage("upload");
-  // Sheet havolalari faqat shu sahifada (superadmin) — boshqa rollarga ID'lar chiqmaydi
+  // Sheet havolalari faqat shu sahifada (superadmin, assistent) — boshqa rollarga ID'lar chiqmaydi
   return <UploadView links={await sheetLinks()} />;
 }

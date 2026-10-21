@@ -5,7 +5,7 @@ import type { SectionId } from "./sections";
  *  - qaysi bo'limlar ko'rinadi (ACCESS)
  *  - har bir bo'limda ma'lumot doirasi (SCOPE): viloyat bo'yicha yoki faqat o'z filiali
  */
-export const ROLES = ["engineer", "advicer", "accountant", "branchManager", "headOfDepartment", "reception", "registrator", "superadmin"] as const;
+export const ROLES = ["engineer", "advicer", "accountant", "branchManager", "headOfDepartment", "assistant", "reception", "registrator", "superadmin"] as const;
 export type Role = (typeof ROLES)[number];
 
 /** Sidebar'dagi barcha sahifalar: ma'lumot bo'limlari + admin sahifalari */
@@ -19,6 +19,8 @@ const ACCESS: Record<Role, readonly AreaId[]> = {
   // "kadr" birinchi — kirgandan keyin Kadrlar statistikasi ochiladi (firstAllowedHref)
   branchManager: ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception"],
   headOfDepartment: ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception"],
+  /** Bo'lim boshlig'i bo'limlari + Bazaga yuklash */
+  assistant: ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception", "upload"],
   reception: ["reception"],
   /** Faqat RegTest — boshqa hech bir bo'lim ko'rinmaydi */
   registrator: ["regtest"],
@@ -33,6 +35,7 @@ const SCOPE: Record<Role, Partial<Record<SectionId, Scope>>> = {
   accountant: { payment: "region" },
   branchManager: { kadr: "branch", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "branch", reception: "branch" },
   headOfDepartment: { kadr: "region", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "region", reception: "region" },
+  assistant: { kadr: "region", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "region", reception: "region" },
   reception: { reception: "branch" },
   registrator: {},
   superadmin: { kadr: "region", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "region", reception: "region" },
@@ -44,6 +47,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   accountant: "Buxgalter",
   branchManager: "Filial rahbari",
   headOfDepartment: "Bo'lim boshlig'i",
+  assistant: "Assistent",
   reception: "Qabulxona",
   registrator: "Registrator",
   superadmin: "Superadmin",
@@ -102,6 +106,12 @@ const ALIASES: Record<string, Role> = {
   departmenthead: "headOfDepartment",
   head: "headOfDepartment",
   bolimboshligi: "headOfDepartment",
+  assistant: "assistant",
+  asistent: "assistant",
+  assistent: "assistant",
+  yordamchi: "assistant",
+  ассистент: "assistant",
+  ёрдамчи: "assistant",
   reception: "reception",
   receptionist: "reception",
   qabulxona: "reception",

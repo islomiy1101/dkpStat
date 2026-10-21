@@ -4,13 +4,14 @@ import {
 import { SVOD_HEADERS, buildSummary, flattenSummary, type SvodSpans } from "@/features/deadline/aggregate";
 import { DISTRICTS } from "@/features/deadline/model";
 import { KADR_COLS, KADR_SHEET, KADR_TEMPLATE, KADR_UPLOADED_COL, kadrHeaderKey, parseKadr } from "@/features/kadr/model";
+import { MUDDAT_COLS, MUDDAT_SHEET, locateMuddatColumns } from "@/features/muddat/rules";
 
 /**
  * "Bazaga yuklash" — har bir bo'lim uchun alohida .xlsx fayl va u yoziladigan Google Sheets varaqlari.
  * Klient (ko'rib chiqish) va server (tekshirish + yozish) bir xil qoidalardan foydalanadi.
  * Sheet ID'lar faqat serverda (lib/config.ts) — bu yerda faqat varaq nomlari.
  */
-export type UploadSection = "kadr" | "payment" | "deadline";
+export type UploadSection = "kadr" | "payment" | "deadline" | "muddat";
 
 export type SheetRule = {
   /** Google Sheets'dagi varaq nomi */
@@ -19,6 +20,8 @@ export type SheetRule = {
   source: string;
   /** Nomi mos varaq bo'lmasa va faylda bitta varaq bo'lsa — o'sha olinadi */
   singleSheetFallback?: boolean;
+  /** Nomi mos varaq bo'lmasa — fayldagi birinchi varaq olinadi (eksport fayllarida varaq nomi har xil) */
+  firstSheetFallback?: boolean;
   /** Kamida nechta ustun bo'lishi kerak (sarlavhasiz varaqlar uchun) */
   minCols?: number;
   /** Shundan o'ngdagi ustunlar yozilmaydi */
@@ -155,6 +158,25 @@ export const UPLOAD_TARGETS: Record<UploadSection, UploadTarget> = {
     chunked: true,
     asText: true,
   },
+  muddat: {
+    id: "muddat",
+    title: "Muddat buzilish",
+    icon: "fa-solid fa-calendar-xmark",
+    hint:
+      `UZKAD "Arizalar xolati xisoboti" eksporti: ${MUDDAT_SHEET} varag'i (yoki fayldagi birinchi varaq). ` +
+      `Sarlavha 1–3-qatorlarda, kerakli ustunlar: ${Object.values(MUDDAT_COLS).join(" · ")}. ` +
+      `Filtr, Turar/Noturar va muddatlar sahifada avtomatik hisoblanadi.`,
+    sheets: [
+      {
+        target: MUDDAT_SHEET,
+        source: MUDDAT_SHEET,
+        firstSheetFallback: true,
+        validate: (values: CellValue[][]) => void locateMuddatColumns(values.slice(0, 3)),
+      },
+    ],
+    chunked: true,
+    asText: true,
+  },
 };
 
 const resolveDistrict = makeTumanResolver(DISTRICTS.map((d) => d.name));
@@ -234,6 +256,7 @@ export function parseWorkbook(XLSX: typeof import("xlsx"), wb: import("xlsx").Wo
   const found = target.sheets.flatMap((rule) => {
     let name = wb.SheetNames.find((n) => norm(n) === norm(rule.source));
     if (!name && rule.singleSheetFallback && wb.SheetNames.length === 1) name = wb.SheetNames[0];
+    if (!name && rule.firstSheetFallback) name = wb.SheetNames[0];
     if (!name && rule.optional) return [];
     if (!name) throw new Error(`Faylda "${rule.source}" varag'i topilmadi. Mavjud varaqlar: ${wb.SheetNames.join(", ")}`);
     return [{ rule, name }];
