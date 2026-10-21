@@ -1,7 +1,8 @@
 import { ROWS, SECTIONS, SUB_COLS, getCell, fmtNum, roleDisplayName, slugify, type RowCells } from "./model";
 
 /** Original downloadSectionPDF() — DOM o'rniga hisoblangan jadval qiymatlaridan foydalanadi */
-export async function downloadSectionPDF(secId: string, table: Record<string, RowCells>) {
+/** rows — ko'rinadigan qatorlar (filial roli — faqat o'z tumani) */
+export async function downloadSectionPDF(secId: string, table: Record<string, RowCells>, visible: readonly (typeof ROWS)[number][] = ROWS) {
   const [{ jsPDF }, autoTableMod] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
   const autoTable = autoTableMod.default;
 
@@ -45,7 +46,7 @@ export async function downloadSectionPDF(secId: string, table: Record<string, Ro
     doc.text("Sana: ", 283 - dateTextWidth, 13, { align: "right" });
 
     const headRow = ["T/r", "Hudud nomi", cleanText(section.title), ...section.roles.map(cleanText)];
-    const rows = ROWS.map((r) => {
+    const rows = visible.map((r) => {
       const cells = table[r.name] || {};
       return [r.no, cleanText(r.name), cleanText(fmtNum(getCell(cells, `cell-sec-total-${secId}`).value)), ...sectionCells(cells).map(cleanText)];
     });
@@ -110,7 +111,7 @@ export async function downloadSectionPDF(secId: string, table: Record<string, Ro
       const headRows = section.isSingleCol
         ? [["T/r", "Hudud nomi", cleanText(role)]]
         : [["T/r", "Hudud nomi", ...SUB_COLS]];
-      const rows = ROWS.map((r) => {
+      const rows = visible.map((r) => {
         const all = sectionCells(table[r.name] || {});
         const rowData = [r.no, cleanText(r.name)];
         if (section.isSingleCol) rowData.push(cleanText(all[rIndex] ?? "0"));

@@ -183,10 +183,13 @@ export default function DeadlineView({ list, canUpload = false }: { list: Deadli
   };
 
   const onPdf = (secId: string) => {
-    downloadSectionPDF(secId, table).catch(() => alert("PDF kutubxonasi yuklanmagan!"));
+    downloadSectionPDF(secId, table, rows).catch(() => alert("PDF kutubxonasi yuklanmagan!"));
   };
 
-  const jami = table["Viloyat jami"] || {};
+  // Filial (branch) doirasidagi rol: serverdan faqat o'z tumani keladi ("Viloyat jami"siz) — faqat shu qator, kartalar ham shundan
+  const branchOnly = !!summary && !hasData["Viloyat jami"];
+  const rows = branchOnly ? ROWS.filter((r) => hasData[r.name]) : ROWS;
+  const jami = (branchOnly ? table[rows[0]?.name ?? ""] : table["Viloyat jami"]) || {};
   const showMainLoader = !summary && (slot.status === "loading" || slot.refreshing);
   const hidden = (secId: string) => (groupStates[secId] === false ? { display: "none" as const } : undefined);
 
@@ -342,7 +345,7 @@ export default function DeadlineView({ list, canUpload = false }: { list: Deadli
               </tr>
             </thead>
             <tbody id="tableBody">
-              {ROWS.map((r) => {
+              {rows.map((r) => {
                 const cells = table[r.name] || {};
                 return (
                   <tr key={r.name} className={r.isJami ? "row-jami" : undefined} data-region={r.name}>
@@ -390,7 +393,7 @@ export default function DeadlineView({ list, canUpload = false }: { list: Deadli
               );
             })}
           </div>
-          {ROWS.map((r) => {
+          {rows.map((r) => {
             const cells = table[r.name] || {};
             const secs = SECTIONS.filter((sec) => groupStates[sec.id] !== false);
             return (

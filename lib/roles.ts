@@ -13,7 +13,8 @@ export type Role = (typeof ROLES)[number];
 export type AreaId = SectionId | "logs" | "upload" | "regtest" | "users";
 
 const ACCESS: Record<Role, readonly AreaId[]> = {
-  engineer: ["payment"],
+  // Rollar kesimida tahlil — faqat o'z tumani (SCOPE: branch)
+  engineer: ["payment", "deadline"],
   advicer: ["advice"],
   accountant: ["payment"],
   // "kadr" birinchi — kirgandan keyin Kadrlar statistikasi ochiladi (firstAllowedHref)
@@ -30,7 +31,7 @@ const ACCESS: Record<Role, readonly AreaId[]> = {
 /** Bo'lim bo'yicha ma'lumot doirasi: "region" — viloyat bo'yicha to'liq, "branch" — faqat o'z filiali */
 type Scope = "region" | "branch";
 const SCOPE: Record<Role, Partial<Record<SectionId, Scope>>> = {
-  engineer: { payment: "branch" },
+  engineer: { payment: "branch", deadline: "branch" },
   advicer: { advice: "branch" },
   accountant: { payment: "region" },
   branchManager: { kadr: "branch", deadline: "region", etirof: "region", xatlov: "region", payment: "region", advice: "branch", reception: "branch" },
