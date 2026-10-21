@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DURATION_SEC, FIO_ERROR, JARAYON, MAX_VIOLATIONS, QUESTION_COUNT, isFio, isPinfl, normalizeFio, type Exam, type ExamResult } from "./config";
+import PageLoader from "@/components/PageLoader";
 
 /**
  * Registratsiya → "Test yechish" — registratorlar testi.
@@ -144,7 +145,7 @@ export default function RegTestView({ login }: { login: string }) {
         </div>
       </header>
 
-      {phase === "loading" && <div className="rt-loading"><i className="fa-solid fa-spinner fa-spin" /> Yuklanmoqda…</div>}
+      {phase === "loading" && <PageLoader skeleton={false} />}
       {phase === "start" && <StartScreen login={login} error={error} onStart={begin} />}
       {phase === "exam" && exam && <ExamScreen exam={exam} answers={answers} setAnswers={setAnswers} onFinish={finish} rootRef={rootRef} />}
       {phase === "result" && result && <ResultModal result={result} onClose={backHome} />}

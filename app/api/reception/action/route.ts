@@ -11,7 +11,7 @@ const ACTIONS = new Set(["searchByPassport", "saveMurojaat", "setKetdiVaqti", "u
 /** Filial foydalanuvchisi faqat o'z tumani qatorini o'zgartira oladi (yangi qator keshda bo'lmasa — bir marta yangilab tekshiriladi) */
 async function ownsRow(tuman: string, rowNum: number) {
   for (const fresh of [false, true]) {
-    const mine = scopeReception(await loadReceptionRaw(fresh), tuman);
+    const mine = await scopeReception(await loadReceptionRaw(fresh), tuman);
     if (mine.murojaatlar.some((m) => m.rowNum === rowNum)) return mine;
   }
   return null;
@@ -21,6 +21,8 @@ export async function POST(req: Request) {
   const u = await requireArea("reception");
   if (u instanceof Response) return u;
   const s = receptionSessionFor(u);
+  // Filial rahbari — faqat ko'rish (analitika paneli)
+  if (s.analytics) return forbidden();
   const global = isSuperAdminTuman(s.tuman);
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;

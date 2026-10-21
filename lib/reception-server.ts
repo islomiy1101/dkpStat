@@ -3,7 +3,7 @@ import path from "node:path";
 import { config } from "./config";
 import { MOCK } from "./mock";
 import { cached } from "./cache";
-import { isGlobalIn, sameBranch } from "./roles";
+import { branchKey, isBranchAnalyticsIn, isGlobalIn, sameBranch } from "./roles";
 import { isSuperAdminTuman } from "./session";
 import type { AppUser } from "./auth";
 import { TUMANLAR } from "@/features/advice/utils";
@@ -90,6 +90,19 @@ export async function callReceptionScript(payload: Record<string, unknown>): Pro
   }
 }
 
+/**
+ * Eski deploy qilingan Code.gs xodimlarni "boshqarma" rejimida tuman maydonisiz qaytaradi — shunda filial
+ * xodimlari o'z tumani bilan alohida so'raladi (skript o'zi filtrlaydi). Xodimlar kam o'zgaradi: uzoq keshlanadi.
+ * Repodagi Code.gs deploy qilinsa, tuman keladi va bu yo'l ishlatilmaydi.
+ */
+function loadXodimlarOf(tuman: string) {
+  return cached<ReceptionData["xodimlar"]>(`reception:xodimlar:${branchKey(tuman)}`, 30 * 60_000, async () => {
+    const r = await callReceptionScript({ action: "getInitialData", tuman });
+    if (r.success === false || !Array.isArray(r.xodimlar)) throw new Error(String(r.message || `${tuman}: xodimlar kelmadi`));
+    return (r.xodimlar as ReceptionData["xodimlar"]).map((x) => ({ ...x, tuman }));
+  });
+}
+
 export function loadReceptionRaw(fresh = false) {
   return cached<ReceptionData>(
     "reception:raw",
@@ -113,13 +126,17 @@ export function loadReceptionRaw(fresh = false) {
 /** Viloyat doirasidagi rollar "Boshqarma" rejimida (hamma tumanlar), qolganlari o'z tumanida */
 export function receptionSessionFor(u: AppUser): ReceptionSessionInfo {
   const tuman = isGlobalIn(u.role, "reception") ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
-  return { tuman, fio: u.fullName };
+  return { tuman, fio: u.fullName, analytics: isBranchAnalyticsIn(u.role, "reception") };
 }
 
-export function scopeReception(raw: ReceptionData, tuman: string): ReceptionData {
+export async function scopeReception(raw: ReceptionData, tuman: string): Promise<ReceptionData> {
   if (isSuperAdminTuman(tuman)) return raw;
-  return {
-    xodimlar: raw.xodimlar.filter((x) => sameBranch(x.tuman, tuman)),
-    murojaatlar: raw.murojaatlar.filter((m) => sameBranch(m.tuman, tuman)),
-  };
+  let xodimlar = raw.xodimlar.filter((x) => sameBranch(x.tuman, tuman));
+  if (xodimlar.length === 0 && raw.xodimlar.some((x) => !x.tuman)) {
+    xodimlar = await loadXodimlarOf(tuman).catch((e) => {
+      console.error("[reception] tuman xodimlarini olib bo'lmadi:", tuman, (e as Error).message);
+      return [];
+    });
+  }
+  return { xodimlar, murojaatlar: raw.murojaatlar.filter((m) => sameBranch(m.tuman, tuman)) };
 }

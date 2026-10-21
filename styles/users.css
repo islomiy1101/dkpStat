@@ -98,6 +98,7 @@
 
 /* Jadval */
 .sec-users .us-table-wrap { position: relative; overflow-x: auto; border: 1px solid var(--us-border); border-radius: 12px; }
+.sec-users .us-table-wrap:has(.pl-overlay) { min-height: 220px; }
 .sec-users .us-table { width: 100%; border-collapse: collapse; }
 .sec-users .us-table th {
   padding: 10px 10px; text-align: left; background: #f8fafc; border-bottom: 1px solid var(--us-border);
@@ -165,15 +166,6 @@
 .sec-users .us-empty { padding: 40px 12px !important; text-align: center; color: var(--us-muted); }
 .sec-users .us-empty i { margin-right: 6px; }
 .sec-users .us-empty.is-error { color: #b91c1c; }
-.sec-users .us-overlay {
-  position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-  min-height: 160px; background: rgba(255, 255, 255, 0.85); color: var(--us-muted); font-weight: 600;
-}
-.sec-users .us-spinner {
-  width: 28px; height: 28px; border-radius: 50%; border: 3px solid #e2e8f0; border-top-color: var(--us-accent);
-  animation: us-spin 0.8s linear infinite;
-}
-@keyframes us-spin { to { transform: rotate(360deg); } }
 
 /* Sahifalash */
 .sec-users .us-pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; color: var(--us-muted); font-size: 12.5px; }

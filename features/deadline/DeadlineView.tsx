@@ -5,6 +5,7 @@ import { useSection } from "@/components/DataProvider";
 import { useClock, fmtDate, fmtTime, downloadBlob } from "@/lib/useClock";
 import { useReportCapture } from "@/lib/useReportCapture";
 import ReportActions from "@/components/ReportActions";
+import PageLoader from "@/components/PageLoader";
 import {
   ROWS, SECTIONS, SUB_COLS, computeTable, getCell, fmtNum, roleDisplayName, slugify,
   type DrillCtx, type RowCells,
@@ -129,7 +130,7 @@ export default function DeadlineView({ list, canUpload = false }: { list: Deadli
         json = (await res.json()) as DetailsResponse;
         if (json.status !== "preparing" || attempt >= PREPARE_RETRIES) break;
         if (run !== drillRun.current) return;
-        setDrill((d) => ({ ...d, loading: false, title: `${ctx.tuman} arizalari`, message: { text: json.message ?? "", preparing: true } }));
+        setDrill((d) => ({ ...d, loading: false, title: `${ctx.tuman} arizalari`, message: { text: json.message || "Ma'lumot tayyorlanmoqda...", preparing: true } }));
         await sleep(PREPARE_RETRY_MS);
         if (run !== drillRun.current) return;
       }
@@ -206,14 +207,7 @@ export default function DeadlineView({ list, canUpload = false }: { list: Deadli
 
   return (
     <div className="sec-deadline print-page">
-      {showMainLoader && (
-        <div id="main-loader" className="no-print">
-          <div className="spinner" />
-          <h3 style={{ color: "#0284c7", marginTop: 10, fontWeight: 600, fontSize: 13 }}>
-            Ma&apos;lumotlar yuklanmoqda...
-          </h3>
-        </div>
-      )}
+      {showMainLoader && <PageLoader overlay fixed text="Ma'lumotlar yuklanmoqda" />}
 
       {/* ASOSIY HEADER */}
       <header className="top-header-panel">

@@ -31,7 +31,6 @@
 .sec-kadr .kd-title span { font-size: 11.5px; color: var(--kd-muted); }
 
 .sec-kadr .kd-alert { margin-bottom: 12px; padding: 10px 14px; border-radius: 10px; background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
-.sec-kadr .kd-loading { padding: 70px 0; text-align: center; color: var(--kd-muted); font-size: 14px; }
 .sec-kadr .kd-empty {
   max-width: 560px; margin: 40px auto; padding: 32px 24px; text-align: center; background: #fff;
   border: 1px dashed #cbd5e1; border-radius: 16px; color: var(--kd-muted);

@@ -5,6 +5,7 @@ import { useSection } from "@/components/DataProvider";
 import { fmtDate, fmtHM } from "@/lib/useClock";
 import { useReportCapture } from "@/lib/useReportCapture";
 import ReportActions from "@/components/ReportActions";
+import PageLoader from "@/components/PageLoader";
 import { parseNum } from "@/features/etirof/config";
 import { BLOCK_IDS, dmy, pctScale, type BlockId, type XatlovBlock, type XatlovRow } from "./config";
 
@@ -78,7 +79,7 @@ export default function XatlovView() {
           <i className="fa-solid fa-circle-info" /> {cap.error}
         </div>
       )}
-      {!data && !error && <div className="xt-loading"><i className="fa-solid fa-spinner fa-spin" /> Yuklanmoqda…</div>}
+      {!data && !error && <PageLoader />}
 
       {data && (
         <div ref={reportRef} className={`xt-report${cap.capturing ? " capturing" : ""}`}>

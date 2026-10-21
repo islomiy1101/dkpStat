@@ -3,7 +3,7 @@ import { MOCK } from "./mock";
 import { cached } from "./cache";
 import { fetchGviz, type GvizTable } from "./gviz";
 import { normalizeName, isSuperAdminTuman } from "./session";
-import { isGlobalIn, sameBranch } from "./roles";
+import { isBranchAnalyticsIn, isGlobalIn, sameBranch } from "./roles";
 import type { AppUser } from "./auth";
 import { TUMANLAR } from "@/features/advice/utils";
 import type { AdviceData, AdviceSessionInfo, Murojaat, Natija } from "./types";
@@ -33,7 +33,7 @@ export function loadAdviceRaw(fresh = false) {
  */
 export function adviceSessionFor(u: AppUser): AdviceSessionInfo {
   const tuman = isGlobalIn(u.role, "advice") ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
-  return { tuman, fio: u.fullName, loginTime: u.loginTime };
+  return { tuman, fio: u.fullName, loginTime: u.loginTime, analytics: isBranchAnalyticsIn(u.role, "advice") };
 }
 
 /** Original myjs.js -> loadDashboardData() parsing mantiqi, sessiya tumani bo'yicha filtrlangan */

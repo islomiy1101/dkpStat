@@ -40,7 +40,8 @@ export type AdviceData = {
   mahallalar: string[];
   masullar: Record<string, string>;
 };
-export type AdviceSessionInfo = { tuman: string; fio: string; loginTime: number };
+/** analytics — o'z tumani bo'yicha analitika paneli + faqat ko'rish (filial rahbari) */
+export type AdviceSessionInfo = { tuman: string; fio: string; loginTime: number; analytics?: boolean };
 
 // ---------- Deadline (Rollar kesimida tahlil) ----------
 export type RoleStats = {
@@ -73,4 +74,5 @@ export type ReceptionMurojaat = {
 };
 export type ReceptionData = { xodimlar: ReceptionXodim[]; murojaatlar: ReceptionMurojaat[] };
 /** tuman = "Boshqarma" — viloyat bo'yicha (hamma tumanlar) */
-export type ReceptionSessionInfo = { tuman: string; fio: string };
+/** analytics — o'z tumani bo'yicha analitika paneli + faqat ko'rish (filial rahbari) */
+export type ReceptionSessionInfo = { tuman: string; fio: string; analytics?: boolean };

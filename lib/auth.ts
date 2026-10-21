@@ -57,7 +57,8 @@ export const AUTH_STATE_KEY = "auth:state";
 
 async function authState(): Promise<AuthStateRow[] | null> {
   try {
-    return await cached(AUTH_STATE_KEY, STATE_TTL, fetchAuthState);
+    // stale: muddat tugaganda ham sahifa Apps Script javobini kutmaydi (bloklash/tiklash invalidate qiladi)
+    return await cached(AUTH_STATE_KEY, STATE_TTL, fetchAuthState, { stale: true });
   } catch (e) {
     // Apps Script vaqtincha javob bermasa — butun sayt yopilib qolmasin (cookie imzosi baribir tekshirilgan)
     console.error("[auth] sessiya holatini tekshirib bo'lmadi:", (e as Error).message);

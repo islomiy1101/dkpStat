@@ -268,7 +268,7 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
 
           {adminLinks.length > 0 && <div className="sb-divider" />}
           {adminLinks.map((l) => (
-            <Link key={l.id} href={l.href} className={`sb-item${pathname?.startsWith(l.href) ? " active" : ""}`} title={collapsed ? l.title : undefined}>
+            <Link key={l.id} href={l.href} prefetch className={`sb-item${pathname?.startsWith(l.href) ? " active" : ""}`} title={collapsed ? l.title : undefined}>
               <span className="sb-icon"><i className={l.icon} /></span>
               <span className="sb-text">
                 <span className="sb-title">{l.title}</span>

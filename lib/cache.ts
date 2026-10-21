@@ -12,16 +12,23 @@ export async function cached<T>(
   key: string,
   ttlMs: number | ((value: T) => number),
   loader: () => Promise<T>,
-  opts: { fresh?: boolean } = {}
+  opts: { fresh?: boolean; stale?: boolean } = {}
 ): Promise<T> {
   const now = Date.now();
-  if (!opts.fresh) {
-    const hit = store.get(key) as Entry<T> | undefined;
-    if (hit && hit.expires > now) return hit.value;
-  }
+  const hit = opts.fresh ? undefined : (store.get(key) as Entry<T> | undefined);
+  if (hit && hit.expires > now) return hit.value;
   const running = inflight.get(key) as Promise<T> | undefined;
-  if (running) return running;
 
+  // stale: muddati o'tgan qiymat darhol qaytariladi, yangilash fonda (stale-while-revalidate)
+  if (hit && opts.stale) {
+    if (!running) load(key, ttlMs, loader).catch((e) => console.error(`[cache] ${key} fonda yangilanmadi:`, (e as Error).message));
+    return hit.value;
+  }
+  if (running) return running;
+  return load(key, ttlMs, loader);
+}
+
+function load<T>(key: string, ttlMs: number | ((value: T) => number), loader: () => Promise<T>): Promise<T> {
   const p = loader()
     .then((value) => {
       store.set(key, { value, expires: Date.now() + (typeof ttlMs === "function" ? ttlMs(value) : ttlMs) });

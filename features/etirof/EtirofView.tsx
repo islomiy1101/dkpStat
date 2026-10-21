@@ -5,6 +5,7 @@ import { useSection } from "@/components/DataProvider";
 import { downloadBlob, fmtDate, fmtHM } from "@/lib/useClock";
 import { useReportCapture } from "@/lib/useReportCapture";
 import ReportActions from "@/components/ReportActions";
+import PageLoader from "@/components/PageLoader";
 import {
   ETIROF_PAGES, flatCols, isGroup, parseNum,
   type EtirofCol, type EtirofPage, type EtirofRow, type EtirofSvod,
@@ -80,7 +81,7 @@ export default function EtirofView({ page }: { page: EtirofPage }) {
       )}
 
       {!svod && !error && (
-        <div className="et-loading"><i className="fa-solid fa-spinner fa-spin" /> Yuklanmoqda…</div>
+        <PageLoader />
       )}
 
       {svod && (

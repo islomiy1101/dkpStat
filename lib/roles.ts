@@ -54,6 +54,15 @@ export const canSee = (role: Role, id: AreaId) => ACCESS[role].includes(id);
 /** Shu bo'limda viloyat bo'yicha to'liq ma'lumot ko'radimi; aks holda faqat o'z filialini */
 export const isGlobalIn = (role: Role, id: SectionId) => SCOPE[role][id] === "region";
 
+/**
+ * O'z filiali doirasida murojaat kiritmay, analitika paneli + ro'yxatni faqat ko'radigan rollar
+ * (Maslahat burchagi, Filial qabulxonasi). Viloyat rollari ("Boshqarma") ham yozmaydi — ular isGlobalIn bilan.
+ */
+const BRANCH_ANALYTICS: Partial<Record<Role, readonly SectionId[]>> = {
+  branchManager: ["advice", "reception"],
+};
+export const isBranchAnalyticsIn = (role: Role, id: SectionId) => BRANCH_ANALYTICS[role]?.includes(id) ?? false;
+
 const HREF: Record<AreaId, string> = {
   kadr: "/kadr",
   deadline: "/deadline",
