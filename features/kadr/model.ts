@@ -102,11 +102,16 @@ const round = (n: number) => Math.round(n * 100) / 100;
 export type KadrAgg = { shtat: number; band: number; vakant: number; rate: number };
 export type KadrGroup = KadrAgg & { name: string };
 export type KadrBolim = KadrGroup & { positions: KadrRow[] };
-export type KadrFilial = KadrGroup & { bolimlar: KadrBolim[] };
+/** vakantBy: lavozim → shu filialdagi vakantlar (bir nechta bo'limdagisi qo'shiladi) */
+export type KadrFilial = KadrGroup & { bolimlar: KadrBolim[]; vakantBy: Record<string, number> };
 export type KadrStats = {
   total: KadrAgg;
   filials: KadrFilial[];
   toifalar: KadrGroup[];
+  /** Vakanti bor lavozimlar — viloyat bo'yicha ko'pidan kamiga ("Filiallar kesimida" ustunlari) */
+  vakantLavozimlar: string[];
+  /** lavozim → viloyat bo'yicha vakantlar */
+  vakantBy: Record<string, number>;
   /** Eng ko'p vakant lavozimlar (barcha filiallar bo'yicha) */
   topVakant: { lavozim: string; vakant: number; filials: string[] }[];
 };
@@ -116,6 +121,12 @@ const agg = (list: KadrRow[]): KadrAgg => {
   const band = round(list.reduce((n, r) => n + r.band, 0));
   const vakant = round(list.reduce((n, r) => n + r.vakant, 0));
   return { shtat, band, vakant, rate: shtat ? band / shtat : 0 };
+};
+
+const vakantByLavozim = (list: KadrRow[]) => {
+  const m: Record<string, number> = {};
+  for (const r of list) if (r.vakant > 0) m[r.lavozim] = round((m[r.lavozim] ?? 0) + r.vakant);
+  return m;
 };
 
 function groupBy<T>(list: T[], key: (x: T) => string) {
@@ -137,17 +148,22 @@ export function buildKadrStats(rows: KadrRow[]): KadrStats {
   const filials = [...groupBy(rows, (r) => r.filial)].map(([name, list]) => ({
     name,
     ...agg(list),
+    vakantBy: vakantByLavozim(list),
     bolimlar: [...groupBy(list, (r) => r.bolim)].map(([bName, bList]) => ({ name: bName, ...agg(bList), positions: bList })),
   }));
   filials.sort((a, b) => filialOrder(a.name, b.name));
   const toifalar = [...groupBy(rows.filter((r) => r.toifa), (r) => r.toifa)]
     .map(([name, list]) => ({ name, ...agg(list) }))
     .sort((a, b) => b.shtat - a.shtat);
-  const topVakant = [...groupBy(rows.filter((r) => r.vakant > 0), (r) => r.lavozim)]
+  const vakant = [...groupBy(rows.filter((r) => r.vakant > 0), (r) => r.lavozim)]
     .map(([lavozim, list]) => ({ lavozim, vakant: round(list.reduce((n, r) => n + r.vakant, 0)), filials: [...new Set(list.map((r) => r.filial))] }))
-    .sort((a, b) => b.vakant - a.vakant)
-    .slice(0, 10);
-  return { total: agg(rows), filials, toifalar, topVakant };
+    .sort((a, b) => b.vakant - a.vakant);
+  return {
+    total: agg(rows), filials, toifalar,
+    vakantLavozimlar: vakant.map((v) => v.lavozim),
+    vakantBy: vakantByLavozim(rows),
+    topVakant: vakant.slice(0, 10),
+  };
 }
 
 /** 4.5 → "4,5"; 12 → "12" */
