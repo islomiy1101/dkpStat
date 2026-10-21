@@ -5,9 +5,13 @@ import { useData } from "@/components/DataProvider";
 import type { SheetLink } from "@/lib/sheet-links";
 import { UPLOAD_CHUNK_ROWS, UPLOAD_TARGETS, parseWorkbook, type ParsedSheet, type UploadSection, type UploadTarget, type CellValue } from "@/lib/upload-targets";
 import { svodSpans } from "@/features/deadline/aggregate";
+import type { SectionId } from "@/lib/sections";
+
+/** Yuklangan bo'limning DataProvider sloti (Muddat buzilish slotsiz — sahifa o'zi so'raydi) */
+const slotOf = (id: UploadSection): SectionId | null => (id === "muddat" ? null : id);
 
 /**
- * "Bazaga yuklash" (faqat superadmin): har bir bo'lim uchun alohida .xlsx.
+ * "Bazaga yuklash" (superadmin, assistent): har bir bo'lim uchun alohida .xlsx.
  * Fayl avval brauzerda tekshiriladi va ko'rsatiladi, tasdiqlangach serverga yuboriladi —
  * server qayta tekshirib, Google Sheets'dagi varaqlarni to'liq almashtiradi.
  */
@@ -200,7 +204,8 @@ function UploadCard({ target }: { target: UploadTarget }) {
         setResult({ ok: false, text: (e as Error).message });
       } finally {
         // Qisman yozilgan bo'lsa ham kesh tozalanadi — sahifa haqiqiy holatni ko'rsatsin
-        void refresh(target.id, { fresh: true });
+        const slot = slotOf(target.id);
+        if (slot) void refresh(slot, { fresh: true });
         setProgress(null);
         setSending(false);
         setConfirm(false);
@@ -215,7 +220,8 @@ function UploadCard({ target }: { target: UploadTarget }) {
       setResult({ ok: !!json.success, text: json.message || (json.success ? "Yuklandi" : "Xatolik") });
       if (json.success) {
         reset();
-        void refresh(target.id, { fresh: true });
+        const slot = slotOf(target.id);
+        if (slot) void refresh(slot, { fresh: true });
       }
     } catch {
       setResult({ ok: false, text: "Tarmoq xatosi. Qayta urinib ko'ring." });

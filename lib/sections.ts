@@ -6,6 +6,12 @@
 import { DEADLINE_LISTS, DEADLINE_LIST_IDS } from "@/features/deadline/source";
 import { ETIROF_PAGES, ETIROF_PAGE_IDS } from "@/features/etirof/config";
 
+const DEADLINE_CHILDREN: { href: string; title: string; icon: string }[] = [
+  ...DEADLINE_LIST_IDS.map((id) => ({ href: `/deadline/${id}`, title: DEADLINE_LISTS[id].title, icon: DEADLINE_LISTS[id].icon })),
+  // UZKAD bazasidan tumanlar kesimidagi muddat buzilish SVOD'i (features/muddat)
+  { href: "/deadline/muddat", title: "Muddat buzilish", icon: "fa-solid fa-calendar-xmark" },
+];
+
 export const SECTIONS = [
   {
     id: "kadr",
@@ -23,7 +29,7 @@ export const SECTIONS = [
     icon: "fa-solid fa-chart-line",
     source: "Google Sheets",
     /** Sidebar'da ochiladigan bo'limchalar (bir xil ko'rinish, har biri o'z varag'idan) */
-    children: DEADLINE_LIST_IDS.map((id) => ({ href: `/deadline/${id}`, title: DEADLINE_LISTS[id].title, icon: DEADLINE_LISTS[id].icon })),
+    children: DEADLINE_CHILDREN,
   },
   {
     id: "etirof",

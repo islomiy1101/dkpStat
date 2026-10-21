@@ -670,3 +670,175 @@ html.rpt-capturing .sec-deadline { height: auto !important; overflow: visible !i
   .sec-deadline table.excel-table td { position: static !important; }
   .sec-deadline tbody tr:hover td { background-color: inherit !important; }
 }
+
+/* ---------- Muddat buzilish (features/muddat/MuddatView.tsx): jadval ekranga sig'adi (MUDDATI BOR yopiq holatda) ---------- */
+.sec-deadline.muddat-page { --cell-height: 28px; }
+/* Ustun kengliklari <colgroup> dan: № va Hudud nomi qat'iy, raqamli ustunlar qolgan joyni teng bo'ladi */
+.sec-deadline.muddat-page table.muddat-table { table-layout: fixed; width: 100%; font-size: 12px; }
+.sec-deadline.muddat-page table.muddat-table th,
+.sec-deadline.muddat-page table.muddat-table td { padding: 3px 4px; }
+.sec-deadline.muddat-page .muddat-table .freeze-no { width: 36px; min-width: 36px; }
+.sec-deadline.muddat-page .muddat-table .freeze-name { left: 36px; width: 168px; min-width: 168px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec-deadline.muddat-page .muddat-table .num-cell { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+/* Sarlavhalar faqat so'z orasidan o'raladi (2–3 qator) */
+.sec-deadline.muddat-page .muddat-table thead th {
+  white-space: normal; word-break: normal; overflow-wrap: break-word; hyphens: manual;
+  line-height: 1.2; font-size: 10.5px; height: auto !important;
+}
+.sec-deadline.muddat-page .muddat-table thead th.freeze-no,
+.sec-deadline.muddat-page .muddat-table thead th.freeze-name { white-space: nowrap; font-size: 11.5px; }
+.sec-deadline.muddat-page .muddat-table .banner-row-1 { font-size: 12px !important; height: 28px !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sec-deadline.muddat-page .muddat-table .banner-row-2 { height: 20px !important; }
+/* Balandligi o'zgaruvchan sarlavha qatorlari: alohida sticky o'rniga butun thead yopishadi */
+.sec-deadline.muddat-page .muddat-table thead { position: sticky; top: 0; z-index: 60; }
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-roles th,
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-days th,
+.sec-deadline.muddat-page .muddat-table .banner-row-1,
+.sec-deadline.muddat-page .muddat-table .banner-row-2 { position: static; top: auto; }
+.sec-deadline.muddat-page .muddat-table thead th.freeze-no,
+.sec-deadline.muddat-page .muddat-table thead th.freeze-name { position: sticky; height: auto !important; }
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-roles th { padding: 6px 4px; font-size: 11px; }
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-days th { font-size: 10.5px; font-weight: 600; color: #475569; padding: 5px 3px; }
+/* MUDDATI BOR — tahlil ustunlarini ochadi/yopadi */
+.sec-deadline.muddat-page .mt-toggle { cursor: pointer; user-select: none; font-weight: 800; }
+.sec-deadline.muddat-page .mt-toggle i { display: block; margin-top: 4px; font-size: 11px; opacity: 0.75; }
+.sec-deadline.muddat-page .mt-toggle:hover { filter: brightness(0.96); }
+/* Muddati o'tgan: qiymatga qarab rang (hover/drilldown stillaridan ustun) */
+.sec-deadline.muddat-page .muddat-table tbody tr td.mt-heat,
+.sec-deadline.muddat-page .muddat-table tbody tr:hover td.mt-heat,
+.sec-deadline.muddat-page .muddat-table tbody tr td.mt-heat.drilldown-cell,
+.sec-deadline.muddat-page .muddat-table tbody tr td.mt-heat.drilldown-cell:hover {
+  background-color: var(--heat-bg) !important; color: var(--heat-fg) !important; font-weight: 700 !important;
+}
+.sec-deadline.muddat-page .muddat-table tbody tr td.mt-heat:hover { filter: brightness(0.93); }
+/* Kartalar — bosilsa arizalar ro'yxati */
+.sec-deadline.muddat-page .kpi-click { cursor: pointer; transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s; }
+.sec-deadline.muddat-page .kpi-click:hover { transform: translateY(-1px); border-color: #93c5fd; box-shadow: 0 6px 14px -6px rgba(37, 99, 235, 0.35); }
+.sec-deadline.muddat-page .kpi-click:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+/* Bosqich ustunlari: to'liq nom 90° vertikal (pastdan yuqoriga), uzun nom 2–3 vertikal qatorga o'raladi */
+/* tr.header-row-days bilan — "thead tr.header-row-days th { position: static }" dan ustun bo'lishi uchun */
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-days th.mt-vert-th { position: relative; padding: 0; vertical-align: middle !important; height: 190px !important; }
+/*
+ * Vertikal nom transform bilan (writing-mode emas): html2canvas (Rasm va Chop etish) faqat transform'ni chizadi.
+ * 180px kenglikdagi blok −90° buriladi — pastdan yuqoriga o'qiladi, ko'pi bilan 2 qator, ustun markazida.
+ */
+.sec-deadline.muddat-page .mt-vert {
+  position: absolute; top: 50%; left: 50%; width: 180px;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  white-space: normal; text-align: center;
+  line-height: 1.25; font-size: 10px; font-weight: 700;
+}
+
+/* Hudud nomi — bosilsa ijrochi muhandislar */
+.sec-deadline.muddat-page td.mt-tuman { cursor: pointer; color: #1d4ed8; }
+.sec-deadline.muddat-page td.mt-tuman:hover { text-decoration: underline; }
+.sec-deadline.muddat-page td.mt-tuman:hover .mt-caret { opacity: 1; }
+/* Tuman ochilganda: ostida ijrochi muhandislar qatorlari (SVOD bilan bir xil ustunlar) */
+.sec-deadline.muddat-page td.mt-tuman .mt-caret { margin: 0 6px 0 0; font-size: 9px; opacity: 0.6; width: 9px; }
+.sec-deadline.muddat-page tr.mt-row-open td { background: #eff6ff; font-weight: 700; }
+.sec-deadline.muddat-page tr.mt-row-open td.freeze-name { background: #dbeafe; }
+.sec-deadline.muddat-page tr.mt-sub td { background: #fbfdff; color: #334155; font-weight: 500; border-bottom-color: #d8e0ea; }
+.sec-deadline.muddat-page tr.mt-sub td.freeze-no,
+.sec-deadline.muddat-page tr.mt-sub td.freeze-name { background: #fbfdff; }
+.sec-deadline.muddat-page tr.mt-sub:hover td { background: #f1f5f9 !important; }
+.sec-deadline.muddat-page tr.mt-sub td.mt-fio { padding-left: 22px !important; cursor: pointer; font-size: 11.5px; }
+.sec-deadline.muddat-page tr.mt-sub td.mt-fio:hover .mt-fio-name { color: #1d4ed8; text-decoration: underline; }
+.sec-deadline.muddat-page .mt-avatar {
+  display: inline-flex; align-items: center; justify-content: center; vertical-align: middle;
+  width: 20px; height: 20px; margin-right: 7px; border-radius: 50%;
+  background: #e2e8f0; color: #475569; font-size: 8.5px; font-weight: 700; letter-spacing: 0.02em;
+}
+.sec-deadline.muddat-page .mt-avatar.is-none { background: #f1f5f9; color: #94a3b8; }
+.sec-deadline.muddat-page .mt-fio-name { vertical-align: middle; }
+.sec-deadline.muddat-page tr.mt-sub td.mt-zero { color: #cbd5e1; }
+.sec-deadline.muddat-page tr.mt-sub td.drilldown-cell { font-weight: 600 !important; }
+.sec-deadline.muddat-page tr.mt-sub td.mt-bad { color: #b91c1c !important; font-weight: 800 !important; }
+.sec-deadline.muddat-page tr.mt-sub-msg td { font-size: 12px; color: #64748b; text-align: left; padding-left: 22px !important; }
+.sec-deadline.muddat-page tr.mt-sub-msg .mt-sub-err { color: #b91c1c; font-weight: 600; }
+
+/* Raqamlar qizil (ko'k emas) */
+.sec-deadline.muddat-page .muddat-table .drilldown-cell { color: #dc2626 !important; }
+.sec-deadline.muddat-page .muddat-table .drilldown-cell:hover { color: #991b1b !important; background-color: #fee2e2 !important; }
+.sec-deadline.muddat-page .muddat-table .row-jami td { color: #b91c1c; }
+.sec-deadline.muddat-page .muddat-table .row-jami td.freeze-no,
+.sec-deadline.muddat-page .muddat-table .row-jami td.freeze-name { color: #0f172a; }
+.sec-deadline.muddat-page tr.mt-sub td.drilldown-cell { color: #dc2626 !important; }
+.sec-deadline.muddat-page tr.mt-sub td.mt-bad { color: #991b1b !important; }
+/* Kartalar — filtr (bir nechtasi birga): tanlangani ko'k chegara, och fon va ✓ belgisi bilan */
+.sec-deadline.muddat-page .kpi-click { position: relative; }
+.sec-deadline.muddat-page .kpi-click.is-active {
+  border: 2px solid #2563eb; background: #eff6ff; box-shadow: 0 6px 16px -8px rgba(37, 99, 235, 0.55);
+}
+.sec-deadline.muddat-page .kpi-click.is-active .kpi-title { color: #1d4ed8; }
+.sec-deadline.muddat-page .mt-kpi-check {
+  position: absolute; top: 6px; right: 6px; width: 18px; height: 18px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: #2563eb; color: #fff; font-size: 9px; box-shadow: 0 0 0 2px #eff6ff;
+}
+/* Rasm / pechat: sticky va hover holatlari o'chadi, jadval to'liq */
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table thead,
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table .freeze-no,
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table .freeze-name { position: static; }
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .kpi-click { transform: none; box-shadow: none; }
+/* Rasm/pechat: umumiy ".capturing th { position: static !important }" vertikal sarlavhalarni buzmasin; jadval kengligi 100% */
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table thead tr.header-row-days th.mt-vert-th { position: relative !important; }
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing { width: 100%; }
+
+/* ---------- Muddat buzilish: turli ekranlar ---------- */
+/* Planshet va kichik noutbuk: jadval qisilmaydi — o'z ichida gorizontal suriladi, № va hudud nomi qotib turadi */
+@media (max-width: 1440px) {
+  .sec-deadline.muddat-page table.muddat-table { min-width: 1280px; }
+  .sec-deadline.muddat-page .kpi-info .kpi-title { line-height: 1.25; }
+}
+@media (max-width: 1024px) {
+  .sec-deadline.muddat-page .sheet-viewport { max-height: calc(100vh - 220px); }
+}
+/* Rasm/pechat har doim katta ekrandagidek (windowWidth 1600) */
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing table.muddat-table { min-width: 0; }
+
+/* Telefon (≤768px): jadval o'rniga kartalar */
+.sec-deadline.muddat-page .mt-card > summary { padding: 10px 12px; }
+.sec-deadline.muddat-page .mt-card-n {
+  flex-shrink: 0; min-width: 34px; height: 26px; padding: 0 8px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fee2e2; color: #b91c1c; font-size: 13px; font-weight: 800;
+}
+.sec-deadline.muddat-page .mt-card-stats { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.sec-deadline.muddat-page .mt-card-stats span {
+  padding: 3px 8px; border-radius: 999px; background: #f1f5f9; color: #475569; font-size: 11px; font-weight: 600;
+}
+.sec-deadline.muddat-page .mt-card-stats span b { color: #0f172a; margin-left: 2px; }
+.sec-deadline.muddat-page .mt-card-stats span.is-bad { background: #fee2e2; color: #991b1b; }
+.sec-deadline.muddat-page .mt-card-stats span.is-bad b { color: #b91c1c; }
+.sec-deadline.muddat-page .mt-card-body { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 10px; }
+.sec-deadline.muddat-page .mt-card-sec h4 { margin: 0 0 6px; font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em; }
+.sec-deadline.muddat-page .mt-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.sec-deadline.muddat-page .mt-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 8px;
+  border: 1px solid #fecaca; background: #fff7f7; color: #334155; font-size: 11.5px; text-align: left; cursor: pointer;
+}
+.sec-deadline.muddat-page .mt-chip b { color: #dc2626; font-size: 12.5px; }
+.sec-deadline.muddat-page .mt-chip:active { background: #fee2e2; }
+.sec-deadline.muddat-page .mt-card-muh-btn {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8; font-size: 12.5px; font-weight: 700; cursor: pointer;
+}
+.sec-deadline.muddat-page .mt-card-muh-btn i:last-child { margin-left: auto; font-size: 10px; }
+.sec-deadline.muddat-page .mt-card-msg { padding: 8px 2px; font-size: 12px; color: #64748b; }
+.sec-deadline.muddat-page .mt-card-msg.is-bad { color: #b91c1c; }
+.sec-deadline.muddat-page .mt-card-muh { list-style: none; margin: 6px 0 0; padding: 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; }
+.sec-deadline.muddat-page .mt-card-muh li {
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #f1f5f9;
+  font-size: 12px; cursor: pointer;
+}
+.sec-deadline.muddat-page .mt-card-muh li:last-child { border-bottom: 0; }
+.sec-deadline.muddat-page .mt-card-muh li:active { background: #f1f5f9; }
+.sec-deadline.muddat-page .mt-card-muh-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #0f172a; }
+.sec-deadline.muddat-page .mt-card-muh-bad { padding: 1px 6px; border-radius: 6px; background: #fee2e2; color: #b91c1c; font-size: 11px; font-weight: 700; }
+.sec-deadline.muddat-page .mt-card-muh b { min-width: 24px; text-align: right; color: #dc2626; }
+@media (max-width: 768px) {
+  .sec-deadline.muddat-page .kpi-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sec-deadline.muddat-page .kpi-cards-grid .kpi-card:last-child { grid-column: 1 / -1; }
+  .sec-deadline.muddat-page .kpi-info .kpi-title { font-size: 9px; }
+  .sec-deadline.muddat-page .modal-body { overflow: auto; }
+}

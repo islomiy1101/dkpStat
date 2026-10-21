@@ -53,7 +53,7 @@ const PREPARE_RETRY_MS = 8000;
 const PREPARE_RETRIES = 12;
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** canUpload — xato "qayta yuklang" bo'lsa, modalda "Bazaga yuklash" havolasi (faqat superadmin) */
+/** canUpload — xato "qayta yuklang" bo'lsa, modalda "Bazaga yuklash" havolasi (superadmin, assistent) */
 export default function DeadlineView({ list, canUpload = false }: { list: DeadlineList; canUpload?: boolean }) {
   const slot = useSection("deadline");
   // Ikkala ro'yxat bitta slotda; eski keshda (bitta ro'yxatli format) bu kalit bo'lmaydi
@@ -214,8 +214,7 @@ export default function DeadlineView({ list, canUpload = false }: { list: Deadli
         <div className="header-title-box">
           <div className="header-icon-badge"><i className="fa-solid fa-chart-line" /></div>
           <div>
-            <h2>Рўллар кесмида тахлил («Свод») — {listInfo.title}</h2>
-            <span>Har bir bo‘lim alohida asosiy ustunda va bo‘limchalaridan oldinda turadi (FinTech Dashboard).</span>
+            <h2>Rollar kesimida tahlil (SVOD) — {list === "yakunlangan" ? "Yakunlangan tashqi arizalar" : "Jarayondagi tashqi arizalar"}</h2>
           </div>
         </div>
 

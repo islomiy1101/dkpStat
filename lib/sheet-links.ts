@@ -1,11 +1,12 @@
 import { config } from "./config";
 import { authSpreadsheetId } from "./auth-server";
 import { DEADLINE_LISTS, DEADLINE_LIST_IDS } from "@/features/deadline/source";
+import { MUDDAT_SHEET } from "@/features/muddat/rules";
 import { ETIROF_PAGES, ETIROF_PAGE_IDS } from "@/features/etirof/config";
 import { KADR_SHEET } from "@/features/kadr/model";
 
 /**
- * "Bazaga yuklash" sahifasidagi Google Sheets havolalari (faqat superadmin ko'radi).
+ * "Bazaga yuklash" sahifasidagi Google Sheets havolalari (superadmin va assistent ko'radi).
  * ID'lar .env'dan olinadi (Users/Logs jadvali — Apps Script'dan ham); topilmagani "sozlanmagan" deb ko'rsatiladi.
  */
 export type SheetLink = { group: string; title: string; icon: string; sheets: string[]; url: string | null };
@@ -35,6 +36,13 @@ export async function sheetLinks(): Promise<SheetLink[]> {
       icon: "fa-solid fa-chart-line",
       sheets: DEADLINE_LIST_IDS.map((id) => DEADLINE_LISTS[id].sheet),
       url: url(config.deadlineSheetId),
+    },
+    {
+      group: "Bazaga yuklanadigan",
+      title: "Muddat buzilish",
+      icon: "fa-solid fa-calendar-xmark",
+      sheets: [MUDDAT_SHEET],
+      url: url(config.muddatSheetId),
     },
     ...ETIROF_PAGE_IDS.map((id) => ({
       group: "E'tirof",

@@ -68,8 +68,6 @@
 .sec-kadr .kd-progress i { display: block; height: 100%; border-radius: 3px; background: var(--c); }
 
 /* Kartalar */
-.sec-kadr .kd-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr); gap: 14px; align-items: start; }
-.sec-kadr .kd-side { display: flex; flex-direction: column; gap: 14px; }
 .sec-kadr .kd-card { background: #fff; border: 1px solid var(--kd-border); border-radius: 14px; padding: 14px 16px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.04); min-width: 0; }
 .sec-kadr .kd-card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px; }
 .sec-kadr .kd-card-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
@@ -83,20 +81,35 @@
 .sec-kadr .kd-table-wrap { overflow-x: auto; border: 1px solid var(--kd-border); border-radius: 10px; }
 .sec-kadr .kd-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .sec-kadr .kd-table th {
-  padding: 9px 12px; text-align: left; background: #f8fafc; border-bottom: 1px solid var(--kd-border);
+  padding: 9px 12px; text-align: center; vertical-align: middle; background: #f8fafc;
   font-size: 11px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--kd-muted); white-space: nowrap;
 }
 .sec-kadr .kd-table th.sortable { cursor: pointer; user-select: none; }
 .sec-kadr .kd-table th.sortable:hover { color: var(--kd-text); }
 .sec-kadr .kd-table th i { font-size: 9px; margin-left: 3px; }
-.sec-kadr .kd-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+.sec-kadr .kd-table td { padding: 8px 12px; vertical-align: middle; }
+/* Katak chiziqlari; tashqi chegarani .kd-table-wrap beradi */
+.sec-kadr .kd-table :is(th, td) { border: 1px solid var(--kd-border); }
+.sec-kadr .kd-table thead th { border-top: 0; }
 .sec-kadr .kd-table tbody tr:last-child td { border-bottom: 0; }
+.sec-kadr .kd-table :is(th, td):first-child { border-left: 0; }
+.sec-kadr .kd-table :is(th, td):last-child { border-right: 0; }
+/* Vakant lavozimlar ustunlari ("Filiallar kesimida") */
+.sec-kadr .kd-table th.kd-lav {
+  min-width: 72px; max-width: 120px; white-space: normal; text-transform: none; letter-spacing: 0;
+  line-height: 1.2;
+}
+.sec-kadr .kd-table td.kd-lav { width: auto; text-align: center; }
+/* Gorizontal aylantirishda filial nomi joyida qoladi */
+.sec-kadr .kd-filials :is(th, td):first-child { position: sticky; left: 0; z-index: 1; background: #fff; min-width: 170px; }
+.sec-kadr .kd-filials th:first-child { background: #f8fafc; }
 .sec-kadr .kd-table .num { text-align: right; width: 76px; }
+.sec-kadr .kd-table th.num { text-align: center; }
 .sec-kadr .kd-table .is-vakant { color: #dc2626; font-weight: 700; }
-.sec-kadr .kd-total td { background: #eef2ff; font-weight: 800; border-bottom: 2px solid #c7d2fe; }
+.sec-kadr .kd-table .kd-total td { background: #eef2ff; font-weight: 800; border-bottom: 2px solid #c7d2fe; }
 .sec-kadr .kd-row { cursor: pointer; transition: background 0.12s; }
-.sec-kadr .kd-row:hover td { background: #f8fbff; }
-.sec-kadr .kd-row.active td { background: #e0f2fe; }
+.sec-kadr .kd-table .kd-row:hover td { background: #f8fbff; }
+.sec-kadr .kd-table .kd-row.active td { background: #e0f2fe; }
 .sec-kadr .kd-link { padding: 0; border: 0; background: none; color: var(--kd-text); font-weight: 600; text-align: left; cursor: pointer; }
 .sec-kadr .kd-row:hover .kd-link { color: var(--kd-accent); text-decoration: underline; text-underline-offset: 3px; }
 .sec-kadr .kd-bolim td { background: #f8fafc; font-weight: 700; }
@@ -112,17 +125,10 @@
 .sec-kadr .kd-rate-track i { display: block; height: 100%; border-radius: 4px; background: var(--c); }
 .sec-kadr .kd-rate b { min-width: 38px; text-align: right; font-size: 12px; color: var(--c); }
 
-/* Vakantlar grafigi */
-.sec-kadr .kd-bars { display: flex; flex-direction: column; gap: 4px; }
-.sec-kadr .kd-bar {
-  display: grid; grid-template-columns: minmax(0, 130px) minmax(0, 1fr) 40px; align-items: center; gap: 10px;
-  padding: 5px 6px; border: 0; border-radius: 8px; background: none; cursor: pointer; text-align: left;
-}
-.sec-kadr .kd-bar:hover, .sec-kadr .kd-bar.active { background: #f1f5f9; }
-.sec-kadr .kd-bar-name { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sec-kadr .kd-bar-track { height: 10px; border-radius: 5px; background: #fef2f2; overflow: hidden; }
-.sec-kadr .kd-bar-track i { display: block; height: 100%; border-radius: 5px; background: linear-gradient(90deg, #f87171, #dc2626); }
-.sec-kadr .kd-bar b { text-align: right; font-size: 12.5px; color: #dc2626; }
+/* Pastki kartalar: bitta bo'lsa — to'liq kenglik */
+.sec-kadr .kd-pair { display: flex; gap: 14px; align-items: flex-start; }
+.sec-kadr .kd-pair > * { flex: 1 1 0; min-width: 0; }
+.sec-kadr .kd-pair:empty { display: none; }
 
 .sec-kadr .kd-mini { display: flex; flex-direction: column; gap: 10px; }
 .sec-kadr .kd-mini-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; }
@@ -155,7 +161,7 @@
 @media (max-width: 1100px) {
   .sec-kadr { padding: 12px 16px 20px; }
   .sec-kadr .kd-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .sec-kadr .kd-grid { grid-template-columns: minmax(0, 1fr); }
+  .sec-kadr .kd-pair { flex-direction: column; align-items: stretch; }
 }
 
 /* Telefon: jadval qatorlari — kartalar */
@@ -174,6 +180,9 @@
     border: 1px solid var(--kd-border); border-radius: 10px; margin-bottom: 6px; background: #fff;
   }
   .sec-kadr .kd-table td { display: block; padding: 0; border: 0; background: none !important; }
+  .sec-kadr .kd-filials td:first-child { position: static; min-width: 0; }
+  .sec-kadr .kd-table td.kd-lav { text-align: left; }
+  .sec-kadr .kd-table td.kd-lav:empty { display: none; }
   .sec-kadr .kd-table td:first-child { grid-column: 1 / -1; font-weight: 700; padding-left: 0 !important; }
   .sec-kadr .kd-table td:last-child { grid-column: 1 / -1; }
   .sec-kadr .kd-table .num { width: auto; text-align: left; }
