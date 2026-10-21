@@ -116,14 +116,14 @@ export default function DeadlineView({ list, canUpload = false }: { list: Deadli
       if (ctx.manba) p.set("manba", ctx.manba);
       if (ctx.role) p.set("role", ctx.role);
       if (ctx.day) p.set("day", ctx.day);
-      let json;
+      let json: { status?: string; message?: string; headers?: string[]; data?: unknown[][] } = {};
       for (let attempt = 0; ; attempt++) {
         p.set("_t", String(Date.now()));
         const res = await fetch(`${API_DETAILS}?${p}`);
         json = await res.json();
         if (json.status !== "preparing" || attempt >= PREPARE_RETRIES) break;
         if (run !== drillRun.current) return;
-        setDrill((d) => ({ ...d, loading: false, title: `${ctx.tuman} arizalari`, message: { text: json.message, preparing: true } }));
+        setDrill((d) => ({ ...d, loading: false, title: `${ctx.tuman} arizalari`, message: { text: json.message || "Ma'lumot tayyorlanmoqda...", preparing: true } }));
         await sleep(PREPARE_RETRY_MS);
         if (run !== drillRun.current) return;
       }
