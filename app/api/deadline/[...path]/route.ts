@@ -1,4 +1,5 @@
 import { requireArea } from "@/lib/auth";
+import { syncSection } from "@/lib/sheet-version";
 import { NextResponse } from "next/server";
 import { isGlobalIn, sameBranch } from "@/lib/roles";
 import { DeadlinePreparing, loadDeadlineSheet, loadDeadlineSummary, warmDeadline } from "@/lib/deadline-server";
@@ -18,6 +19,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, ctx: { params: Promise<{ path: string[] }> }) {
   const u = await requireArea("deadline");
   if (u instanceof Response) return u;
+  await syncSection("deadline", "deadline:");
   const { path } = await ctx.params;
   const name = path.join("/");
   if (name !== "summary" && name !== "details") return NextResponse.json({ error: "Not found" }, { status: 404 });

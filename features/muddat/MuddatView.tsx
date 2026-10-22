@@ -5,6 +5,7 @@ import { useClock, fmtDate, fmtTime } from "@/lib/useClock";
 import { useReportCapture } from "@/lib/useReportCapture";
 import ReportActions from "@/components/ReportActions";
 import PageLoader from "@/components/PageLoader";
+import { useData } from "@/components/DataProvider";
 import { ROWS, fmtNum } from "@/features/deadline/model";
 import { BIRIKTIRILMAGAN, BOSQICHLAR, QOLGAN, VILOYAT, type MuddatCol, type MuddatRowStats, type MuddatSvod } from "./rules";
 
@@ -13,13 +14,16 @@ import { BIRIKTIRILMAGAN, BOSQICHLAR, QOLGAN, VILOYAT, type MuddatCol, type Mudd
  * Hisob serverda (lib/muddat-server.ts → features/muddat/rules.ts), bugungi sana bo'yicha.
  * Stillar Rollar kesimidan (.sec-deadline, styles/deadline.css → .muddat-page).
  */
-/** width — <colgroup> dagi qat'iy kenglik (bo'lmasa qolgan joyni teng bo'ladi); vertical — sarlavha 90° buriladi */
-type Col = { id: MuddatCol; title: string; expired?: boolean; strong?: boolean; width?: number; vertical?: boolean };
+/**
+ * width — <colgroup> dagi qat'iy kenglik (bo'lmasa qolgan joyni teng bo'ladi); vertical — sarlavha 90° buriladi;
+ * red — sarlavha matni qizil; head — jadval sarlavhasidagi qisqa nom (guruh nomi takrorlanmasin; drilldown'da — title)
+ */
+type Col = { id: MuddatCol; title: string; expired?: boolean; strong?: boolean; width?: number; vertical?: boolean; red?: boolean; head?: string };
 /**
  * single — bitta ustunli guruh: sarlavhasi ikki qator balandlikda;
- * toggle — shunday guruh, bosilsa keyingi tahlil ustunlari ochiladi/yopiladi.
+ * toggle — shunday guruh, bosilsa keyingi tahlil ustunlari ochiladi/yopiladi; red — guruh sarlavhasi qizil.
  */
-type Group = { id: string; title: string; theme: string; cols: Col[]; single?: boolean; toggle?: boolean };
+type Group = { id: string; title: string; theme: string; cols: Col[]; single?: boolean; toggle?: boolean; red?: boolean };
 
 /**
  * Muddati o'tgan ustunlar: rang to'qligi qiymatga qarab (eng ko'p tuman — eng to'q qizil).
@@ -32,21 +36,24 @@ const heat = (v: number, max: number): CSSProperties | undefined => {
   return { "--heat-bg": `rgba(220, 38, 38, ${(0.1 + 0.65 * t).toFixed(3)})`, "--heat-fg": "#111827" } as CSSProperties;
 };
 
-/** Bosqichlar (sarlavhasi vertikal): … → (Boshqa — faqat bo'lsa) → YAKUNLANDI → QOLDI (= Jami − Yakunlandi) */
-const bosqichCols = (showBoshqa: boolean): Col[] => [
-  ...BOSQICHLAR.filter((b) => b.id !== "yakunlandi" && b.id !== "boshqa").map((b) => ({ id: b.id as MuddatCol, title: b.title, vertical: true })),
-  ...(showBoshqa ? [{ id: "boshqa" as MuddatCol, title: "Boshqa", vertical: true }] : []),
-  { id: "yakunlandi", title: "YAKUNLANDI", strong: true, vertical: true },
-  { id: "qoldi", title: "QOLDI", strong: true, vertical: true },
-];
+/** Bosqichlar: sarlavhasi qizil ("Filial (tizm)") va SVOD'dagi qisqa nomlar (guruh nomi "Filial") */
+const RED_HEAD = new Set<string>(["ajratish", "ozida", "umumiy", "boglik"]);
+const HEAD: Partial<Record<string, string>> = { boshliq: "Tuman / shahar boʼlimi boshligʼi", arxiv: "Arxivchi" };
+
+/** Bosqich ustunlari (sarlavhasi vertikal) — BOSQICHLAR dan */
+const bosqich = (...ids: string[]): Col[] =>
+  ids.map((id) => {
+    const b = BOSQICHLAR.find((x) => x.id === id)!;
+    return { id: b.id as MuddatCol, title: b.title, head: HEAD[id], vertical: true, red: RED_HEAD.has(id) };
+  });
 
 const groupsFor = (showBoshqa: boolean, tahlilOpen: boolean): Group[] => [
   { id: "jami", title: "Jami yakunlash kerak", theme: "theme-manba", cols: [{ id: "jami", title: "Jami yakunlash kerak", width: 78 }], single: true },
   {
     id: "otgan", title: "Shundan muddati o‘tgan arizalar", theme: "theme-dkp",
     cols: [
-      { id: "otganFilial", title: "Filial tomonidan o‘tgan", expired: true, width: 92 },
-      { id: "otganReg", title: "Registratsiya tomonidan o‘tgan", expired: true, width: 92 },
+      { id: "otganFilial", title: "Filial tomonidan o‘tgan", expired: true, width: 92, red: true },
+      { id: "otganReg", title: "Registratsiya tomonidan o‘tgan", expired: true, width: 92, red: true },
     ],
   },
   { id: "bugun", title: "Bugun muddati tugaydigan", theme: "theme-dkp", cols: [{ id: "bugun", title: "Bugun muddati tugaydigan", width: 78 }], single: true },
@@ -54,7 +61,21 @@ const groupsFor = (showBoshqa: boolean, tahlilOpen: boolean): Group[] => [
     id: "obyekt", title: "Obyekt turi", theme: "theme-manba",
     cols: [{ id: "turar", title: "Turar", width: 62 }, { id: "noturar", title: "Noturar", width: 62 }],
   },
-  { id: "bosqich", title: "Ariza hozir turgan bosqich", theme: "theme-filial", cols: bosqichCols(showBoshqa) },
+  // Ariza hozir turgan bosqich — Google Sheets SVOD'dagidek bo'limlar bo'yicha
+  { id: "filial1", title: "Filial", theme: "theme-filial", cols: bosqich("boshliq", "boshMuhandis", "inventar") },
+  { id: "filialTizm", title: "Filial (tizm)", theme: "theme-filial", red: true, cols: bosqich("ajratish", "ozida", "umumiy", "boglik") },
+  { id: "filial2", title: "Filial", theme: "theme-filial", cols: bosqich("topograf", "dkyat", "balans") },
+  { id: "boshqarma", title: "Boshqarma", theme: "theme-boshqarma", cols: bosqich("boshqarma", "reg") },
+  { id: "filial3", title: "Filial", theme: "theme-filial", cols: bosqich("arxiv") },
+  {
+    id: "tizm", title: "Tizm", theme: "theme-manba",
+    cols: bosqich("kamchilik", "kelishish", "tolov"),
+  },
+  // Hech qaysi bosqichga tushmaganlar — faqat bo'lsa
+  ...(showBoshqa ? [{ id: "boshqa", title: "Boshqa", theme: "theme-dkp", cols: [{ id: "boshqa" as MuddatCol, title: "Boshqa", width: 56 }], single: true }] : []),
+  { id: "yakunlandi", title: "YAKUNLANDI", theme: "theme-manba", cols: [{ id: "yakunlandi", title: "YAKUNLANDI", strong: true, width: 56, vertical: true }], single: true },
+  // QOLDI = Jami − Yakunlandi
+  { id: "qoldi", title: "QOLDI", theme: "mt-qoldi-th", cols: [{ id: "qoldi", title: "QOLDI", strong: true, width: 56 }], single: true },
   {
     id: "muddatiBor", title: "MUDDATI BOR", theme: "theme-agentlik",
     cols: [{ id: "muddatiBor", title: "MUDDATI BOR", strong: true, width: 84 }], single: true, toggle: true,
@@ -85,6 +106,12 @@ const CLOSED: Drill = { open: false, loading: false, error: null, title: "", fil
 /** Tuman ochilganda: ijrochi muhandislar kesimidagi qatorlar (SVOD bilan bir xil ustunlar) */
 type MuhRows = { loading: boolean; error: string | null; rows: { name: string; st: MuddatRowStats }[] };
 
+/** "2026-10-22T09:00" → "22.10.2026-yil 09:00" */
+const fmtHolat = (iso: string) => {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}:\d{2})$/);
+  return m ? `${m[3]}.${m[2]}.${m[1]}-yil ${m[4]}` : iso;
+};
+
 /** Ism-familiya bosh harflari (avatar) */
 const initials = (name: string) =>
   name === BIRIKTIRILMAGAN ? "—" : name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
@@ -99,6 +126,14 @@ async function fetchDetails(tuman: string, col: MuddatCol | "hammasi", muhandis:
   const json = await res.json();
   if (!res.ok || json.status !== "success") throw new Error(json.message || json.error || `HTTP ${res.status}`);
   return json;
+}
+
+/** Tuman ichida ijrochi muhandislar kesimi */
+async function fetchMuhandislar(tuman: string, f: MuddatCol[]): Promise<MuhRows["rows"]> {
+  const res = await fetch(`/api/muddat?muhandislar=1&tuman=${encodeURIComponent(tuman)}${fq(f)}`, { cache: "no-store" });
+  const json = await res.json();
+  if (!res.ok || json.status !== "success") throw new Error(json.message || json.error || `HTTP ${res.status}`);
+  return json.rows;
 }
 
 async function exportRows(headers: string[], data: unknown[][], file: string) {
@@ -120,7 +155,11 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
   const [totals, setTotals] = useState<MuddatSvod | null>(null);
   // Karta filtrlari (bir nechta): jadval tanlangan ustunlardan istalganiga tushadigan arizalar bo'yicha hisoblanadi
   const [filters, setFilters] = useState<MuddatCol[]>([]);
-  const [today, setToday] = useState("");
+  // Hisobot holati (sana va vaqt, "yyyy-MM-ddTHH:mm") — hammaga umumiy, hisob shu sana bo'yicha; tahrir — canUpload
+  const [holat, setHolat] = useState("");
+  const [holatDraft, setHolatDraft] = useState<string | null>(null);
+  const [holatSaving, setHolatSaving] = useState(false);
+  const [holatErr, setHolatErr] = useState<string | null>(null);
   const [empty, setEmpty] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -130,7 +169,8 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
   // "Muddat buzilishni oldini olish" ustunlari — sahifaga kirganda yopiq, MUDDATI BOR sarlavhasi bilan ochiladi
   const [tahlilOpen, setTahlilOpen] = useState(false);
 
-  const load = useCallback(async (fresh: boolean, f: MuddatCol[]) => {
+  /** keepOpen — jadval o'zgarganda (versiya): ochiq tumanlar yopilmaydi, ularning muhandis qatorlari qayta olinadi */
+  const load = useCallback(async (fresh: boolean, f: MuddatCol[], keepOpen: string[] = []) => {
     setRefreshing(true);
     try {
       const res = await fetch(`/api/muddat?x=1${fresh ? "&fresh=1" : ""}${fq(f)}`, { cache: "no-store" });
@@ -138,8 +178,10 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
       if (!res.ok || json.status !== "success") throw new Error(json.message || json.error || `HTTP ${res.status}`);
       setSvod(json.svod);
       setTotals(json.totals);
-      setOpenTuman({}); // filtr yoki yangilanishda muhandislar qatorlari qayta so'raladi
-      setToday(json.today);
+      // Filtr yoki yangilanishda muhandislar qatorlari qayta so'raladi
+      const muh = await Promise.all(keepOpen.map((t) => fetchMuhandislar(t, f).then((rows) => [t, { loading: false, error: null, rows }] as const, () => null)));
+      setOpenTuman(Object.fromEntries(muh.filter((m) => m !== null)));
+      setHolat(json.holat || "");
       setEmpty(!!json.empty);
       setError(null);
     } catch (e) {
@@ -149,6 +191,34 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
     }
   }, []);
   useEffect(() => void load(false, filters), [load, filters]);
+
+  // Google Sheets'dagi baza o'zgardi (qo'lda tahrir yoki "Bazaga yuklash") — DataProvider versiyalari orqali
+  const ver = useData().versions.muddat;
+  const seenVer = useRef(ver);
+  useEffect(() => {
+    const prev = seenVer.current;
+    seenVer.current = ver;
+    if (ver && prev && ver !== prev) void load(true, filters, Object.keys(openTuman));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ver]);
+
+  /** Holat sana/vaqtini saqlash (Google Sheets → MuddatHolat) va jadvalni shu sana bo'yicha qayta hisoblash */
+  const saveHolat = async () => {
+    if (!holatDraft) return;
+    setHolatSaving(true);
+    setHolatErr(null);
+    try {
+      const res = await fetch("/api/muddat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ holat: holatDraft }) });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.status !== "success") throw new Error(json.message || json.error || `HTTP ${res.status}`);
+      setHolatDraft(null);
+      await load(true, filters, Object.keys(openTuman));
+    } catch (e) {
+      setHolatErr((e as Error).message || "Tarmoq xatosi");
+    } finally {
+      setHolatSaving(false);
+    }
+  };
 
   /** Karta: filtrga qo'shish / olib tashlash ("Muddati bor" — tahlil ustunlari u bilan birga ochiladi va yopiladi) */
   const toggleFilter = (col: MuddatCol) => {
@@ -180,10 +250,8 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
     }
     setOpenTuman((o) => ({ ...o, [tuman]: { loading: true, error: null, rows: [] } }));
     try {
-      const res = await fetch(`/api/muddat?muhandislar=1&tuman=${encodeURIComponent(tuman)}${fq(filters)}`, { cache: "no-store" });
-      const json = await res.json();
-      if (!res.ok || json.status !== "success") throw new Error(json.message || json.error || `HTTP ${res.status}`);
-      setOpenTuman((o) => (o[tuman] ? { ...o, [tuman]: { loading: false, error: null, rows: json.rows } } : o));
+      const rows = await fetchMuhandislar(tuman, filters);
+      setOpenTuman((o) => (o[tuman] ? { ...o, [tuman]: { loading: false, error: null, rows } } : o));
     } catch (e) {
       setOpenTuman((o) => (o[tuman] ? { ...o, [tuman]: { loading: false, error: (e as Error).message || "Tarmoq xatosi", rows: [] } } : o));
     }
@@ -281,7 +349,34 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
                   </th>
                 </tr>
                 <tr>
-                  <th colSpan={colCount} className="banner-row-2">MAʼLUMOT{today ? ` — ${today}-yil holatiga` : ""}{filters.length ? ` · Filtr: ${filterNames}` : ""}</th>
+                  {/* MAʼLUMOT qatori: chapda hisobot holati (sana va vaqt) */}
+                  <th colSpan={colCount} className="banner-row-2">
+                    <div className="mt-banner">
+                      <span className="mt-banner-date">
+                        {holatDraft === null ? (
+                          <>
+                            {holat && `${fmtHolat(holat)} holatiga`}
+                            {canUpload && holat && (
+                              <button type="button" className="mt-banner-edit no-print" data-html2canvas-ignore title="Sana va vaqtni o'zgartirish"
+                                onClick={() => { setHolatDraft(holat); setHolatErr(null); }}>
+                                <i className="fa-solid fa-pen" />
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <span className="mt-holat-form no-print" data-html2canvas-ignore>
+                            <input type="datetime-local" value={holatDraft} onChange={(e) => setHolatDraft(e.target.value)} disabled={holatSaving} />
+                            <button type="button" className="is-save" onClick={saveHolat} disabled={holatSaving || !holatDraft}>
+                              {holatSaving ? <i className="fa-solid fa-spinner fa-spin" /> : "Saqlash"}
+                            </button>
+                            <button type="button" onClick={() => setHolatDraft(null)} disabled={holatSaving}>Bekor</button>
+                          </span>
+                        )}
+                        {holatErr && <span className="mt-holat-err no-print" data-html2canvas-ignore>{holatErr}</span>}
+                      </span>
+                      <span className="mt-banner-title">MAʼLUMOT{filters.length ? ` · Filtr: ${filterNames}` : ""}</span>
+                    </div>
+                  </th>
                 </tr>
                 <tr className="header-row-roles">
                   <th className="freeze-no" rowSpan={2}>№</th>
@@ -294,18 +389,21 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
                         <i className={`no-print ${tahlilOpen ? "fa-solid fa-chevron-left" : "fa-solid fa-chevron-right"}`} data-html2canvas-ignore />
                       </th>
                     ) : g.single ? (
-                      <th key={g.id} rowSpan={2} className={g.theme}>{g.title}</th>
+                      <th key={g.id} rowSpan={2} className={`${g.theme}${g.cols[0].vertical ? " mt-vert-th" : ""}`}
+                        style={g.cols[0].strong ? { ...STRONG, fontWeight: 800 } : undefined}>
+                        {g.cols[0].vertical ? <div className="mt-vert">{g.title}</div> : g.title}
+                      </th>
                     ) : (
-                      <th key={g.id} colSpan={g.cols.length} className={g.theme}>{g.title}</th>
+                      <th key={g.id} colSpan={g.cols.length} className={`${g.theme}${g.red ? " mt-th-red" : ""}`}>{g.title}</th>
                     )
                   )}
                 </tr>
                 <tr className="header-row-days">
                   {GROUPS.filter((g) => !g.single).flatMap((g) =>
                     g.cols.map((c) => (
-                      <th key={c.id} className={`${g.theme}${c.vertical ? " mt-vert-th" : ""}`} title={c.title}
+                      <th key={c.id} className={`${g.theme}${c.vertical ? " mt-vert-th" : ""}${c.red ? " mt-th-red" : ""}`} title={c.title}
                         style={c.strong ? { ...STRONG, fontWeight: 800 } : undefined}>
-                        {c.vertical ? <div className="mt-vert">{c.title}</div> : c.title}
+                        {c.vertical ? <div className="mt-vert">{c.head ?? c.title}</div> : c.head ?? c.title}
                       </th>
                     ))
                   )}
@@ -332,7 +430,7 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
                         const shade = c.expired && !r.isJami ? heat(v, heatMax(c.id)) : undefined;
                         return (
                           <td key={c.id}
-                            className={`num-cell${v > 0 ? " drilldown-cell" : ""}${c.id === "jami" ? " col-subtotal" : ""}${shade ? " mt-heat" : ""}`}
+                            className={`num-cell${v > 0 ? " drilldown-cell" : ""}${c.id === "jami" ? " col-subtotal" : ""}${c.id === "qoldi" ? " mt-qoldi" : ""}${shade ? " mt-heat" : ""}`}
                             style={{ ...(c.strong ? { ...STRONG, fontWeight: 700 } : {}), ...shade }}
                             onClick={v > 0 ? () => openDrill(r.name, c.id) : undefined}>
                             {v > 0 ? fmtNum(v) : ""}
@@ -353,7 +451,7 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
                     {muh?.rows.map((m) => (
                       <tr key={m.name} className="mt-sub">
                         <td className="freeze-no" />
-                        <td className="freeze-name mt-fio" title={`${m.name} — barcha arizalari`} onClick={() => openDrill(r.name, "hammasi", m.name)}>
+                        <td className={`freeze-name mt-fio${m.name === BIRIKTIRILMAGAN ? " mt-none" : ""}`} title={`${m.name} — barcha arizalari`} onClick={() => openDrill(r.name, "hammasi", m.name)}>
                           <span className={`mt-avatar${m.name === BIRIKTIRILMAGAN ? " is-none" : ""}`}>{initials(m.name)}</span>
                           <span className="mt-fio-name">{m.name}</span>
                         </td>
@@ -361,7 +459,7 @@ export default function MuddatView({ canUpload }: { canUpload: boolean }) {
                           const v = m.st[c.id] ?? 0;
                           return (
                             <td key={c.id}
-                              className={`num-cell${v > 0 ? " drilldown-cell" : ""}${c.expired && v > 0 ? " mt-bad" : ""}`}
+                              className={`num-cell${v > 0 ? " drilldown-cell" : ""}${c.expired && v > 0 ? " mt-bad" : ""}${c.id === "qoldi" ? " mt-qoldi" : ""}`}
                               style={c.strong ? STRONG : undefined}
                               onClick={v > 0 ? () => openDrill(r.name, c.id, m.name) : undefined}>
                               {v > 0 ? fmtNum(v) : ""}

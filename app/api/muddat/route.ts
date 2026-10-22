@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { requireArea } from "@/lib/auth";
 import { isGlobalIn, sameBranch } from "@/lib/roles";
-import { loadMuddat } from "@/lib/muddat-server";
+import { HOLAT_RE, loadMuddat, saveHolat } from "@/lib/muddat-server";
+import { syncSection } from "@/lib/sheet-version";
 import { VILOYAT, buildMuhandisSvod, buildSvod, colsOf, muhandisName, type MuddatCol, type MuddatSvod } from "@/features/muddat/rules";
 
 /**
@@ -26,6 +27,7 @@ const fmtDay = (d: number | null) => {
 export async function GET(req: Request) {
   const u = await requireArea("deadline");
   if (u instanceof Response) return u;
+  await syncSection("muddat", "muddat:");
   const q = new URL(req.url).searchParams;
   const global = isGlobalIn(u.role, "deadline");
 
@@ -61,19 +63,35 @@ export async function GET(req: Request) {
           i + 1, a.tuman, a.tranz, a.ariza, a.turi, a.noturar ? "Noturar" : "Turar", a.obyekt2, a.manba, a.sana,
           fmtDay(a.muddat), a.berilgan, a.qolgan ?? "",
           a.qolgan !== null && a.qolgan < 0 ? (a.regBosqich ? "Registratsiya" : "Filial") : "—",
+          a.tashqiMaydon ?? "",
           a.normLabel, a.rol, a.jarayon, a.registrator || "—", a.boshMuhandisFio || "—", a.muhandis || "—",
         ]);
       const headers = ["№", "Tuman", "Tranzaksiya raqami", "Ariza raqami", "Ariza turi", "Obyekt turi", "Obyekt turi 2", "Ariza manbasi",
-        "Kelib tushgan sana", "Muddat", "Muddat berilgan kun", "Qolgan kun", "Muddati o'tgan tomoni", "Muddat qoidasi",
+        "Kelib tushgan sana", "Muddat", "Muddat berilgan kun", "Qolgan kun", "Muddati o'tgan tomoni", "Tashqi o'lchovlar bo'yicha maydon", "Muddat qoidasi",
         "Oxirgi jarayon roli", "Oxirgi jarayon nomi", "Ijrochi registrator", "Ijrochi bosh muhandis", "Ijrochi muhandis"];
       return NextResponse.json({ status: "success", headers, data: rows }, { headers: { "Cache-Control": "no-store" } });
     }
 
     // totals — filtrsiz SVOD (kartalardagi raqamlar filtrga bog'liq emas)
     return NextResponse.json(
-      { status: "success", svod: scope(svod), totals: scope(all.svod), today: fmtDay(today), empty },
+      { status: "success", svod: scope(svod), totals: scope(all.svod), today: fmtDay(today), holat: all.holat, empty },
       { headers: { "Cache-Control": "no-store" } }
     );
+  } catch (e) {
+    return NextResponse.json({ status: "error", message: (e as Error).message }, { status: 502 });
+  }
+}
+
+/** POST /api/muddat { holat: "yyyy-MM-ddTHH:mm" } — hisobot holati (hammaga umumiy; faqat "Bazaga yuklash" huquqi borlar) */
+export async function POST(req: Request) {
+  const u = await requireArea("upload");
+  if (u instanceof Response) return u;
+  const body = (await req.json().catch(() => null)) as { holat?: unknown } | null;
+  const holat = String(body?.holat ?? "").trim();
+  if (!HOLAT_RE.test(holat)) return NextResponse.json({ status: "error", message: "Sana/vaqt noto'g'ri" }, { status: 400 });
+  try {
+    await saveHolat(holat);
+    return NextResponse.json({ status: "success" });
   } catch (e) {
     return NextResponse.json({ status: "error", message: (e as Error).message }, { status: 502 });
   }

@@ -5,6 +5,8 @@ import { makeTumanResolver } from "@/features/deadline/source";
  * "Muddat buzilish" — UZKAD'dan olingan arizalar bazasidan (MuddatBuzilishBaza) SVOD hisoblash.
  * Qoidalar "Сен ариза.docx" bo'yicha: filtr → Turar/Noturar → muddat → hozirgi bosqich.
  * "Jami yakunlash kerak" — faqat muddati o'tgan va bugun tugaydigan arizalar; muddati borlar "Muddati bor" da.
+ * Muddat (MUDDAT_NORMS, birinchi mos kelgani): Huquqlar 1 ish kuni; Qurilish 10 ish kuni; yer uchastkasi va Avtoyo'l
+ * 5 ish kuni + 10 kun; daraxtlar, UZKAD, Bepul; noturar — tashqi maydon bo'yicha 8…35 ish kuni + 10 kun; Standart.
  * Bajarilgan arizalar varaqda qo'lda "Oxirgi jarayon nomi" = "Yakunlandi" qilinadi → YAKUNLANDI; QOLDI = Jami − Yakunlandi.
  * SVOD o'qish paytida, bugungi sana bo'yicha hisoblanadi ("qolgan kun" har kuni o'zgaradi).
  * Ustunlar harf bo'yicha emas, sarlavha nomi bo'yicha topiladi. Modul klientda ham, serverda ham ishlaydi.
@@ -28,6 +30,7 @@ export const MUDDAT_COLS = {
   registrator: "Ijrochi registrator",
   boshMuhandisFio: "Ijrochi bosh muhandis",
   muhandis: "Ijrochi muhandis",
+  tashqiMaydon: "Tashqi o'lchovlar bo'yicha maydon",
 } as const;
 export type MuddatKey = keyof typeof MUDDAT_COLS;
 export type MuddatRaw = Record<MuddatKey, string>;
@@ -104,15 +107,52 @@ export function isNoturar(r: MuddatRaw) {
 
 /* ---------- 3. Muddat ---------- */
 
-/** kadastr — ish kunlari (shanba, yakshanba hisoblanmaydi); reg — ro'yxatdan o'tkazish, kalendar kunlar */
+/** kadastr — ish kunlari (shanba, yakshanba hisoblanmaydi); reg — ro'yxatdan o'tkazish, kalendar kunlar (0 — qo'shilmaydi) */
 export type MuddatNorm = { kadastr: number; reg: number; label: string };
-export const MUDDAT_NORMS: { when: (r: MuddatRaw) => boolean; norm: MuddatNorm }[] = [
+/** "Obyekt turi 2" — yer uchastkasi: har qanday holatda 5 ish kuni + 10 kun */
+const YER_MAYDONI = set("Turar yer maydoni", "Noturar yer maydoni", "Davlat tashkilotlaridan ijaraga olingan yer uchastkasi");
+
+/** "Tashqi o'lchovlar bo'yicha maydon": "3 402,28" → 3402.28; bo'sh yoki xato → 0 */
+export function parseArea(s: string) {
+  const v = Number(String(s ?? "").replace(/\s/g, "").replace(",", "."));
+  return Number.isFinite(v) && v > 0 ? v : 0;
+}
+
+/** Noturar obyekt — tashqi o'lchovlar bo'yicha maydon toifalari ("…gacha": chegara pastki toifada; bo'sh/0 → 8 ish kuni) */
+export const NOTURAR_MAYDON: { max: number; kadastr: number; label: string }[] = [
+  { max: 100, kadastr: 8, label: "≤100 kv.m" },
+  { max: 1_000, kadastr: 10, label: "100–1 000 kv.m" },
+  { max: 5_000, kadastr: 15, label: "1 000–5 000 kv.m" },
+  { max: 15_000, kadastr: 20, label: "5 000–15 000 kv.m" },
+  { max: 50_000, kadastr: 26, label: "15 000–50 000 kv.m" },
+  { max: Infinity, kadastr: 35, label: ">50 000 kv.m" },
+];
+const noturarMaydonNorm = (r: MuddatRaw): MuddatNorm => {
+  const m = parseArea(r.tashqiMaydon);
+  const t = NOTURAR_MAYDON.find((x) => m <= x.max)!;
+  return { kadastr: t.kadastr, reg: 10, label: `Noturar maydon (${t.label})` };
+};
+
+/**
+ * Muddat qoidalari — birinchi mos kelgani olinadi:
+ * 1–4 "har qanday holatda" (boshqalardan ustun; Qurilish yer maydonidan ham ustun); 5–7 maxsus holatlar; 8 — noturar maydon bo'yicha; qolgani — Standart.
+ */
+export const MUDDAT_NORMS: { when: (r: MuddatRaw) => boolean; norm: MuddatNorm | ((r: MuddatRaw) => MuddatNorm) }[] = [
+  { when: (r) => FAQAT_JARAYON_TURLAR.has(norm(r.turi)), norm: { kadastr: 1, reg: 0, label: "Huquqlar" } },
+  // Qurilish yer maydonidan ustun: "Qurilishi tugallangan…" doim 10 ish kuni
+  { when: (r) => norm(r.turi) === norm(T.qurilish), norm: { kadastr: 10, reg: 0, label: "Qurilish" } },
+  { when: (r) => YER_MAYDONI.has(norm(r.obyekt2)), norm: { kadastr: 5, reg: 10, label: "Yer maydoni" } },
+  { when: (r) => norm(r.turi) === norm(T.avtoyol), norm: { kadastr: 5, reg: 10, label: "Avtoyo'l" } },
   { when: (r) => norm(r.priznak) === norm("Ko‘p yillik daraxtlar xizmati"), norm: { kadastr: 15, reg: 10, label: "Ko'p yillik daraxtlar" } },
   { when: (r) => norm(r.manba) === norm("UZKAD"), norm: { kadastr: 5, reg: 2, label: "UZKAD" } },
   { when: (r) => set("FREE", "Bepul").has(norm(r.kadastrTuri)), norm: { kadastr: 5, reg: 10, label: "Bepul" } },
+  { when: (r) => isNoturar(r), norm: noturarMaydonNorm },
 ];
 export const DEFAULT_NORM: MuddatNorm = { kadastr: 15, reg: 10, label: "Standart" };
-export const normFor = (r: MuddatRaw) => MUDDAT_NORMS.find((n) => n.when(r))?.norm ?? DEFAULT_NORM;
+export const normFor = (r: MuddatRaw): MuddatNorm => {
+  const n = MUDDAT_NORMS.find((x) => x.when(r))?.norm ?? DEFAULT_NORM;
+  return typeof n === "function" ? n(r) : n;
+};
 
 /** Ro'yxatdan o'tkazish bosqichidagi rollar (qolganlari — filial/kadastr bosqichi) */
 const REG_ROLLAR = set("Registrar", "HeadRegistrar");
@@ -233,6 +273,8 @@ export type MuddatAriza = {
   boshMuhandisFio: string;
   muhandis: string;
   noturar: boolean;
+  /** "Tashqi o'lchovlar bo'yicha maydon" (kv.m); katak bo'sh bo'lsa — null */
+  tashqiMaydon: number | null;
   bosqich: BosqichId;
   regBosqich: boolean;
   normLabel: string;
@@ -270,10 +312,11 @@ export function classify(r: MuddatRaw, today: number, resolveTuman: (s: string) 
     boshMuhandisFio: ijrochi(r.boshMuhandisFio),
     muhandis: ijrochi(r.muhandis),
     noturar: isNoturar(r),
+    tashqiMaydon: r.tashqiMaydon.trim() ? parseArea(r.tashqiMaydon) : null,
     bosqich: bosqichOf(r),
     regBosqich,
     normLabel: n.label,
-    berilgan: regBosqich ? `${n.kadastr} ish kuni + ${n.reg} kun` : `${n.kadastr} ish kuni`,
+    berilgan: regBosqich && n.reg > 0 ? `${n.kadastr} ish kuni + ${n.reg} kun` : `${n.kadastr} ish kuni`,
     muddat,
     qolgan: muddat === null ? null : Math.round((muddat - today) / DAY),
   };
@@ -323,7 +366,7 @@ export const muhandisName = (a: MuddatAriza) => a.muhandis || BIRIKTIRILMAGAN;
 
 /**
  * Tuman ichida ijrochi muhandislar kesimi: har bir muhandis uchun SVOD bilan bir xil ustunlar
- * (Jami, muddati o'tgan, bosqichlar, Muddati bor…). Saralash — Jami, keyin Muddati bor bo'yicha kamayib.
+ * (Jami, muddati o'tgan, bosqichlar, Muddati bor…). Saralash — "Biriktirilmagan" doim boshida, so'ng Jami, keyin Muddati bor bo'yicha kamayib.
  */
 export function buildMuhandisSvod(arizalar: readonly MuddatAriza[], tuman: string): { name: string; st: MuddatRowStats }[] {
   const map = new Map<string, MuddatRowStats>();
@@ -338,7 +381,7 @@ export function buildMuhandisSvod(arizalar: readonly MuddatAriza[], tuman: strin
   }
   return [...map.entries()]
     .map(([name, st]) => ({ name, st }))
-    .sort((x, y) => (y.st.jami ?? 0) - (x.st.jami ?? 0) || (y.st.muddatiBor ?? 0) - (x.st.muddatiBor ?? 0) || x.name.localeCompare(y.name));
+    .sort((x, y) => Number(y.name === BIRIKTIRILMAGAN) - Number(x.name === BIRIKTIRILMAGAN) || (y.st.jami ?? 0) - (x.st.jami ?? 0) || (y.st.muddatiBor ?? 0) - (x.st.muddatiBor ?? 0) || x.name.localeCompare(y.name));
 }
 
 export function buildSvod(arizalar: readonly MuddatAriza[]): MuddatSvod {

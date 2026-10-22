@@ -44,9 +44,11 @@ async function callAuthScript<T>(payload: Record<string, unknown>, opts: { timeo
     // Skript bu amalni bilmaydi — Apps Script'ga Code.gs ning eski versiyasi deploy qilingan
     if (!json.success && json.message === "Noma'lum amal") {
       console.error(`[auth] Apps Script "${String(payload.action)}" amalini bilmaydi — eski versiya deploy qilingan`);
+      // Deployment ID oxiri — Manage deployments'da aynan qaysi deployment'ni yangilash kerakligi ko'rinsin
+      const dep = config.authAppsScriptUrl.match(/\/s\/([\w-]+)\//)?.[1]?.slice(-12) ?? "";
       json.message =
         "Apps Script eski versiyada ishlayapti. apps-script/auth/Code.gs ning oxirgi versiyasini qo'yib, " +
-        "Deploy → Manage deployments → Edit → New version qiling.";
+        `Deploy → Manage deployments → ID'si …${dep} bilan tugaydigan deployment → Edit → New version qiling.`;
     }
     return json;
   } catch {
@@ -192,6 +194,21 @@ export async function authSpreadsheetId(): Promise<string> {
   return authSheetIdCache;
 }
 let authSheetIdCache = "";
+
+/* ---------- Jadvallar versiyasi (lib/sheet-version.ts) ---------- */
+
+/** Sheet ID → oxirgi o'zgarish vaqti (ms, Drive lastUpdated); ochib bo'lmagani — null */
+export async function sheetVersions(ids: string[]): Promise<Record<string, number | null>> {
+  const r = await callAuthScript<{ versions?: Record<string, number | null> }>({ action: "sheetVersions", ids }, { timeoutMs: 15_000 });
+  if (!r.success || !r.versions) throw new Error(r.message || "Jadval versiyalarini olib bo'lmadi");
+  return r.versions;
+}
+
+/** "Muddat buzilish" hisobot holati (MuddatHolat!A1, "yyyy-MM-ddTHH:mm") */
+export async function setMuddatHolat(spreadsheetId: string, value: string) {
+  const r = await callAuthScript({ action: "muddatHolat", spreadsheetId, value });
+  if (!r.success) throw new Error(r.message || "Sana/vaqtni saqlab bo'lmadi");
+}
 
 /* ---------- RegTest (savollar banki va natijalar — REGTEST_SHEET_ID Code.gs'da) ---------- */
 

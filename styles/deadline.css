@@ -699,6 +699,32 @@ html.rpt-capturing .sec-deadline { height: auto !important; overflow: visible !i
 .sec-deadline.muddat-page .muddat-table thead th.freeze-name { position: sticky; height: auto !important; }
 .sec-deadline.muddat-page .muddat-table thead tr.header-row-roles th { padding: 6px 4px; font-size: 11px; }
 .sec-deadline.muddat-page .muddat-table thead tr.header-row-days th { font-size: 10.5px; font-weight: 600; color: #475569; padding: 5px 3px; }
+/* Sarlavha ranglari (header-row-days th rangidan ustun bo'lishi uchun bir xil zanjir + klass) */
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-roles th.mt-th-red,
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-days th.mt-th-red { color: #dc2626; font-weight: 700; }
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-roles th.mt-qoldi-th { background-color: #dc2626 !important; color: #fff; font-weight: 800; }
+/* Banner (sarlavha va MAʼLUMOT) — oq fonda; sana sarlavhaning chap tomonida (SVOD'dagidek) */
+.sec-deadline.muddat-page .muddat-table .banner-row-1,
+.sec-deadline.muddat-page .muddat-table .banner-row-2 { background: #fff !important; border-bottom: 1px solid #cbd5e1; }
+.sec-deadline.muddat-page .muddat-table .banner-row-1 { color: #0f172a !important; }
+.sec-deadline.muddat-page .muddat-table .banner-row-2 { color: #000 !important; font-size: 11px !important; font-weight: 700; height: 26px !important; }
+.sec-deadline.muddat-page .mt-banner { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sec-deadline.muddat-page .mt-banner-date { flex: none; font-weight: 600; color: #475569; display: inline-flex; align-items: center; gap: 6px; }
+/* Holat sana/vaqtini tahrirlash (rasm va pechatda ko'rinmaydi) */
+.sec-deadline.muddat-page .mt-banner-edit { border: 0; background: transparent; color: #64748b; cursor: pointer; padding: 2px 4px; border-radius: 4px; font-size: 11px; }
+.sec-deadline.muddat-page .mt-banner-edit:hover { background: #e2e8f0; color: #1d4ed8; }
+.sec-deadline.muddat-page .mt-holat-form { display: inline-flex; align-items: center; gap: 4px; }
+.sec-deadline.muddat-page .mt-holat-form input { font: inherit; font-size: 11px; padding: 1px 4px; border: 1px solid #cbd5e1; border-radius: 4px; height: 22px; }
+.sec-deadline.muddat-page .mt-holat-form button { font-size: 11px; padding: 1px 8px; height: 22px; border: 1px solid #cbd5e1; border-radius: 4px; background: #fff; color: #334155; cursor: pointer; }
+.sec-deadline.muddat-page .mt-holat-form button.is-save { background: #2563eb; border-color: #2563eb; color: #fff; }
+.sec-deadline.muddat-page .mt-holat-form button:disabled { opacity: 0.6; cursor: default; }
+.sec-deadline.muddat-page .mt-holat-err { color: #dc2626; font-size: 11px; font-weight: 600; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+.sec-deadline.muddat-page .mt-banner-title { flex: 1; min-width: 0; text-align: center; overflow: hidden; text-overflow: ellipsis; }
+/* QOLDI ustuni kataklari — hover/drilldown fonidan ustun */
+.sec-deadline.muddat-page .muddat-table tbody tr td.mt-qoldi,
+.sec-deadline.muddat-page .muddat-table tbody tr:hover td.mt-qoldi,
+.sec-deadline.muddat-page .muddat-table tbody tr td.mt-qoldi.drilldown-cell { background-color: #fee2e2 !important; color: #991b1b !important; font-weight: 700 !important; }
+.sec-deadline.muddat-page .muddat-table tbody tr td.mt-qoldi.drilldown-cell:hover { background-color: #fecaca !important; }
 /* MUDDATI BOR — tahlil ustunlarini ochadi/yopadi */
 .sec-deadline.muddat-page .mt-toggle { cursor: pointer; user-select: none; font-weight: 800; }
 .sec-deadline.muddat-page .mt-toggle i { display: block; margin-top: 4px; font-size: 11px; opacity: 0.75; }
@@ -718,6 +744,8 @@ html.rpt-capturing .sec-deadline { height: auto !important; overflow: visible !i
 /* Bosqich ustunlari: to'liq nom 90° vertikal (pastdan yuqoriga), uzun nom 2–3 vertikal qatorga o'raladi */
 /* tr.header-row-days bilan — "thead tr.header-row-days th { position: static }" dan ustun bo'lishi uchun */
 .sec-deadline.muddat-page .muddat-table thead tr.header-row-days th.mt-vert-th { position: relative; padding: 0; vertical-align: middle !important; height: 190px !important; }
+/* Bitta ustunli guruh (YAKUNLANDI) — ikki qator balandlikda, nomi ham vertikal */
+.sec-deadline.muddat-page .muddat-table thead tr.header-row-roles th.mt-vert-th { position: relative; padding: 0; }
 /*
  * Vertikal nom transform bilan (writing-mode emas): html2canvas (Rasm va Chop etish) faqat transform'ni chizadi.
  * 180px kenglikdagi blok −90° buriladi — pastdan yuqoriga o'qiladi, ko'pi bilan 2 qator, ustun markazida.
@@ -749,6 +777,9 @@ html.rpt-capturing .sec-deadline { height: auto !important; overflow: visible !i
   background: #e2e8f0; color: #475569; font-size: 8.5px; font-weight: 700; letter-spacing: 0.02em;
 }
 .sec-deadline.muddat-page .mt-avatar.is-none { background: #f1f5f9; color: #94a3b8; }
+/* Muhandis biriktirilmagan arizalar — tuman ichida birinchi qator, qizil fonda */
+.sec-deadline.muddat-page tr.mt-sub td.mt-fio.mt-none { background: #fee2e2; color: #b91c1c; font-weight: 700; }
+.sec-deadline.muddat-page tr.mt-sub td.mt-fio.mt-none .mt-avatar { background: #fecaca; color: #b91c1c; }
 .sec-deadline.muddat-page .mt-fio-name { vertical-align: middle; }
 .sec-deadline.muddat-page tr.mt-sub td.mt-zero { color: #cbd5e1; }
 .sec-deadline.muddat-page tr.mt-sub td.drilldown-cell { font-weight: 600 !important; }
@@ -781,7 +812,8 @@ html.rpt-capturing .sec-deadline { height: auto !important; overflow: visible !i
 .sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table .freeze-name { position: static; }
 .sec-deadline.muddat-page .dashboard-content-wrapper.capturing .kpi-click { transform: none; box-shadow: none; }
 /* Rasm/pechat: umumiy ".capturing th { position: static !important }" vertikal sarlavhalarni buzmasin; jadval kengligi 100% */
-.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table thead tr.header-row-days th.mt-vert-th { position: relative !important; }
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table thead tr.header-row-days th.mt-vert-th,
+.sec-deadline.muddat-page .dashboard-content-wrapper.capturing .muddat-table thead tr.header-row-roles th.mt-vert-th { position: relative !important; }
 .sec-deadline.muddat-page .dashboard-content-wrapper.capturing { width: 100%; }
 
 /* ---------- Muddat buzilish: turli ekranlar ---------- */

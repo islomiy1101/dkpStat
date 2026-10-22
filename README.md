@@ -105,6 +105,13 @@ Har bir urinish `UploadLogs` ga yoziladi.
    tushirib, boshqa sheet'larni ochish ruxsatini bering.
 4. `.env.local`: `DEADLINE_SHEET_ID=...` (sheet "havola orqali ko'rish" rejimida, payment kabi).
 
+**Ma'lumotning darhol yangilanishi.** Sayt har bir jadvalning Drive'dagi oxirgi o'zgarish vaqtini Apps Script
+(`sheetVersions` amali) orqali kuzatadi (`lib/sheet-version.ts`). Sheets'da qo'lda tahrirlansa ham, "Bazaga yuklash"
+orqali yozilsa ham, server keshi tozalanadi. Ochiq sahifa esa har 30 soniyada `/api/versions` ni so'raydi va
+o'zgargan bo'limni o'zi qayta yuklaydi (DXM Maslahat burchagi va Filial qabulxonasidan tashqari). Buning uchun
+`Code.gs` ning yangi versiyasi deploy qilingan bo'lishi kerak. Muharrirda `sheetVersions_` funksiyasini bir marta
+ishga tushirib, Drive ruxsatini bering. Eski versiyada sayt avvalgidek kesh muddati (TTL) bo'yicha ishlaydi.
+
 **Rollar kesimida tahlil** Django'siz: sidebar'da ikkita bo'limcha — *Yakunlangan arizalar* va *Jarayondagi arizalar*,
 ko'rinishi bir xil, har biri o'z varag'idan o'qiydi. Varaqda bitta qator — bitta ariza (tranzaksiya), har bir rol
 alohida ustunda, katakda rolda turgan vaqt (`1 kun 8 soat 16 min 42 s` yoki `-`). Ustunlar tartib raqami bo'yicha
