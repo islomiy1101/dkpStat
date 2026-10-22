@@ -73,6 +73,13 @@
 .sec-kadr .kd-card-head h3 { margin: 0; font-size: 14px; font-weight: 700; }
 .sec-kadr .kd-card-head h3 i { color: #6366f1; margin-right: 4px; }
 .sec-kadr .kd-card-head span { font-size: 11.5px; color: var(--kd-muted); }
+/* Jadvalning oxirgi o'zgarish vaqti — karta sarlavhasining o'ng tomonida */
+.sec-kadr .kd-card-head .kd-updated {
+  margin-left: auto; flex: none; white-space: nowrap; align-self: center;
+  padding: 4px 10px; border-radius: 999px; background: #f1f5f9; color: var(--kd-muted); font-size: 11.5px;
+}
+.sec-kadr .kd-updated i { margin-right: 4px; color: var(--kd-accent); }
+.sec-kadr .kd-updated b { color: var(--kd-text); font-weight: 700; }
 .sec-kadr .kd-x { width: 30px; height: 30px; border: 0; border-radius: 8px; background: #f1f5f9; color: var(--kd-muted); cursor: pointer; }
 .sec-kadr .kd-x:hover { background: #e2e8f0; color: var(--kd-text); }
 .sec-kadr .kd-muted { margin: 0; color: var(--kd-muted); font-size: 12.5px; }
