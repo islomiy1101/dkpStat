@@ -447,6 +447,8 @@ html[data-sidebar="collapsed"] .sb-user-info { display: none; }
 }
 .rpt-btn:hover:not(:disabled) { background: #f8fafc; border-color: #94a3b8; }
 .rpt-btn:disabled { opacity: 0.55; cursor: default; }
+.rpt-btn-excel { color: #15803d; }
+.rpt-btn-excel i { color: #16a34a; }
 .rpt-btn-primary { background: var(--rpt-accent, #0284c7); border-color: var(--rpt-accent, #0284c7); color: #fff; }
 .rpt-btn-primary:hover:not(:disabled) { background: var(--rpt-accent, #0284c7); border-color: var(--rpt-accent, #0284c7); filter: brightness(1.08); }
 @media (max-width: 600px) {

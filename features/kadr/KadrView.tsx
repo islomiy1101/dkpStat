@@ -7,6 +7,7 @@ import PageLoader from "@/components/PageLoader";
 import { fmtDate } from "@/lib/useClock";
 import { useReportCapture } from "@/lib/useReportCapture";
 import { buildKadrStats, fmtKadr, fmtRate, rateTone, type KadrAgg, type KadrFilial } from "./model";
+import { exportKadrExcel } from "./excel";
 
 /**
  * "Kadrlar statistikasi" — kirgandan keyin ochiladigan sahifa (superadmin, bo'lim boshlig'i, filial rahbari).
@@ -53,8 +54,14 @@ function Kpis({ a }: { a: KadrAgg }) {
   );
 }
 
+/** Jadvalning oxirgi o'zgarish vaqti (Google Sheets versiyalar tarixi) — karta sarlavhasining o'ng tomonida */
+function Updated({ at }: { at?: string }) {
+  if (!at) return null;
+  return <span className="kd-updated"><i className="fa-solid fa-clock-rotate-left" /> Oxirgi o&apos;zgarish: <b>{at}</b></span>;
+}
+
 /** Filialning bo'limlari va lavozimlari; onlyVakant — faqat vakanti bor bo'lim va lavozimlar */
-function FilialDetail({ f, onClose, onlyVakant }: { f: KadrFilial; onClose?: () => void; onlyVakant?: boolean }) {
+function FilialDetail({ f, onClose, onlyVakant, updated }: { f: KadrFilial; onClose?: () => void; onlyVakant?: boolean; updated?: string }) {
   const bolimlar = onlyVakant
     ? f.bolimlar.filter((b) => b.vakant > 0).map((b) => ({ ...b, positions: b.positions.filter((p) => p.vakant > 0) }))
     : f.bolimlar;
@@ -67,6 +74,7 @@ function FilialDetail({ f, onClose, onlyVakant }: { f: KadrFilial; onClose?: () 
             {onlyVakant ? "Vakant lavozimlar" : "Bo'limlar va lavozimlar kesimida"} · shtat {fmtKadr(f.shtat)}, band {fmtKadr(f.band)}, vakant {fmtKadr(f.vakant)}
           </span>
         </div>
+        <Updated at={updated} />
         {onClose && <button type="button" className="kd-x" onClick={onClose} aria-label="Yopish" data-html2canvas-ignore><i className="fa-solid fa-xmark" /></button>}
       </div>
       {!bolimlar.length ? (
@@ -115,8 +123,11 @@ export default function KadrView({ canUpload }: { canUpload: boolean }) {
   const reportRef = useRef<HTMLDivElement>(null);
   const fileName = useCallback(() => `Kadrlar_statistikasi_${fmtDate(new Date())}.png`, []);
   const cap = useReportCapture(reportRef, { fileName, windowWidth: 1400, background: "#f1f5f9" });
+  const [excelBusy, setExcelBusy] = useState(false);
 
   const regional = data?.scope === "region";
+  // Ma'lumot holati — jadvalning oxirgi o'zgarishi (sahifa, karta va Excel'da bir xil)
+  const holat = data?.updatedAt || data?.uploadedAt || "";
   const filials = useMemo(() => {
     if (!stats) return [];
     const list = [...stats.filials];
@@ -127,6 +138,18 @@ export default function KadrView({ canUpload }: { canUpload: boolean }) {
   }, [stats, sort]);
   const pickedFilial = stats?.filials.find((f) => f.name === picked) ?? null;
   const sortBy = (key: SortKey) => setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : key === "name" ? 1 : -1 }));
+  /** Jadval Excel'ga — sahifadagi saralash tartibida */
+  const saveExcel = async () => {
+    if (!stats || !data) return;
+    setExcelBusy(true);
+    try {
+      await exportKadrExcel(stats, { filials, regional, branch: data.branch, uploadedAt: holat });
+    } catch (e) {
+      alert("Excel faylni tayyorlab bo'lmadi: " + (e as Error).message);
+    } finally {
+      setExcelBusy(false);
+    }
+  };
   const arrow = (key: SortKey) => (sort.key === key ? <i className={`fa-solid fa-arrow-${sort.dir === 1 ? "up" : "down"}`} /> : null);
 
   return (
@@ -138,11 +161,11 @@ export default function KadrView({ canUpload }: { canUpload: boolean }) {
             <h2>Kadrlar statistikasi</h2>
             <span>
               {regional ? "Viloyat bo'yicha" : data?.branch || "Filial"} · shtat, xodimlar va vakantlar
-              {data?.uploadedAt ? ` · ma'lumot holati: ${data.uploadedAt}` : ""}
+              {holat ? ` · ma'lumot holati: ${holat}` : ""}
             </span>
           </div>
         </div>
-        <ReportActions onRefresh={() => slot.refresh(true)} refreshing={slot.refreshing}
+        <ReportActions onRefresh={() => slot.refresh(true)} refreshing={slot.refreshing} onExcel={saveExcel} excelBusy={excelBusy}
           onImage={cap.saveImage} imageBusy={cap.busy} onPrint={cap.print} disabled={!stats} hidden={cap.capturing} />
       </header>
 
@@ -176,6 +199,7 @@ export default function KadrView({ canUpload }: { canUpload: boolean }) {
                     <h3><i className="fa-solid fa-table-list" /> Filiallar kesimida</h3>
                     <span>Vakant ustunidan keyin — qaysi lavozimga nechta xodim kerak · filial nomini bosing — vakant lavozimlar ochiladi</span>
                   </div>
+                  <Updated at={holat} />
                 </div>
                 <div className="kd-table-wrap">
                   <table className="kd-table kd-filials">
@@ -218,7 +242,7 @@ export default function KadrView({ canUpload }: { canUpload: boolean }) {
               {pickedFilial && <FilialDetail f={pickedFilial} onClose={() => setPicked(null)} onlyVakant />}
             </>
           ) : (
-            stats.filials.map((f) => <FilialDetail key={f.name} f={f} />)
+            stats.filials.map((f) => <FilialDetail key={f.name} f={f} updated={holat} />)
           )}
 
           <div className="kd-pair">

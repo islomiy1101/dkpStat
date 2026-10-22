@@ -61,6 +61,13 @@ export function loadVersions(): Promise<Versions> {
   );
 }
 
+/** Bo'lim jadvalining oxirgi o'zgarish vaqti (ms, Drive — versiyalar tarixidagi joriy versiya); waitMs dan ko'p kutilmaydi */
+export async function sectionUpdatedAt(section: VersionSection, waitMs = 3_000): Promise<number | null> {
+  const all = await Promise.race([loadVersions(), new Promise<Versions>((r) => setTimeout(() => r({}), waitMs))]);
+  const v = Number(all[section]);
+  return Number.isFinite(v) && v > 0 ? v : null;
+}
+
 /** Nusxa ko'rgan oxirgi versiyalar (dev'da HMR'dan keyin ham saqlanadi) */
 const seen: Map<VersionSection, string> = ((globalThis as { __dkpSeenVersions?: Map<VersionSection, string> }).__dkpSeenVersions ??= new Map());
 

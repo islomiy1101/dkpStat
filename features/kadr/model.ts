@@ -31,7 +31,8 @@ export const KADR_TEMPLATE: (string | number)[][] = [
 
 export type KadrRow = { filial: string; bolim: string; lavozim: string; shtat: number; band: number; vakant: number; toifa: string };
 /** API javobi: qatorlar (filial rahbariga — faqat o'z filiali) va ma'lumot sanasi */
-export type KadrPayload = { rows: KadrRow[]; uploadedAt: string; scope: "region" | "branch"; branch: string };
+/** uploadedAt — "Yuklangan" ustuni (Bazaga yuklash vaqti); updatedAt — jadvalning oxirgi o'zgarishi (Drive; eski keshda bo'lmasligi mumkin) */
+export type KadrPayload = { rows: KadrRow[]; uploadedAt: string; updatedAt?: string; scope: "region" | "branch"; branch: string };
 
 export const kadrHeaderKey = (s: unknown) =>
   String(s ?? "").trim().toLowerCase().replace(/[`'ʻ’‘ʼ]/g, "'").replace(/\s+/g, " ");
@@ -56,6 +57,12 @@ export function kadrColumns(header: readonly unknown[]) {
     uploaded: at(KADR_UPLOADED_COL),
   };
 }
+
+/** "22.10.2026 11:26" → "202610221126" (solishtirish uchun); boshqa ko'rinish — "" */
+const stampKey = (s: string) => {
+  const m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  return m ? `${m[3]}${m[2].padStart(2, "0")}${m[1].padStart(2, "0")}${(m[4] ?? "0").padStart(2, "0")}${m[5] ?? "00"}` : "";
+};
 
 /**
  * Varaq qatorlarini o'qish. `strict` (yuklashda) — xato qator raqami bilan Error;
@@ -84,7 +91,9 @@ export function parseKadr(values: readonly (readonly unknown[])[], strict = fals
     if (band === null || Number.isNaN(band) || band < 0) return bad(`"${KADR_COLS.band}" son bo'lishi kerak`);
     if (band > shtat) return bad(`band (${band}) shtat birligidan (${shtat}) ko'p`);
     if (vakantRaw !== null && (Number.isNaN(vakantRaw) || vakantRaw < 0)) return bad(`"${KADR_COLS.vakant}" son bo'lishi kerak`);
-    if (!uploadedAt && c.uploaded >= 0) uploadedAt = str(r, c.uploaded);
+    // "Yuklangan" — "Bazaga yuklash" vaqti; bir nechta qiymat bo'lsa eng kechisi olinadi
+    const stamp = str(r, c.uploaded);
+    if (stamp && (!uploadedAt || stampKey(stamp) > stampKey(uploadedAt))) uploadedAt = stamp;
     rows.push({
       filial, bolim: str(r, c.bolim) || "—", lavozim, shtat, band,
       vakant: vakantRaw ?? Math.max(0, round(shtat - band)),

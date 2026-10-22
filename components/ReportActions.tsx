@@ -1,14 +1,17 @@
 "use client";
 
 /**
- * Hisobot sahifalarining umumiy tugmalari: Yangilash · Rasm (PNG) · Chop etish (A4 albom).
+ * Hisobot sahifalarining umumiy tugmalari: Yangilash · (Excel — berilsa) · Rasm (PNG) · Chop etish (A4 albom).
  * Mantiq — lib/useReportCapture.ts; stil — app/globals.css (.rpt-*). Telefonda faqat ikonkalar.
  */
 export default function ReportActions({
-  onRefresh, refreshing, onImage, imageBusy, onPrint, printBusy, disabled, hidden,
+  onRefresh, refreshing, onExcel, excelBusy, onImage, imageBusy, onPrint, printBusy, disabled, hidden,
 }: {
   onRefresh?: () => void;
   refreshing?: boolean;
+  /** Jadvalni Excel'ga yuklab olish (faqat shu sahifada bo'lsa) */
+  onExcel?: () => void;
+  excelBusy?: boolean;
   onImage: () => void;
   imageBusy?: boolean;
   onPrint: () => void;
@@ -24,6 +27,11 @@ export default function ReportActions({
       {onRefresh && (
         <button type="button" className="rpt-btn" onClick={onRefresh} disabled={refreshing} title="Google Sheets'dan qayta o'qish">
           <i className={`fa-solid fa-rotate${refreshing ? " fa-spin" : ""}`} /> <span>Yangilash</span>
+        </button>
+      )}
+      {onExcel && (
+        <button type="button" className="rpt-btn rpt-btn-excel" onClick={onExcel} disabled={disabled || excelBusy} title="Jadvalni Excel faylga yuklab olish">
+          <i className={`fa-solid ${excelBusy ? "fa-spinner fa-spin" : "fa-file-excel"}`} /> <span>Excel</span>
         </button>
       )}
       <button type="button" className="rpt-btn" onClick={onImage} disabled={disabled || imageBusy} title="Hisobotni rasm (PNG) sifatida yuklab olish">
