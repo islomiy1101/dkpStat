@@ -7,6 +7,7 @@ import { DEADLINE_LIST_IDS, type DeadlineList } from "@/features/deadline/source
 import { ETIROF_PAGE_IDS, type EtirofPage, type EtirofSvod } from "@/features/etirof/config";
 import type { XatlovData } from "@/features/xatlov/config";
 import type { KadrPayload } from "@/features/kadr/model";
+import type { Versions, VersionSection } from "@/lib/sheet-version";
 
 /**
  * Barcha bo'limlar ma'lumotini PARALLEL yuklovchi provider.
@@ -14,6 +15,9 @@ import type { KadrPayload } from "@/features/kadr/model";
  *  - Oxirgi muvaffaqiyatli javob localStorage'da saqlanadi va keyingi ochilishda darhol ko'rsatiladi
  *    (stale-while-revalidate), fonda yangisi olinadi.
  *  - Sidebar orqali bo'lim almashtirilganda qayta yuklash bo'lmaydi — data allaqachon xotirada.
+ *  - Ochiq sahifa har POLL_MS da jadvallar versiyasini (/api/versions) so'raydi: Google Sheets'da qo'lda tahrirlansa
+ *    yoki "Bazaga yuklash" qilinsa, o'zgargan bo'lim fonda qayta yuklanadi. `versions` — DataProvider'dan tashqaridagi
+ *    sahifalar (Muddat buzilish) uchun.
  */
 
 export type AdvicePayload = AdviceData & { session: AdviceSessionInfo };
@@ -41,10 +45,12 @@ type Ctx = {
   refreshAll: () => Promise<void>;
   mutate: <K extends SectionId>(id: K, fn: (d: DataMap[K]) => DataMap[K]) => void;
   reset: (id: SectionId, status?: SlotStatus) => void;
+  versions: Versions;
 };
 
 const DataCtx = createContext<Ctx | null>(null);
 const CACHE_PREFIX = "dkp_cache_v1_";
+const POLL_MS = 30_000;
 
 const empty = <T,>(): Slot<T> => ({ status: "idle", data: null, refreshing: false });
 
@@ -200,7 +206,43 @@ export function DataProvider({ children, allowed }: { children: React.ReactNode;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refresh, allowedKey]);
 
-  const value = useMemo(() => ({ state, refresh, refreshAll, mutate, reset }), [state, refresh, refreshAll, mutate, reset]);
+  // Jadval versiyalarini kuzatish: faqat tab ko'rinib turganda; tabga qaytilganda darhol
+  const [versions, setVersions] = useState<Versions>({});
+  const lastVersions = useRef<Versions | null>(null);
+  useEffect(() => {
+    let stopped = false;
+    const check = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const res = await fetch("/api/versions", { cache: "no-store" });
+        if (!res.ok || stopped) return;
+        const v = ((await res.json()) as { versions?: Versions }).versions ?? {};
+        const prev = lastVersions.current;
+        lastVersions.current = v;
+        setVersions(v);
+        if (!prev) return;
+        // fresh — boshqa server nusxasi yangi versiyani hali ko'rmagan bo'lishi mumkin
+        for (const id of allowed) {
+          const k = id as VersionSection;
+          if (v[k] && prev[k] && v[k] !== prev[k]) void refresh(id, { fresh: true });
+        }
+      } catch {
+        /* tarmoq xatosi — keyingi safar */
+      }
+    };
+    void check();
+    const timer = setInterval(check, POLL_MS);
+    const onVisible = () => void check();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refresh, allowedKey]);
+
+  const value = useMemo(() => ({ state, refresh, refreshAll, mutate, reset, versions }), [state, refresh, refreshAll, mutate, reset, versions]);
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }
 

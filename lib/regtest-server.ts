@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { config } from "./config";
 import { cached } from "./cache";
 import { MOCK, readMock } from "./mock";
+import { syncSection } from "./sheet-version";
 import { regtestQuestionRows, regtestResultRows, regtestSaveResult, regtestStartRow } from "./auth-server";
 import {
   DURATION_SEC, GRACE_SEC, JARAYON, MAX_VIOLATIONS, QUESTION_COUNT, RETAKE_HOURS, UNLOCK_SEC,
@@ -52,7 +53,8 @@ export function parseBank(rows: string[][]): BankQuestion[] {
   return out;
 }
 
-function loadBank(fresh = false) {
+async function loadBank(fresh = false) {
+  await syncSection("regtest", "regtest:bank");
   return cached(
     "regtest:bank",
     10 * 60_000,

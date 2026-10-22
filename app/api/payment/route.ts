@@ -3,6 +3,7 @@ import { isGlobalIn, sameBranch } from "@/lib/roles";
 import { NextResponse } from "next/server";
 import { config } from "@/lib/config";
 import { cached } from "@/lib/cache";
+import { syncSection } from "@/lib/sheet-version";
 import { fetchGviz, cv } from "@/lib/gviz";
 import type { PaymentData, PaymentRow } from "@/lib/types";
 
@@ -65,6 +66,7 @@ export async function GET(req: Request) {
   if (u instanceof Response) return u;
   const fresh = new URL(req.url).searchParams.has("fresh");
   try {
+    await syncSection("payment", "payment");
     const all = await cached("payment", config.cacheTtlMs, load, { fresh });
     const data = isGlobalIn(u.role, "payment") ? all : scopeToBranch(all, u.branch);
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });

@@ -77,6 +77,8 @@ const REGTEST_RESULTS_SHEET = "Натижалар";
 const REGTEST_RETAKE_HOURS = 2;
 /** Sayt shu raqamga qarab skript eskirganini aniqlaydi (ping → regtestVersion) */
 const REGTEST_VERSION = 9;
+/** Kod versiyasi — "ping" javobida; sayt deploy qilingan kod eskimi-yo'qligini shu bo'yicha ko'radi */
+const CODE_VERSION = "2026-10-22";
 // Registratordan faqat login (u tizimga kirib beradi); qolgani — test yechgan xodimniki (PINFL)
 const REGTEST_HEADERS = ["Sana", "Vaqt", "Login", "PINFL", "F.I.O.", "Savol soni", "To'g'ri", "Noto'g'ri", "Javobsiz", "Ball",
   "Sarflangan vaqt", "Holat", "Qoidabuzarlik", "Test ID"];
@@ -101,6 +103,10 @@ function doPost(e) {
       result = deadlineRepair_(req.spreadsheetId, req.raw, req.svod);
     } else if (req.action === "importChunk") {
       result = importChunk_(req.spreadsheetId, req.name, req.chunk || {}, req.meta || {});
+    } else if (req.action === "muddatHolat") {
+      result = muddatHolat_(req.spreadsheetId, req.value);
+    } else if (req.action === "sheetVersions") {
+      result = sheetVersions_(req.ids);
     } else if (req.action === "regtestQuestions") {
       result = regtestQuestions_();
     } else if (req.action === "regtestStart") {
@@ -129,7 +135,7 @@ function doPost(e) {
       result = authState_();
     } else if (req.action === "ping") {
       // Sayt "Bazaga yuklash" sahifasida shu jadvalga havola ko'rsatadi (AUTH_SHEET_ID berilmagan bo'lsa)
-      result = { success: true, spreadsheetId: ss_().getId(), regtestVersion: REGTEST_VERSION };
+      result = { success: true, spreadsheetId: ss_().getId(), regtestVersion: REGTEST_VERSION, codeVersion: CODE_VERSION };
     } else {
       result = { success: false, message: "Noma'lum amal" };
     }
@@ -577,6 +583,40 @@ function importChunk_(spreadsheetId, name, chunk, meta) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Jadvallarning oxirgi o'zgarish vaqti (ms) — sayt keshi shu bo'yicha yangilanadi (qo'lda tahrir ham, yuklash ham).
+ * ids: sheet ID'lar; ochib bo'lmagani — null. DriveApp — birinchi marta ishga tushirishda Drive ruxsatini so'raydi.
+ */
+function sheetVersions_(ids) {
+  const versions = {};
+  (Array.isArray(ids) ? ids : []).slice(0, 50).forEach(function (raw) {
+    const id = clean_(raw);
+    if (!id) return;
+    try {
+      versions[id] = DriveApp.getFileById(id).getLastUpdated().getTime();
+    } catch (e) {
+      versions[id] = null;
+    }
+  });
+  return { success: true, versions: versions };
+}
+
+/**
+ * "Muddat buzilish" — hisobot qaysi sana/vaqt holatiga (sahifada tahrirlanadi): MuddatHolat!A1 = "yyyy-MM-ddTHH:mm".
+ * Ruxsat — shu jadvalning MuddatBuzilishBaza varag'iga yozish ruxsati bilan bir xil (IMPORT_TARGETS).
+ */
+function muddatHolat_(spreadsheetId, value) {
+  value = String(value || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return { success: false, message: "Sana/vaqt noto'g'ri: " + value };
+  const denied = checkImportTarget_(spreadsheetId, ["MuddatBuzilishBaza"]);
+  if (denied) return { success: false, message: denied };
+  const ss = SpreadsheetApp.openById(spreadsheetId);
+  const sheet = ss.getSheetByName("MuddatHolat") || ss.insertSheet("MuddatHolat");
+  sheet.getRange(1, 1).setNumberFormat("@").setValue(value);
+  SpreadsheetApp.flush();
+  return { success: true };
 }
 
 function logUpload_(meta, names, rows, status) {

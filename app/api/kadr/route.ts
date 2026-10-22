@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireArea } from "@/lib/auth";
 import { loadKadr } from "@/lib/kadr-server";
+import { syncSection } from "@/lib/sheet-version";
 import { isGlobalIn, sameBranch } from "@/lib/roles";
 import type { KadrPayload } from "@/features/kadr/model";
 
@@ -13,6 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   const u = await requireArea("kadr");
   if (u instanceof Response) return u;
+  await syncSection("kadr", "kadr:");
   try {
     const { rows, uploadedAt } = await loadKadr(new URL(req.url).searchParams.has("fresh"));
     const global = isGlobalIn(u.role, "kadr");

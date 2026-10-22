@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireArea } from "@/lib/auth";
 import { loadEtirofRows } from "@/lib/etirof-server";
+import { syncSection } from "@/lib/sheet-version";
 import { ETIROF_PAGES, isEtirofPage, isTotalName } from "@/features/etirof/config";
 
 /**
@@ -15,6 +16,7 @@ const numLike = /^-?\d{1,15}([.,]\d+)?$/;
 export async function GET(req: Request, ctx: { params: Promise<{ page: string }> }) {
   const u = await requireArea("etirof");
   if (u instanceof Response) return u;
+  await syncSection("etirof", "etirof:");
   const { page } = await ctx.params;
   if (!isEtirofPage(page)) return NextResponse.json({ error: "Noma'lum sahifa" }, { status: 404 });
   const q = new URL(req.url).searchParams;
