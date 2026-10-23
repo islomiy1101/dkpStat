@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { passwordRules, passwordStrength } from "@/lib/password-policy";
+import { revealOnFocus, useDesktopAutoFocus } from "@/lib/mobile-focus";
 
 /** Parolda bo'sh joy bo'lmaydi: yozilsa ham, nusxalab qo'yilsa ham olib tashlanadi (LoginView bilan bir xil) */
 const noSpaces = (v: string) => v.replace(/\s/g, "");
@@ -17,13 +18,14 @@ function PassInput({ id, label, value, onChange, autoComplete, autoFocus, invali
   invalid?: boolean;
 }) {
   const [show, setShow] = useState(false);
+  const ref = useDesktopAutoFocus<HTMLInputElement>(autoFocus);
   return (
     <>
       <label htmlFor={id}>{label}</label>
       <div className={`auth-input${invalid ? " is-invalid" : ""}`}>
         <i className="fa-solid fa-lock" />
-        <input id={id} type={show ? "text" : "password"} autoComplete={autoComplete} autoFocus={autoFocus} value={value}
-          maxLength={64} spellCheck={false} onChange={(e) => onChange(noSpaces(e.target.value))}
+        <input id={id} ref={ref} type={show ? "text" : "password"} autoComplete={autoComplete} value={value}
+          onFocus={revealOnFocus} maxLength={64} spellCheck={false} onChange={(e) => onChange(noSpaces(e.target.value))}
           onKeyDown={(e) => e.key === " " && e.preventDefault()} placeholder="••••••••" />
         <button type="button" className="auth-eye" onClick={() => setShow((v) => !v)} aria-label={show ? "Parolni yashirish" : "Parolni ko'rsatish"}>
           <i className={`fa-regular ${show ? "fa-eye-slash" : "fa-eye"}`} />
