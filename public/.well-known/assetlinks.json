@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.netlify.dkpmonitoring.twa",
+        "sha256_cert_fingerprints": ["5F:06:55:34:B2:C2:DF:17:6D:8E:87:DF:81:2C:16:35:A2:7D:AB:1E:F4:E2:B5:B5:6C:16:E7:14:25:DC:78:B6"]
+      }
+    }]
