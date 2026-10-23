@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { config } from "./config";
 import { cached } from "./cache";
 import { fetchAuthState, type AuthStateRow } from "./auth-server";
-import { canSee, firstAllowedHref, parseRole, type AreaId, type Role } from "./roles";
+import { canSee, firstAllowedHref, parseRole, type AreaId, type AreaOverride, type Role } from "./roles";
 
 /**
  * Saytga kirish sessiyasi (Users varag'i). Imzolangan httpOnly cookie.
@@ -17,6 +17,8 @@ export type AppUser = {
   branch: string;
   department: string;
   role: Role;
+  /** Rolidan tashqari qo'shilgan / olib tashlangan bo'limlar (eski cookie'larda yo'q — rol bo'yicha ishlaydi) */
+  areas?: AreaOverride[];
   loginTime: number;
   /** Parol talabga javob bermaydi yoki superadmin tiklagan — yangi parol o'rnatmaguncha faqat /account/password ochiq */
   mustChange?: boolean;
@@ -115,7 +117,7 @@ export async function requireArea(id: AreaId): Promise<AppUser | Response> {
   const u = await getUser();
   if (!u) return authError();
   if (u.mustChange) return mustChangeError();
-  if (!canSee(u.role, id)) return forbidden();
+  if (!canSee(u, id)) return forbidden();
   return u;
 }
 
@@ -133,6 +135,6 @@ export async function guardPage(id: AreaId) {
   const u = await getUser();
   if (!u) redirect("/login");
   if (u.mustChange) redirect(PASSWORD_PAGE);
-  if (!canSee(u.role, id)) redirect(firstAllowedHref(u.role));
+  if (!canSee(u, id)) redirect(firstAllowedHref(u));
   return u;
 }

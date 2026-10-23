@@ -27,8 +27,11 @@
  *
  * VARAQLAR (1-qator — sarlavha, ustunlar tartibi muhim emas, nomi bo'yicha topiladi):
  *  Users: Branch | FullName | Department | Login | Password | Role
- *         | MustChangePassword | PasswordChangedAt | BlockedUntil | BlockReason | SessionsRevokedAt  (avtomatik qo'shiladi)
+ *         | MustChangePassword | PasswordChangedAt | BlockedUntil | BlockReason | SessionsRevokedAt | Areas  (avtomatik qo'shiladi)
  *         Role: engineer | advicer | accountant | branchManager | headOfDepartment | assistant | reception | registrator | superadmin
+ *         Areas: rolidan tashqari bo'limlar — faqat shu xodim uchun (sayt → Foydalanuvchilar → ✏️ → Bo'limlar).
+ *                Masalan "+payment:branch; +kadr:region; -advice": "+" qo'shadi (branch — o'z filiali, region — viloyat),
+ *                "−" roldagi bo'limni olib tashlaydi. Bo'sh — faqat rol bo'yicha. Bo'limlar: lib/roles.ts → ADDABLE_AREAS.
  *
  *  YANGI XODIM (sayt → Foydalanuvchilar → "Yangi foydalanuvchi", yoki shu varaqqa qo'lda):
  *         Branch, FullName, Department, Login, Role va Password'ga istalgan vaqtinchalik parol yoziladi —
@@ -247,7 +250,19 @@ function ensureHeaders_(sheet, names) {
   if (missing.length) sheet.getRange(1, sheet.getLastColumn() + 1, 1, missing.length).setValues([missing]);
 }
 
-const USERS_EXTRA_HEADERS = ["MustChangePassword", "PasswordChangedAt", "BlockedUntil", "BlockReason", "SessionsRevokedAt"];
+const USERS_EXTRA_HEADERS = ["MustChangePassword", "PasswordChangedAt", "BlockedUntil", "BlockReason", "SessionsRevokedAt", "Areas"];
+
+/** Areas qiymati: "+payment:branch; -advice" ko'rinishidagi yozuvlar yoki bo'sh. Mazmuni saytda tekshiriladi (lib/roles.ts) */
+function areasProblem_(areas) {
+  if (areas.length > 300) return "Bo'limlar ro'yxati juda uzun";
+  const ok = areas.split(";").map(clean_).filter(String).every(function (p) { return /^[+-][a-z]+(:(branch|region))?$/i.test(p); });
+  return ok ? null : "Bo'limlar ro'yxati noto'g'ri";
+}
+
+/** "+..." / "-..." Sheets'da formula deb o'qilmasin — katakcha matn formatida */
+function setAreas_(sheet, rowNumber, colIndex, areas) {
+  sheet.getRange(rowNumber, colIndex + 1).setNumberFormat("@").setValue(areas);
+}
 const BLOCK_FOREVER = "muddatsiz";
 
 /** Ixtiyoriy ustun indeksi (yo'q bo'lsa -1) — login_ varaqqa ustun qo'shmasdan o'qiydi */
@@ -355,6 +370,9 @@ function login_(login, password, ip, location, accuracy) {
       role: role,
     };
     appendLog_(user, ip, location, accuracy);
+    // Jurnalga yozilmaydi; ustun hali qo'shilmagan bo'lishi mumkin
+    const cAreas = optCol_(data[0], "Areas");
+    user.areas = cAreas < 0 ? "" : clean_(row[cAreas]);
     // Ustunlar hali qo'shilmagan bo'lishi mumkin — faqat parol formati va talablar bo'yicha
     const hasMust = data[0].some(function (h) { return clean_(h).toLowerCase() === "mustchangepassword"; });
     const must = (hasMust && truthy_(row[col("MustChangePassword")])) ||
@@ -963,6 +981,7 @@ function listUsers_(admin) {
       branch: clean_(row[c("Branch")]),
       department: clean_(row[c("Department")]),
       role: clean_(row[c("Role")]),
+      areas: clean_(row[c("Areas")]),
       mustChange: mustChange_(row, c, null, login),
       changedAt: at instanceof Date ? Utilities.formatDate(at, TZ, "yyyy-MM-dd HH:mm:ss") : clean_(at),
       blocked: !!block,
@@ -989,10 +1008,13 @@ function createUser_(admin, u) {
   const branch = clean_(u.branch);
   const department = clean_(u.department);
   const role = clean_(u.role);
+  const areas = clean_(u.areas);
   if (!fullName || fullName.length > 120) return { success: false, message: "F.I.O.ni kiriting" };
   if (!branch || branch.length > 120) return { success: false, message: "Filialni kiriting" };
   if (!/^[^\s]{3,64}$/.test(login)) return { success: false, message: "Login 3–64 belgidan iborat, probelsiz bo'lishi kerak" };
   if (USER_ROLES.indexOf(role) === -1) return { success: false, message: "Rol noto'g'ri" };
+  const areasBad = areasProblem_(areas);
+  if (areasBad) return { success: false, message: areasBad };
 
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
@@ -1016,7 +1038,9 @@ function createUser_(admin, u) {
     t.sheet.getRange(at, 1, 1, row.length).setValues([row]);
     // Login matn sifatida (raqamli loginlar — PINFL — songa aylanib ketmasin)
     t.sheet.getRange(at, t.col("Login") + 1).setNumberFormat("@").setValue(login);
-    return { success: true, password: temp };
+    if (areas) setAreas_(t.sheet, at, t.col("Areas"), areas);
+    // areas: true — sayt bo'limlar yozilganini shundan biladi (eski versiya bu maydonni qaytarmaydi)
+    return { success: true, password: temp, areas: true };
   } finally {
     lock.releaseLock();
   }
@@ -1090,7 +1114,7 @@ function authState_() {
 }
 
 /**
- * Superadmin: xodim ma'lumotlarini tahrirlash (login o'zgarmaydi). Rol yoki filial o'zgarsa — sessiyalari yopiladi.
+ * Superadmin: xodim ma'lumotlarini tahrirlash (login o'zgarmaydi). Rol, filial yoki bo'limlar o'zgarsa — sessiyalari yopiladi.
  * O'z rolini o'zgartirish va oxirgi superadmin'ni tushirish taqiqlanadi.
  */
 function updateUser_(admin, login, changes) {
@@ -1101,6 +1125,8 @@ function updateUser_(admin, login, changes) {
   if (changes.branch != null) next.Branch = clean_(changes.branch);
   if (changes.department != null) next.Department = clean_(changes.department);
   if (changes.role != null) next.Role = clean_(changes.role);
+  if (changes.areas != null) next.Areas = clean_(changes.areas);
+  if (next.Areas !== undefined && areasProblem_(next.Areas)) return { success: false, message: areasProblem_(next.Areas) };
   if (next.FullName !== undefined && (!next.FullName || next.FullName.length > 120)) return { success: false, message: "F.I.O.ni kiriting" };
   if (next.Branch !== undefined && (!next.Branch || next.Branch.length > 120)) return { success: false, message: "Filialni kiriting" };
   if (next.Department !== undefined && next.Department.length > 120) return { success: false, message: "Bo'lim nomi juda uzun" };
@@ -1117,7 +1143,7 @@ function updateUser_(admin, login, changes) {
     const row = t.data[r];
 
     const changed = Object.keys(next).filter(function (k) { return clean_(row[t.col(k)]) !== next[k]; });
-    if (!changed.length) return { success: true, revoked: false };
+    if (!changed.length) return { success: true, revoked: false, areas: true };
 
     if (changed.indexOf("Role") !== -1) {
       if (login === clean_(admin).toLowerCase()) return { success: false, message: "O'z rolingizni o'zgartira olmaysiz" };
@@ -1127,11 +1153,14 @@ function updateUser_(admin, login, changes) {
         if (supers <= 1) return { success: false, message: "Bu yagona superadmin — rolini o'zgartirib bo'lmaydi" };
       }
     }
-    changed.forEach(function (k) { t.sheet.getRange(r + 1, t.col(k) + 1).setValue(next[k]); });
-    // Rol va filial sessiya cookie'sida — o'zgarsa, xodim qayta kirib yangi huquqlarni oladi
-    const revoke = changed.indexOf("Role") !== -1 || changed.indexOf("Branch") !== -1;
+    changed.forEach(function (k) {
+      if (k === "Areas") setAreas_(t.sheet, r + 1, t.col(k), next[k]);
+      else t.sheet.getRange(r + 1, t.col(k) + 1).setValue(next[k]);
+    });
+    // Rol, filial va bo'limlar sessiya cookie'sida — o'zgarsa, xodim qayta kirib yangi huquqlarni oladi
+    const revoke = changed.indexOf("Role") !== -1 || changed.indexOf("Branch") !== -1 || changed.indexOf("Areas") !== -1;
     if (revoke) revokeSessions_(t, r);
-    return { success: true, revoked: revoke };
+    return { success: true, revoked: revoke, areas: true };
   } finally {
     lock.releaseLock();
   }

@@ -68,7 +68,7 @@ export async function GET(req: Request) {
   try {
     await syncSection("payment", "payment");
     const all = await cached("payment", config.cacheTtlMs, load, { fresh });
-    const data = isGlobalIn(u.role, "payment") ? all : scopeToBranch(all, u.branch);
+    const data = isGlobalIn(u, "payment") ? all : scopeToBranch(all, u.branch);
     return NextResponse.json(data, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 502 });

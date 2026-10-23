@@ -8,5 +8,5 @@ export const metadata: Metadata = { title: "Muddat buzilish — DKP Namangan" };
 /** Statik "muddat" segmenti dinamik [list] dan ustun turadi */
 export default async function Page() {
   const u = await guardPage("deadline");
-  return <MuddatView canUpload={canSee(u.role, "upload")} />;
+  return <MuddatView canUpload={canSee(u, "upload")} />;
 }

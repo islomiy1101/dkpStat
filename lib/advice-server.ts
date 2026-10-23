@@ -32,8 +32,8 @@ export function loadAdviceRaw(fresh = false) {
  * Umumiy rollar "Boshqarma" rejimida (hamma tumanlar, faqat ko'rish), qolganlari o'z tumanida.
  */
 export function adviceSessionFor(u: AppUser): AdviceSessionInfo {
-  const tuman = isGlobalIn(u.role, "advice") ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
-  return { tuman, fio: u.fullName, loginTime: u.loginTime, analytics: isBranchAnalyticsIn(u.role, "advice") };
+  const tuman = isGlobalIn(u, "advice") ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
+  return { tuman, fio: u.fullName, loginTime: u.loginTime, analytics: isBranchAnalyticsIn(u, "advice") };
 }
 
 /** Original myjs.js -> loadDashboardData() parsing mantiqi, sessiya tumani bo'yicha filtrlangan */

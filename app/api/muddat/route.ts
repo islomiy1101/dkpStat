@@ -29,7 +29,7 @@ export async function GET(req: Request) {
   if (u instanceof Response) return u;
   await syncSection("muddat", "muddat:");
   const q = new URL(req.url).searchParams;
-  const global = isGlobalIn(u.role, "deadline");
+  const global = isGlobalIn(u, "deadline");
 
   try {
     const all = await loadMuddat(q.has("fresh"));

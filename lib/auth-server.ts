@@ -3,10 +3,20 @@ import path from "node:path";
 import { config } from "./config";
 import { MOCK } from "./mock";
 import { cached } from "./cache";
-import { parseRole, type Role } from "./roles";
+import { formatAreas, normalizeAreas, parseAreas, parseRole, type AreaOverride, type Role } from "./roles";
 import { isStrongPassword, passwordProblem } from "./password-policy";
 
-export type LoginUser = { login: string; fullName: string; branch: string; department: string; role: Role };
+export type LoginUser = {
+  login: string; fullName: string; branch: string; department: string; role: Role;
+  /** Rolidan tashqari qo'shilgan / olib tashlangan bo'limlar (Users varag'i, Areas ustuni) */
+  areas: AreaOverride[];
+};
+/** Apps Script javobidagi xom foydalanuvchi: rol va bo'limlar matn ko'rinishida (eski versiyada areas yo'q) */
+type ScriptUser = Omit<LoginUser, "role" | "areas"> & { role: string; areas?: string };
+const fromScript = <T extends ScriptUser>(u: T) => {
+  const role = parseRole(u.role);
+  return { ...u, role, areas: normalizeAreas(role, parseAreas(u.areas)) };
+};
 /** "Foydalanuvchilar" sahifasi uchun (parolsiz) */
 export type UserRow = LoginUser & {
   mustChange: boolean;
@@ -59,7 +69,8 @@ async function callAuthScript<T>(payload: Record<string, unknown>, opts: { timeo
 }
 
 /* ---------- MOCK (MOCK_DATA=1) ---------- */
-type MockUser = LoginUser & { password: string };
+/** mock/auth_users.json'da areas bo'lmasligi mumkin */
+type MockUser = Omit<LoginUser, "areas"> & { areas?: AreaOverride[]; password: string };
 const mockLogs: LogRow[] = [];
 let mockLoaded = false;
 /** Demo: sayt orqali o'zgartirilgan parollar, yangi foydalanuvchilar va bloklar xotirada (mock/auth_users.json o'zgartirilmaydi) */
@@ -68,7 +79,7 @@ type MockState = {
   pw: Map<string, { password: string; mustChange: boolean; changedAt: string }>;
   created: MockUser[];
   block: Map<string, { until: number; reason: string; revokedAt: number }>;
-  edits: Map<string, Partial<Pick<MockUser, "fullName" | "branch" | "department" | "role">>>;
+  edits: Map<string, Partial<Pick<MockUser, "fullName" | "branch" | "department" | "role" | "areas">>>;
 };
 const mockState: MockState = ((globalThis as { __dkpAuthMock?: MockState }).__dkpAuthMock ??= { pw: new Map(), created: [], block: new Map(), edits: new Map() });
 const mockPw = mockState.pw;
@@ -116,12 +127,14 @@ export async function loginWithSheet(login: string, password: string, ip: string
     if (b) return { success: false as const, message: `Hisobingiz ${b.until === Infinity ? "" : fmtUntil(b.until) + " gacha "}bloklangan.${b.reason ? " Sabab: " + b.reason + "." : ""} Administratorga murojaat qiling.` };
     const { password: _p, ...user } = u;
     void _p;
-    const { role: _r, ...who } = user;
+    const { role: _r, areas: _a, ...who } = user;
     void _r;
+    void _a;
     (await mockLogList()).push({ ...who, dateTime: nowStr(), ip, location, accuracy: accuracy == null ? "" : String(accuracy) });
-    return { success: true as const, user: { ...user, role: parseRole(user.role) }, mustChange: mockMustChange(u.login, password.trim()) };
+    const role = parseRole(user.role);
+    return { success: true as const, user: { ...user, role, areas: normalizeAreas(role, user.areas) }, mustChange: mockMustChange(u.login, password.trim()) };
   }
-  const r = await callAuthScript<{ user?: LoginUser; mustChange?: boolean }>({ action: "login", login, password, ip, location, accuracy });
+  const r = await callAuthScript<{ user?: ScriptUser; mustChange?: boolean }>({ action: "login", login, password, ip, location, accuracy });
   if (!r.success || !r.user) {
     if (r.message && r.message.startsWith("Forbidden")) console.error("[auth]", r.message);
     return { success: false as const, message: r.message || "Login yoki parol noto'g'ri!" };
@@ -131,7 +144,7 @@ export async function loginWithSheet(login: string, password: string, ip: string
   }
   // Eski Apps Script (mustChange qaytarmaydi) — parolning o'zi talabga javob bermasa ham almashtirish so'raladi
   const mustChange = r.mustChange ?? !isStrongPassword(password, login);
-  return { success: true as const, user: { ...r.user, role: parseRole(r.user.role) }, mustChange };
+  return { success: true as const, user: fromScript(r.user), mustChange };
 }
 
 export async function fetchLogs(limit = 5000): Promise<LogRow[]> {
@@ -309,6 +322,7 @@ export async function listUsers(admin: string): Promise<UserRow[]> {
       return {
         ...u,
         role: parseRole(u.role),
+        areas: normalizeAreas(parseRole(u.role), u.areas),
         mustChange: mockMustChange(u.login, password),
         changedAt: mockPw.get(u.login.toLowerCase())?.changedAt || "",
         blocked: !!b,
@@ -317,14 +331,22 @@ export async function listUsers(admin: string): Promise<UserRow[]> {
       };
     });
   }
-  const r = await callAuthScript<{ users?: (Omit<UserRow, "role"> & { role: string })[] }>({ action: "listUsers", admin });
+  const r = await callAuthScript<{ users?: (Omit<UserRow, "role" | "areas"> & ScriptUser)[] }>({ action: "listUsers", admin });
   if (!r.success || !r.users) throw new Error(r.message || "Foydalanuvchilarni o'qib bo'lmadi");
-  return r.users.map((u) => ({ ...u, role: parseRole(u.role) }));
+  return r.users.map(fromScript);
 }
 
 /* ---------- Foydalanuvchi qo'shish va bloklash (faqat superadmin; Apps Script ham qayta tekshiradi) ---------- */
 
-export type NewUser = { fullName: string; branch: string; department: string; login: string; role: Role };
+export type NewUser = { fullName: string; branch: string; department: string; login: string; role: Role; areas: AreaOverride[] };
+
+/**
+ * Areas ustunini biladigan Apps Script javobida areas: true bo'ladi. Eski versiya bo'limlarni jimgina
+ * e'tiborsiz qoldiradi — superadmin "saqlandi" deb o'ylamasligi uchun xato qaytariladi.
+ */
+const OLD_SCRIPT_AREAS =
+  "Bo'limlar saqlanmadi: Apps Script eski versiyada. apps-script/auth/Code.gs ning oxirgi versiyasini qo'yib, " +
+  "Deploy → Manage deployments → Edit → New version qiling. Qolgan ma'lumotlar saqlandi.";
 
 export async function createUser(admin: string, user: NewUser): Promise<{ success: boolean; message?: string; password?: string; exists?: boolean }> {
   if (MOCK) {
@@ -336,7 +358,12 @@ export async function createUser(admin: string, user: NewUser): Promise<{ succes
     mockPw.set(user.login.toLowerCase(), { password: temp, mustChange: true, changedAt: nowStr() });
     return { success: true, password: temp };
   }
-  return callAuthScript<{ password?: string; exists?: boolean }>({ action: "createUser", admin, user });
+  const r = await callAuthScript<{ password?: string; exists?: boolean; areas?: boolean }>({
+    action: "createUser", admin, user: { ...user, areas: formatAreas(user.areas) },
+  });
+  // Xodim yaratildi, lekin bo'limlar yozilmadi — parol baribir ko'rsatilishi kerak, xato xabar bilan birga
+  if (r.success && user.areas.length && r.areas !== true) return { ...r, message: OLD_SCRIPT_AREAS };
+  return r;
 }
 
 /** until — ms (kelajakda) yoki "muddatsiz" */
@@ -372,9 +399,9 @@ export async function fetchAuthState(): Promise<AuthStateRow[]> {
   return r.state;
 }
 
-export type UserChanges = { fullName: string; branch: string; department: string; role: Role };
+export type UserChanges = { fullName: string; branch: string; department: string; role: Role; areas: AreaOverride[] };
 
-/** Superadmin: ma'lumotlarni tahrirlash (login o'zgarmaydi); rol yoki filial o'zgarsa — xodimning sessiyalari yopiladi */
+/** Superadmin: ma'lumotlarni tahrirlash (login o'zgarmaydi); rol, filial yoki bo'limlar o'zgarsa — xodimning sessiyalari yopiladi */
 export async function updateUser(admin: string, login: string, changes: UserChanges): Promise<PwResult & { revoked?: boolean }> {
   if (MOCK) {
     const key = login.toLowerCase();
@@ -382,7 +409,8 @@ export async function updateUser(admin: string, login: string, changes: UserChan
     if (!u) return { success: false, message: "Foydalanuvchi topilmadi" };
     const roleChanged = parseRole(u.role) !== changes.role;
     if (roleChanged && key === admin.toLowerCase()) return { success: false, message: "O'z rolingizni o'zgartira olmaysiz" };
-    const revoke = roleChanged || u.branch !== changes.branch;
+    const areasChanged = formatAreas(normalizeAreas(parseRole(u.role), u.areas)) !== formatAreas(changes.areas);
+    const revoke = roleChanged || u.branch !== changes.branch || areasChanged;
     mockState.edits.set(key, { ...changes });
     if (revoke) {
       const b = mockBlock.get(key);
@@ -390,5 +418,9 @@ export async function updateUser(admin: string, login: string, changes: UserChan
     }
     return { success: true, revoked: revoke };
   }
-  return callAuthScript<{ revoked?: boolean }>({ action: "updateUser", admin, login, changes });
+  const r = await callAuthScript<{ revoked?: boolean; areas?: boolean }>({
+    action: "updateUser", admin, login, changes: { ...changes, areas: formatAreas(changes.areas) },
+  });
+  if (r.success && changes.areas.length && r.areas !== true) return { ...r, success: false, message: OLD_SCRIPT_AREAS };
+  return r;
 }

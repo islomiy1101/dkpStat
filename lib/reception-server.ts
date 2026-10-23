@@ -125,8 +125,8 @@ export function loadReceptionRaw(fresh = false) {
 
 /** Viloyat doirasidagi rollar "Boshqarma" rejimida (hamma tumanlar), qolganlari o'z tumanida */
 export function receptionSessionFor(u: AppUser): ReceptionSessionInfo {
-  const tuman = isGlobalIn(u.role, "reception") ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
-  return { tuman, fio: u.fullName, analytics: isBranchAnalyticsIn(u.role, "reception") };
+  const tuman = isGlobalIn(u, "reception") ? "Boshqarma" : TUMANLAR.find((t) => sameBranch(t, u.branch)) || u.branch;
+  return { tuman, fio: u.fullName, analytics: isBranchAnalyticsIn(u, "reception") };
 }
 
 export async function scopeReception(raw: ReceptionData, tuman: string): Promise<ReceptionData> {

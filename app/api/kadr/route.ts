@@ -25,7 +25,7 @@ export async function GET(req: Request) {
   try {
     // Apps Script sovuq holatda ~5 s javob beradi (Netlify chegarasi — 10 s)
     const [{ rows, uploadedAt }, changed] = await Promise.all([loadKadr(new URL(req.url).searchParams.has("fresh")), sectionUpdatedAt("kadr", 8_000)]);
-    const global = isGlobalIn(u.role, "kadr");
+    const global = isGlobalIn(u, "kadr");
     const body: KadrPayload = {
       rows: global ? rows : rows.filter((r) => sameBranch(r.filial, u.branch)),
       uploadedAt,

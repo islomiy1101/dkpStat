@@ -10,14 +10,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const user = await getUser();
   if (!user) redirect("/login");
   if (user.mustChange) redirect(PASSWORD_PAGE);
-  const { login, fullName, branch, department, role } = user;
-  // Faqat ruxsat etilgan bo'limlar yuklanadi va sidebar'da ko'rinadi
-  const allowed = SECTIONS.filter((s) => canSee(role, s.id)).map((s) => s.id);
+  const { login, fullName, branch, department, role, areas } = user;
+  // Faqat ruxsat etilgan bo'limlar yuklanadi va sidebar'da ko'rinadi (rol + xodimga alohida bo'limlar)
+  const allowed = SECTIONS.filter((s) => canSee(user, s.id)).map((s) => s.id);
 
   return (
     <DataProvider allowed={allowed}>
       <div className="app-shell">
-        <Sidebar user={{ login, fullName, branch, department, role }} />
+        <Sidebar user={{ login, fullName, branch, department, role, areas }} />
         <main className="app-main">{children}</main>
       </div>
     </DataProvider>

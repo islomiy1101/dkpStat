@@ -25,6 +25,6 @@ export async function GET() {
   if (!u) return authError();
   if (u.mustChange) return mustChangeError();
   const all = await loadVersions();
-  const versions = Object.fromEntries(Object.entries(all).filter(([sec]) => canSee(u.role, AREA[sec as VersionSection])));
+  const versions = Object.fromEntries(Object.entries(all).filter(([sec]) => canSee(u, AREA[sec as VersionSection])));
   return NextResponse.json({ versions }, { headers: { "Cache-Control": "no-store" } });
 }
