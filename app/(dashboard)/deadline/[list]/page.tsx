@@ -15,5 +15,5 @@ export default async function Page({ params }: { params: Promise<{ list: string 
   const u = await guardPage("deadline");
   const { list } = await params;
   if (!isDeadlineList(list)) notFound();
-  return <DeadlineView list={list} canUpload={canSee(u.role, "upload")} />;
+  return <DeadlineView list={list} canUpload={canSee(u, "upload")} />;
 }

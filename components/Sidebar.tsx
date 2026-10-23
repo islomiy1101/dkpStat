@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { SECTIONS } from "@/lib/sections";
-import { canSee, ROLE_LABEL, type AreaId, type Role } from "@/lib/roles";
+import { canSee, ROLE_LABEL, type AreaId, type AreaOverride, type Role } from "@/lib/roles";
 import { useData, type SlotStatus } from "./DataProvider";
 import PasswordForm from "@/features/account/PasswordForm";
 
@@ -15,7 +15,7 @@ const STATUS_LABEL: Record<SlotStatus, string> = {
   error: "Xatolik",
 };
 
-export type SidebarUser = { login: string; fullName: string; branch: string; department: string; role: Role };
+export type SidebarUser = { login: string; fullName: string; branch: string; department: string; role: Role; areas?: AreaOverride[] };
 
 /** Ma'lumot bo'limi bo'lmagan ilovalar (DataProvider'ga bog'lanmagan) — "Bo'limlar" ro'yxatida chiqadi */
 type NavChild = { href: string; title: string; icon: string };
@@ -158,9 +158,9 @@ export default function Sidebar({ user }: { user: SidebarUser }) {
     });
   };
 
-  const sections = SECTIONS.filter((s) => canSee(user.role, s.id));
-  const adminLinks = ADMIN_LINKS.filter((l) => canSee(user.role, l.id));
-  const toolLinks = TOOL_LINKS.filter((l) => canSee(user.role, l.id));
+  const sections = SECTIONS.filter((s) => canSee(user, s.id));
+  const adminLinks = ADMIN_LINKS.filter((l) => canSee(user, l.id));
+  const toolLinks = TOOL_LINKS.filter((l) => canSee(user, l.id));
   const subLinks = [...sections, ...toolLinks].flatMap((s) => ("children" in s ? s.children : []));
   const active = [...subLinks, ...sections, ...toolLinks, ...adminLinks].find((s) => pathname?.startsWith(s.href));
 

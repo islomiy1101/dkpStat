@@ -2,14 +2,15 @@ import { NextResponse } from "next/server";
 import { AUTH_STATE_KEY, requireSuperadmin } from "@/lib/auth";
 import { createUser, listUsers, updateUser, type UserChanges } from "@/lib/auth-server";
 import { invalidate } from "@/lib/cache";
-import { ROLES, type Role } from "@/lib/roles";
+import { ADDABLE_AREAS, ROLES, normalizeAreas, roleAreas, type AreaOverride, type Role } from "@/lib/roles";
 
 /**
  * Faqat superadmin:
  *  GET   /api/admin/users — foydalanuvchilar ro'yxati (parolsiz)
- *  POST  /api/admin/users { fullName, branch, department, login, role } — yangi xodim; vaqtinchalik parol bir marta qaytariladi
- *  PATCH /api/admin/users { login, fullName, branch, department, role } — tahrirlash (login o'zgarmaydi);
- *        rol yoki filial o'zgarsa xodimning sessiyalari yopiladi (Apps Script → SessionsRevokedAt)
+ *  POST  /api/admin/users { fullName, branch, department, login, role, areas } — yangi xodim; vaqtinchalik parol bir marta qaytariladi
+ *  PATCH /api/admin/users { login, fullName, branch, department, role, areas } — tahrirlash (login o'zgarmaydi);
+ *        rol, filial yoki bo'limlar o'zgarsa xodimning sessiyalari yopiladi (Apps Script → SessionsRevokedAt)
+ *  areas — rolidan tashqari bo'limlar: [{ id, op: "+" | "-", scope?: "branch" | "region" }] (lib/roles.ts)
  */
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,29 @@ function validateUserFields(b: Record<string, unknown> | null): UserChanges | st
   if (!f.branch || f.branch.length > 120) return "Filialni kiriting";
   if (f.department.length > 120) return "Bo'lim nomi juda uzun";
   if (!ROLES.includes(f.role)) return "Rolni tanlang";
-  return f;
+  const areas = parseAreaInput(b?.areas);
+  if (!areas) return "Bo'limlar ro'yxati noto'g'ri";
+  const clean = normalizeAreas(f.role, areas);
+  const removed = clean.filter((o) => o.op === "-").length;
+  const added = clean.length - removed;
+  if (roleAreas(f.role).length - removed + added === 0) return "Kamida bitta bo'lim qolishi kerak";
+  return { ...f, areas: clean };
+}
+
+/** Klientdan kelgan bo'limlar: faqat ruxsat etilgan bo'limlar va to'g'ri qiymatlar (aks holda null) */
+function parseAreaInput(v: unknown): AreaOverride[] | null {
+  if (v == null) return [];
+  if (!Array.isArray(v) || v.length > ADDABLE_AREAS.length) return null;
+  const out: AreaOverride[] = [];
+  for (const x of v as Record<string, unknown>[]) {
+    const id = String(x?.id ?? "");
+    const op = x?.op;
+    const scope = x?.scope;
+    if (!(ADDABLE_AREAS as readonly string[]).includes(id) || (op !== "+" && op !== "-")) return null;
+    if (scope != null && scope !== "branch" && scope !== "region") return null;
+    out.push({ id: id as AreaOverride["id"], op, scope: scope ?? undefined });
+  }
+  return out;
 }
 
 export async function GET() {
@@ -48,7 +71,8 @@ export async function POST(req: Request) {
   try {
     const r = await createUser(u.login, { ...f, login });
     if (!r.success || !r.password) return NextResponse.json({ success: false, message: r.message || "Foydalanuvchini qo'shib bo'lmadi" }, { status: r.exists ? 409 : 400 });
-    return NextResponse.json({ success: true, password: r.password }, { headers: { "Cache-Control": "no-store" } });
+    // warning — xodim qo'shildi, lekin bo'limlar yozilmadi (Apps Script eski versiyada)
+    return NextResponse.json({ success: true, password: r.password, warning: r.message }, { headers: { "Cache-Control": "no-store" } });
   } catch (e) {
     console.error("[auth] createUser:", e);
     return NextResponse.json({ success: false, message: "Server bilan bog'lanib bo'lmadi. Qayta urinib ko'ring." }, { status: 502 });
@@ -67,8 +91,9 @@ export async function PATCH(req: Request) {
   if (login.toLowerCase() === u.login.toLowerCase() && f.role !== u.role) return bad("O'z rolingizni o'zgartira olmaysiz");
   try {
     const r = await updateUser(u.login, login, f);
-    if (!r.success) return bad(r.message || "Saqlab bo'lmadi");
+    // Eski Apps Script: boshqa maydonlar saqlanib sessiya yopilgan bo'lishi mumkin — kesh baribir yangilansin
     if (r.revoked) invalidate(AUTH_STATE_KEY);
+    if (!r.success) return bad(r.message || "Saqlab bo'lmadi");
     return NextResponse.json({ success: true, revoked: !!r.revoked });
   } catch (e) {
     console.error("[auth] updateUser:", e);

@@ -29,7 +29,7 @@ const ACCESS: Record<Role, readonly AreaId[]> = {
 };
 
 /** Bo'lim bo'yicha ma'lumot doirasi: "region" — viloyat bo'yicha to'liq, "branch" — faqat o'z filiali */
-type Scope = "region" | "branch";
+export type Scope = "region" | "branch";
 const SCOPE: Record<Role, Partial<Record<SectionId, Scope>>> = {
   engineer: { payment: "branch", deadline: "branch" },
   advicer: { advice: "branch" },
@@ -54,10 +54,84 @@ export const ROLE_LABEL: Record<Role, string> = {
   superadmin: "Superadmin",
 };
 
-export const canSee = (role: Role, id: AreaId) => ACCESS[role].includes(id);
+/* ---------- Xodimga alohida bo'limlar (Users varag'i, Areas ustuni) ---------- */
+
+/**
+ * Rol bo'limlariga qo'shimcha (+) yoki ulardan olib tashlangan (−) bo'lim — faqat shu xodim uchun.
+ * Varaqda: "+payment:branch; +kadr:region; -advice". Superadmin uchun e'tiborga olinmaydi.
+ */
+export type AreaOverride = { id: AreaId; op: "+" | "-"; scope?: Scope };
+/** Ruxsatlarni hisoblash uchun yetarli: rol + xodimga alohida bo'limlar (AppUser shunga mos keladi) */
+export type Access = { role: Role; areas?: readonly AreaOverride[] };
+
+/** Xodimga berish/olish mumkin bo'lgan bo'limlar ("users" va "logs" — faqat superadmin) */
+export const ADDABLE_AREAS = ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception", "upload", "regtest"] as const satisfies readonly AreaId[];
+export type AddableArea = (typeof ADDABLE_AREAS)[number];
+/** Doirasi (filial/viloyat) tanlanadigan bo'limlar — ma'lumot bo'limlari */
+const SCOPED_AREAS: readonly AreaId[] = ["kadr", "deadline", "etirof", "xatlov", "payment", "advice", "reception"];
+export const isScopedArea = (id: AreaId): id is SectionId => SCOPED_AREAS.includes(id);
+const isAddable = (id: string): id is AddableArea => (ADDABLE_AREAS as readonly string[]).includes(id);
+
+/** Rolning o'z bo'limlari (alohida bo'limlarsiz) */
+export const roleAreas = (role: Role): readonly AreaId[] => ACCESS[role];
+
+/**
+ * Ma'nosiz yozuvlarni tozalaydi: rolda bor bo'limga "+", rolda yo'q bo'limga "−", takrorlar.
+ * Superadmin — har doim bo'sh.
+ */
+export function normalizeAreas(role: Role, areas: readonly AreaOverride[] | undefined): AreaOverride[] {
+  if (role === "superadmin" || !areas?.length) return [];
+  const base = ACCESS[role];
+  const byId = new Map<AreaId, AreaOverride>();
+  for (const o of areas) {
+    if (!isAddable(o.id)) continue;
+    if (o.op === "+" && !base.includes(o.id)) byId.set(o.id, isScopedArea(o.id) ? { id: o.id, op: "+", scope: o.scope === "region" ? "region" : "branch" } : { id: o.id, op: "+" });
+    if (o.op === "-" && base.includes(o.id)) byId.set(o.id, { id: o.id, op: "-" });
+  }
+  return [...byId.values()];
+}
+
+/** Varaqdagi matn → ro'yxat. Noma'lum yozuvlar tashlab yuboriladi (log'da ko'rinadi) */
+export function parseAreas(raw: unknown): AreaOverride[] {
+  const out: AreaOverride[] = [];
+  for (const part of String(raw ?? "").split(/[;,\s]+/).filter(Boolean)) {
+    const m = part.match(/^([+-])([a-z]+)(?::(branch|region))?$/i);
+    const id = m?.[2].toLowerCase();
+    if (!m || !id || !isAddable(id)) {
+      console.warn("[roles] noma'lum bo'lim yozuvi tashlab yuborildi:", JSON.stringify(part));
+      continue;
+    }
+    out.push({ id, op: m[1] as "+" | "-", scope: m[3] ? (m[3].toLowerCase() as Scope) : undefined });
+  }
+  return out;
+}
+
+/** Ro'yxat → varaqdagi matn */
+export const formatAreas = (areas: readonly AreaOverride[]) =>
+  areas.map((o) => `${o.op}${o.id}${o.op === "+" && o.scope ? ":" + o.scope : ""}`).join("; ");
+
+/**
+ * Xodim ko'radigan bo'limlar: rol bo'limlari (olib tashlanganlarsiz) + qo'shilganlar oxirida.
+ * Tartib muhim — birinchisi kirgandan keyin ochiladi (firstAllowedHref).
+ */
+export function areaList(a: Access): readonly AreaId[] {
+  const areas = normalizeAreas(a.role, a.areas);
+  if (!areas.length) return ACCESS[a.role];
+  const removed = new Set(areas.filter((o) => o.op === "-").map((o) => o.id));
+  const list = [...ACCESS[a.role].filter((id) => !removed.has(id)), ...areas.filter((o) => o.op === "+").map((o) => o.id)];
+  // Varaqda qo'lda hamma bo'lim olib tashlangan bo'lsa ham xodim tizimga kira olsin
+  return list.length ? list : ACCESS[a.role];
+}
+
+const added = (a: Access, id: AreaId) => normalizeAreas(a.role, a.areas).find((o) => o.op === "+" && o.id === id);
+
+export const canSee = (a: Access, id: AreaId) => areaList(a).includes(id);
 
 /** Shu bo'limda viloyat bo'yicha to'liq ma'lumot ko'radimi; aks holda faqat o'z filialini */
-export const isGlobalIn = (role: Role, id: SectionId) => SCOPE[role][id] === "region";
+export const isGlobalIn = (a: Access, id: SectionId) => {
+  const extra = added(a, id);
+  return extra ? extra.scope === "region" : SCOPE[a.role][id] === "region";
+};
 
 /**
  * O'z filiali doirasida murojaat kiritmay, analitika paneli + ro'yxatni faqat ko'radigan rollar
@@ -66,7 +140,8 @@ export const isGlobalIn = (role: Role, id: SectionId) => SCOPE[role][id] === "re
 const BRANCH_ANALYTICS: Partial<Record<Role, readonly SectionId[]>> = {
   branchManager: ["advice", "reception"],
 };
-export const isBranchAnalyticsIn = (role: Role, id: SectionId) => BRANCH_ANALYTICS[role]?.includes(id) ?? false;
+/** Faqat rol bo'yicha: xodimga alohida qo'shilgan bo'limda "o'z filiali" — kiritish rejimi */
+export const isBranchAnalyticsIn = (a: Access, id: SectionId) => !added(a, id) && (BRANCH_ANALYTICS[a.role]?.includes(id) ?? false);
 
 const HREF: Record<AreaId, string> = {
   kadr: "/kadr",
@@ -81,7 +156,7 @@ const HREF: Record<AreaId, string> = {
   regtest: "/regtest/test",
   users: "/users",
 };
-export const firstAllowedHref = (role: Role) => HREF[ACCESS[role][0]];
+export const firstAllowedHref = (a: Access) => HREF[areaList(a)[0]];
 
 const ALIASES: Record<string, Role> = {
   engineer: "engineer",

@@ -26,7 +26,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ path: string[] 
 
   const url = new URL(req.url);
   const q = url.searchParams;
-  const global = isGlobalIn(u.role, "deadline");
+  const global = isGlobalIn(u, "deadline");
   const list = q.get("list") || "yakunlangan";
   if (!isDeadlineList(list)) return NextResponse.json({ error: "Noma'lum ro'yxat" }, { status: 404 });
 

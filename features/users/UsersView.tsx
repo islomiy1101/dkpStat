@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { UserRow } from "@/lib/auth-server";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
-import { BlockDialog, UnblockDialog, UserFormDialog } from "./UserDialogs";
+import { AREA_LABEL, BlockDialog, SCOPE_LABEL, UnblockDialog, UserFormDialog } from "./UserDialogs";
 import PageLoader from "@/components/PageLoader";
 
 /**
@@ -49,7 +49,7 @@ export default function UsersView({ self }: { self: string }) {
   const [page, setPage] = useState(1);
   const [confirm, setConfirm] = useState<UserRow | null>(null);
   const [resetting, setResetting] = useState(false);
-  const [issued, setIssued] = useState<{ fullName: string; login: string; password: string; created?: boolean } | null>(null);
+  const [issued, setIssued] = useState<{ fullName: string; login: string; password: string; created?: boolean; warning?: string } | null>(null);
   const [creating, setCreating] = useState(false);
   const [blockFor, setBlockFor] = useState<UserRow | null>(null);
   const [editFor, setEditFor] = useState<UserRow | null>(null);
@@ -260,7 +260,20 @@ export default function UsersView({ self }: { self: string }) {
                     </td>
                     <td data-label="Login"><span className="us-login">{u.login}</span></td>
                     <td data-label="Filial" className="us-branch">{u.branch || "—"}</td>
-                    <td data-label="Rol"><span className={`us-role r-${u.role}`}>{ROLE_LABEL[u.role]}</span></td>
+                    <td data-label="Rol">
+                      <span className={`us-role r-${u.role}`}>{ROLE_LABEL[u.role]}</span>
+                      {u.areas.length > 0 && (
+                        <span className="us-areas-list">
+                          {u.areas.map((o) => (
+                            <small key={o.id} className={o.op === "+" ? "us-area-tag is-add" : "us-area-tag is-del"}
+                              title={o.op === "+" ? "Rolidan tashqari qo'shilgan bo'lim" : "Roldagi bo'lim shu xodimdan olib tashlangan"}>
+                              {o.op === "+" ? "+" : "−"} {AREA_LABEL[o.id as keyof typeof AREA_LABEL]}
+                              {o.op === "+" && o.scope && ` (${SCOPE_LABEL[o.scope]})`}
+                            </small>
+                          ))}
+                        </span>
+                      )}
+                    </td>
                     <td data-label="Holat">
                       <span className="us-status">
                         {u.blocked && (
@@ -351,7 +364,7 @@ export default function UsersView({ self }: { self: string }) {
 
       {creating && users && (
         <UserFormDialog mode="create" self={self} users={users} onClose={() => setCreating(false)}
-          onCreated={(u, password) => { setCreating(false); setCopied(false); setIssued({ ...u, password, created: true }); void load(); }} />
+          onCreated={(u, password, warning) => { setCreating(false); setCopied(false); setIssued({ ...u, password, created: true, warning }); void load(); }} />
       )}
       {editFor && users && (
         <UserFormDialog mode="edit" user={editFor} self={self} users={users} onClose={() => setEditFor(null)}
@@ -378,6 +391,7 @@ export default function UsersView({ self }: { self: string }) {
               </button>
             </div>
             <p className="us-warn">Bu parol faqat hozir ko&apos;rsatiladi — xodimga xavfsiz yo&apos;l bilan yetkazing.</p>
+            {issued.warning && <p className="us-warn-box"><i className="fa-solid fa-triangle-exclamation" /> {issued.warning}</p>}
             <div className="sb-confirm-actions us-one">
               <button className="sb-btn-cancel" onClick={() => setIssued(null)} autoFocus>Yopish</button>
             </div>

@@ -7,5 +7,5 @@ export const metadata: Metadata = { title: "Kadrlar statistikasi — DKP Namanga
 
 export default async function Page() {
   const u = await guardPage("kadr");
-  return <KadrView canUpload={canSee(u.role, "upload")} />;
+  return <KadrView canUpload={canSee(u, "upload")} />;
 }

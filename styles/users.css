@@ -225,6 +225,23 @@
 .sec-users .us-form select:disabled { background: #f1f5f9; color: #64748b; cursor: not-allowed; }
 .sec-users .us-form label small.us-muted-note { color: var(--us-muted); }
 .sec-users .us-warn-box { margin: 0 !important; padding: 8px 10px; border-radius: 9px; background: #fffbeb; border: 1px solid #fde68a; color: #92400e !important; font-size: 12px !important; line-height: 1.45; }
+
+/* Xodimga alohida bo'limlar (UserDialogs → AreasField; jadvalda — rol ostida) */
+.sec-users .us-areas { display: flex; flex-direction: column; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.sec-users .us-areas > .us-form-label { padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.sec-users .us-area-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; padding: 4px 12px; }
+.sec-users .us-area-row + .us-area-row { border-top: 1px solid #f1f5f9; }
+.sec-users .us-area-row.is-removed span { color: #94a3b8; text-decoration: line-through; }
+.sec-users .us-form .us-area-row label { flex-direction: row; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; color: var(--us-text); }
+.sec-users .us-form .us-area-row input[type="checkbox"] { width: 16px; height: 16px; padding: 0; margin: 0; accent-color: var(--us-accent); cursor: pointer; }
+.sec-users .us-form .us-area-row select { width: auto; height: 32px; padding: 0 8px; font-size: 12.5px; }
+.sec-users .us-area-tag {
+  display: inline-block; padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+  font-size: 11px; font-weight: 600; background: #f1f5f9; color: #64748b;
+}
+.sec-users .us-area-tag.is-add { background: #f0fdf4; color: #15803d; }
+.sec-users .us-area-tag.is-del { background: #fef2f2; color: #b91c1c; }
+.sec-users .us-areas-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px; max-width: 260px; }
 .sec-users .us-toast {
   position: fixed; right: 20px; bottom: 20px; z-index: 10001; display: flex; align-items: center; gap: 8px;
   padding: 12px 16px; border-radius: 12px; background: #0f172a; color: #fff; font-size: 13px; font-weight: 600;

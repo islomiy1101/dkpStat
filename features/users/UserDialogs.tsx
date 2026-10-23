@@ -2,7 +2,19 @@
 
 import { useMemo, useState } from "react";
 import type { UserRow } from "@/lib/auth-server";
-import { ROLES, ROLE_LABEL, type Role } from "@/lib/roles";
+import { SECTIONS } from "@/lib/sections";
+import {
+  ADDABLE_AREAS, ROLES, ROLE_LABEL, formatAreas, isScopedArea, normalizeAreas, roleAreas,
+  type AddableArea, type AreaOverride, type Role, type Scope,
+} from "@/lib/roles";
+
+/** Xodimga beriladigan bo'limlar nomi (Sidebar'dagi kabi) */
+export const AREA_LABEL: Record<AddableArea, string> = {
+  ...(Object.fromEntries(SECTIONS.map((s) => [s.id, s.title])) as Record<(typeof SECTIONS)[number]["id"], string>),
+  upload: "Bazaga yuklash",
+  regtest: "Registratsiya",
+};
+export const SCOPE_LABEL: Record<Scope, string> = { branch: "o'z filiali", region: "viloyat" };
 
 /**
  * "Foydalanuvchilar" oynalari: yangi foydalanuvchi / tahrirlash va bloklash.
@@ -37,11 +49,61 @@ function Dialog({ title, icon, tone, onClose, busy, children }: {
   );
 }
 
+/* ---------------- Xodimga alohida bo'limlar ---------------- */
+
+/**
+ * Rol bo'limlari avvaldan belgilangan ("rol bo'yicha") — belgini olish shu xodimdan olib tashlaydi.
+ * Roldan tashqari bo'lim belgilansa — qo'shiladi; ma'lumot bo'limida doirasi tanlanadi.
+ */
+function AreasField({ role, areas, onChange, disabled }: {
+  role: Role;
+  /** normalizeAreas(role, …) dan o'tgan ro'yxat */
+  areas: AreaOverride[];
+  onChange: (next: AreaOverride[]) => void;
+  disabled?: boolean;
+}) {
+  const base = roleAreas(role);
+  const without = (id: AddableArea) => areas.filter((o) => o.id !== id);
+  return (
+    <div className="us-areas" role="group" aria-label="Bo'limlar">
+      <span className="us-form-label">Bo&apos;limlar</span>
+      {ADDABLE_AREAS.map((id) => {
+        const inRole = base.includes(id);
+        const extra = areas.find((o) => o.id === id && o.op === "+");
+        const checked = inRole ? !areas.some((o) => o.id === id && o.op === "-") : !!extra;
+        const toggle = () => {
+          if (inRole) onChange(checked ? [...without(id), { id, op: "-" }] : without(id));
+          else onChange(checked ? without(id) : [...without(id), isScopedArea(id) ? { id, op: "+", scope: "branch" } : { id, op: "+" }]);
+        };
+        return (
+          <div key={id} className={`us-area-row${checked ? " is-on" : ""}${inRole && !checked ? " is-removed" : ""}`}>
+            <label>
+              <input type="checkbox" checked={checked} onChange={toggle} disabled={disabled} />
+              <span>{AREA_LABEL[id]}</span>
+            </label>
+            {inRole ? (
+              <small className={checked ? "us-area-tag" : "us-area-tag is-del"}>{checked ? "rol bo'yicha" : "olib tashlangan"}</small>
+            ) : extra && isScopedArea(id) ? (
+              <select value={extra.scope ?? "branch"} disabled={disabled} aria-label={`${AREA_LABEL[id]}: ma'lumot doirasi`}
+                onChange={(e) => onChange(areas.map((o) => (o === extra ? { ...o, scope: e.target.value as Scope } : o)))}>
+                <option value="branch">Faqat o&apos;z filiali</option>
+                <option value="region">Viloyat bo&apos;yicha</option>
+              </select>
+            ) : extra ? (
+              <small className="us-area-tag is-add">qo&apos;shimcha</small>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /* ---------------- Yangi foydalanuvchi / tahrirlash ---------------- */
 
 /**
  * Yaratish (mode="create") yoki tahrirlash (mode="edit": login faqat o'qish uchun, faqat o'zgarganda saqlanadi).
- * Rol yoki filial o'zgarsa xodim ~1 daqiqada tizimdan chiqariladi va qayta kirib yangi huquqlarni oladi.
+ * Rol, filial yoki bo'limlar o'zgarsa xodim ~1 daqiqada tizimdan chiqariladi va qayta kirib yangi huquqlarni oladi.
  */
 export function UserFormDialog({ mode, user, self, users, onClose, onCreated, onSaved }: {
   mode: "create" | "edit";
@@ -51,7 +113,8 @@ export function UserFormDialog({ mode, user, self, users, onClose, onCreated, on
   self: string;
   users: UserRow[];
   onClose: () => void;
-  onCreated?: (u: { fullName: string; login: string }, password: string) => void;
+  /** warning — xodim qo'shildi, lekin bo'limlar yozilmadi (Apps Script eski versiyada) */
+  onCreated?: (u: { fullName: string; login: string }, password: string, warning?: string) => void;
   onSaved?: (revoked: boolean) => void;
 }) {
   const edit = mode === "edit" && !!user;
@@ -63,6 +126,13 @@ export function UserFormDialog({ mode, user, self, users, onClose, onCreated, on
     role: (user?.role ?? "") as Role | "",
   };
   const [f, setF] = useState(initial);
+  // Xom ro'yxat: rol vaqtincha almashtirilib qaytarilsa ham qo'shimchalar yo'qolmaydi; ko'rsatish va saqlash — areas
+  const [rawAreas, setRawAreas] = useState<AreaOverride[]>(user?.areas ?? []);
+  const areas = f.role ? normalizeAreas(f.role, rawAreas) : [];
+  const initialAreas = formatAreas(user?.areas ?? []);
+  const areasChanged = formatAreas(areas) !== initialAreas;
+  const removedCount = areas.filter((o) => o.op === "-").length;
+  const noAreas = !!f.role && roleAreas(f.role).length - removedCount + (areas.length - removedCount) === 0;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const branches = useMemo(() => [...new Set(users.map((u) => u.branch).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [users]);
@@ -70,9 +140,9 @@ export function UserFormDialog({ mode, user, self, users, onClose, onCreated, on
   const taken = !edit && f.login !== "" && users.some((u) => u.login.toLowerCase() === f.login.toLowerCase());
   const loginBad = !edit && f.login !== "" && !/^\S{3,64}$/.test(f.login);
   const norm = (v: string) => v.trim().replace(/\s+/g, " ");
-  const dirty = (Object.keys(initial) as (keyof typeof initial)[]).some((k) => norm(f[k]) !== norm(initial[k]));
-  const accessChanged = edit && (f.role !== initial.role || norm(f.branch) !== norm(initial.branch));
-  const ok = norm(f.fullName) && norm(f.branch) && f.role && f.login && !taken && !loginBad && (!edit || dirty);
+  const dirty = (Object.keys(initial) as (keyof typeof initial)[]).some((k) => norm(f[k]) !== norm(initial[k])) || areasChanged;
+  const accessChanged = edit && (f.role !== initial.role || norm(f.branch) !== norm(initial.branch) || areasChanged);
+  const ok = norm(f.fullName) && norm(f.branch) && f.role && f.login && !taken && !loginBad && !noAreas && (!edit || dirty);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF((v) => ({ ...v, [k]: k === "login" ? e.target.value.replace(/\s/g, "") : e.target.value }));
 
@@ -83,11 +153,11 @@ export function UserFormDialog({ mode, user, self, users, onClose, onCreated, on
     setError(null);
     try {
       if (edit) {
-        const j = await sendJson("/api/admin/users", f, "PATCH");
+        const j = await sendJson("/api/admin/users", { ...f, areas }, "PATCH");
         onSaved?.(!!j.revoked);
       } else {
-        const j = await sendJson("/api/admin/users", f);
-        onCreated?.({ fullName: norm(f.fullName), login: f.login }, j.password);
+        const j = await sendJson("/api/admin/users", { ...f, areas });
+        onCreated?.({ fullName: norm(f.fullName), login: f.login }, j.password, j.warning);
       }
     } catch (err) {
       setError((err as Error).message);
@@ -132,12 +202,17 @@ export function UserFormDialog({ mode, user, self, users, onClose, onCreated, on
             {isSelf && <small className="us-muted-note">O&apos;z rolingizni o&apos;zgartira olmaysiz</small>}
           </label>
         </div>
+        {/* Superadmin hamma bo'limni ko'radi — unga alohida bo'lim berilmaydi */}
+        {f.role && f.role !== "superadmin" && (
+          <AreasField role={f.role} areas={areas} onChange={setRawAreas} disabled={busy} />
+        )}
+        {noAreas && <p className="us-err"><i className="fa-solid fa-circle-exclamation" /> Kamida bitta bo&apos;lim qolishi kerak</p>}
         {accessChanged ? (
           <p className="us-warn-box">
             <i className="fa-solid fa-triangle-exclamation" />{" "}
             {isSelf
               ? "Filial o'zgarsa, siz ham bir daqiqa ichida tizimdan chiqarilasiz va qayta kirishingiz kerak bo'ladi."
-              : "Rol yoki filial o'zgarmoqda: xodim bir daqiqa ichida tizimdan chiqariladi va qayta kirganda yangi huquqlar bilan ishlaydi."}
+              : "Rol, filial yoki bo'limlar o'zgarmoqda: xodim bir daqiqa ichida tizimdan chiqariladi va qayta kirganda yangi huquqlar bilan ishlaydi."}
           </p>
         ) : !edit && (
           <p className="us-note"><i className="fa-solid fa-circle-info" /> Parol avtomatik yaratiladi va bir marta ko&apos;rsatiladi. Xodim birinchi kirishda o&apos;z parolini o&apos;rnatadi.</p>
