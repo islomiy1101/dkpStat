@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { revealOnFocus, useDesktopAutoFocus } from "@/lib/mobile-focus";
 
 /** Login va parolda bo'sh joy bo'lmaydi: yozilsa ham, nusxalab qo'yilsa ham olib tashlanadi */
 const noSpaces = (v: string) => v.replace(/\s/g, "");
@@ -15,6 +16,8 @@ export default function LoginView() {
   const [showPass, setShowPass] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const loginRef = useDesktopAutoFocus<HTMLInputElement>();
+  const passRef = useRef<HTMLInputElement>(null);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,15 +68,21 @@ export default function LoginView() {
           <label htmlFor="auth-login">Login</label>
           <div className="auth-input">
             <i className="fa-regular fa-user" />
-            <input id="auth-login" autoComplete="username" autoCapitalize="none" spellCheck={false} required autoFocus value={login}
-              onChange={(e) => setLogin(noSpaces(e.target.value))} onKeyDown={blockSpace} placeholder="Foydalanuvchi nomi" />
+            <input id="auth-login" ref={loginRef} autoComplete="username" autoCapitalize="none" spellCheck={false} required value={login}
+              enterKeyHint="next" onFocus={revealOnFocus} onChange={(e) => setLogin(noSpaces(e.target.value))}
+              onKeyDown={(e) => {
+                blockSpace(e);
+                // Klaviaturadagi "Keyingi" — formani yubormasdan parolga o'tadi
+                if (e.key === "Enter") { e.preventDefault(); passRef.current?.focus(); }
+              }} placeholder="Foydalanuvchi nomi" />
           </div>
 
           <label htmlFor="auth-pass">Parol</label>
           <div className="auth-input">
             <i className="fa-solid fa-lock" />
-            <input id="auth-pass" type={showPass ? "text" : "password"} autoComplete="current-password" required value={password}
-              onChange={(e) => setPassword(noSpaces(e.target.value))} onKeyDown={blockSpace} placeholder="••••••••" />
+            <input id="auth-pass" ref={passRef} type={showPass ? "text" : "password"} autoComplete="current-password" required value={password}
+              enterKeyHint="go" onFocus={revealOnFocus} onChange={(e) => setPassword(noSpaces(e.target.value))} onKeyDown={blockSpace}
+              placeholder="••••••••" />
             <button type="button" className="auth-eye" onClick={() => setShowPass((v) => !v)} aria-label="Parolni ko'rsatish">
               <i className={`fa-regular ${showPass ? "fa-eye-slash" : "fa-eye"}`} />
             </button>

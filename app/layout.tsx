@@ -23,7 +23,13 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "DKP Stat", statusBarStyle: "default" },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0f172a" };
+// interactiveWidget: telefonda klaviatura ochilganda sahifa balandligi ham kichrayadi (forma klaviatura ostida qolmaydi)
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0f172a",
+  interactiveWidget: "resizes-content",
+};
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
