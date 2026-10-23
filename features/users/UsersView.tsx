@@ -84,6 +84,14 @@ export default function UsersView({ self }: { self: string }) {
     return () => clearTimeout(t);
   }, [toast]);
 
+  // "Parolni tiklash" oynasi: Escape bilan yopish (fonga bosish yopmaydi)
+  useEffect(() => {
+    if (!confirm) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !resetting && setConfirm(null);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [confirm, resetting]);
+
   const all = useMemo(() => users ?? [], [users]);
   const branches = useMemo(() => [...new Set(all.map((u) => u.branch).filter(Boolean))].sort((a, b) => a.localeCompare(b)), [all]);
   const roles = useMemo(() => [...new Set(all.map((u) => u.role))], [all]);
@@ -342,8 +350,7 @@ export default function UsersView({ self }: { self: string }) {
       </section>
 
       {confirm && (
-        <div className="sb-confirm" role="dialog" aria-modal="true" aria-labelledby="us-confirm-title"
-          onClick={(e) => e.target === e.currentTarget && !resetting && setConfirm(null)}>
+        <div className="sb-confirm" role="dialog" aria-modal="true" aria-labelledby="us-confirm-title">
           <div className="sb-confirm-card">
             <div className="sb-confirm-icon sb-pw-icon"><i className="fa-solid fa-key" /></div>
             <h3 id="us-confirm-title">Parolni tiklash</h3>

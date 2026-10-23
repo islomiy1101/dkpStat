@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { UserRow } from "@/lib/auth-server";
 import { SECTIONS } from "@/lib/sections";
 import {
@@ -37,8 +37,15 @@ function Dialog({ title, icon, tone, onClose, busy, children }: {
   busy: boolean;
   children: React.ReactNode;
 }) {
+  // Faqat Esc / × / "Bekor qilish" bilan yopiladi — fonga bosish (yoki tashqarida qo'yib yuborilgan belgilash) forma ma'lumotini yo'qotmasin
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
+
   return (
-    <div className="sb-confirm" role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.target === e.currentTarget && !busy && onClose()}>
+    <div className="sb-confirm" role="dialog" aria-modal="true" aria-label={title}>
       <div className="sb-confirm-card us-dlg">
         <button type="button" className="sb-pw-x" onClick={onClose} disabled={busy} aria-label="Yopish"><i className="fa-solid fa-xmark" /></button>
         <div className={`sb-confirm-icon ${tone === "red" ? "" : "sb-pw-icon"}`}><i className={icon} /></div>
