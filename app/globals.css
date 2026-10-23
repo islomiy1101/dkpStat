@@ -11,6 +11,8 @@
   --sb-muted: #64748b;
   --sb-accent: #38bdf8;
   --topbar-h: 0px;
+  /* Faqat yorug' rejim: Chrome'ning "Auto Dark Mode" i sahifani qoraytirmasin (layout.tsx: colorScheme) */
+  color-scheme: only light;
 }
 html[data-sidebar="collapsed"] { --sb-w: var(--sb-w-collapsed); }
 
