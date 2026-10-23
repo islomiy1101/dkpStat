@@ -20,7 +20,10 @@ export const metadata: Metadata = {
   title: "DKP Namangan — Monitoring",
   description: "Davlat kadastrlari palatasi Namangan viloyati: yagona monitoring paneli",
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "DKP Stat", statusBarStyle: "default" },
+  // statusBarStyle "black": iPhone'da status bar to'q topbar bilan uyg'un (oq polosa chiqmasin)
+  appleWebApp: { capable: true, title: "DKP Stat", statusBarStyle: "black" },
+  // iOS Safari jadvaldagi uzun raqamlarni telefon havolasiga aylantirmasin
+  formatDetection: { telephone: false },
 };
 
 // interactiveWidget: telefonda klaviatura ochilganda sahifa balandligi ham kichrayadi (forma klaviatura ostida qolmaydi)

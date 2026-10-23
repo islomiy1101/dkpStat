@@ -19,6 +19,11 @@ html[data-sidebar="collapsed"] { --sb-w: var(--sb-w-collapsed); }
 html, body { margin: 0; padding: 0; }
 body { background: #f1f5f9; }
 
+/* iPhone: 16px dan kichik maydonga bosilganda Safari sahifani kattalashtiradi — faqat iOS'da 16px */
+@supports (-webkit-touch-callout: none) {
+  input, select, textarea { font-size: 16px !important; }
+}
+
 .app-shell { min-height: 100vh; }
 .app-main {
   margin-left: var(--sb-w);
