@@ -3,3 +3,16 @@
   # Their values also occur in source, documentation or the environment template.
   # Keep scanning enabled for sheet IDs, Apps Script URLs and all secrets.
   SECRETS_SCAN_OMIT_KEYS = "PAYMENT_SHEET_MAIN,PAYMENT_SHEET_PLAN,CACHE_TTL_MS,DEADLINE_CACHE_TTL_MS,ETIROF_CACHE_TTL_MS,XATLOV_CACHE_TTL_MS"
+
+# PWA: service worker har doim yangisi olinsin
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+    Service-Worker-Allowed = "/"
+
+# Android APK (TWA) uchun Digital Asset Links
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
