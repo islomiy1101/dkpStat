@@ -24,10 +24,12 @@ export const metadata: Metadata = {
 };
 
 // interactiveWidget: telefonda klaviatura ochilganda sahifa balandligi ham kichrayadi (forma klaviatura ostida qolmaydi)
+// colorScheme "only light": sayt faqat yorug' rejimda; telefon qorong'i rejimida Chrome sahifani majburan qoraytirmasin
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: "#0f172a",
+  colorScheme: "only light",
   interactiveWidget: "resizes-content",
 };
 
