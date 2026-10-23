@@ -14,13 +14,16 @@ import "@/styles/xatlov.css";
 import "@/styles/regtest.css";
 import "@/styles/regtest-results.css";
 import "./globals.css";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
   title: "DKP Namangan — Monitoring",
   description: "Davlat kadastrlari palatasi Namangan viloyati: yagona monitoring paneli",
+  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "DKP Stat", statusBarStyle: "default" },
 };
 
-export const viewport: Viewport = { width: "device-width", initialScale: 1 };
+export const viewport: Viewport = { width: "device-width", initialScale: 1, themeColor: "#0f172a" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,7 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <ServiceWorkerRegister />
+      </body>
     </html>
   );
 }
